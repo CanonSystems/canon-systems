@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 
 from . import __version__
 from .actor_report import run as run_actor_report
@@ -71,10 +72,16 @@ def main(argv: list[str] | None = None) -> int:
     vc.add_argument("--quiet", action="store_true")
 
     args = parser.parse_args(argv)
+    argv_for_exec = list(sys.argv) if argv is None else [sys.argv[0]] + list(argv)
     root = detect_repo_root(args.repo_root)
     os.environ["CANON_SYSTEMS_REPO_ROOT"] = str(root)
     # Back-compat: legacy env var name still honored downstream.
     os.environ.setdefault("CANON_MEMORY_LAYER_REPO_ROOT", str(root))
+
+    if args.command in ("setup", "enable-repo"):
+        from .self_update import try_self_update
+
+        try_self_update(argv_for_exec)
 
     if args.command == "setup":
         setup_args: list[str] = ["--repo-root", str(root)]

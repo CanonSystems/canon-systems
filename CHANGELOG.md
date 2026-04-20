@@ -9,14 +9,25 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- `CHANGELOG.md` (this file) and a README link; **How to maintain** notes at
-  the bottom of this file.
-
 ### Changed
 
 ### Fixed
 
 ### Removed
+
+---
+
+## [3.0.2] - 2026-04-23
+
+### Added
+
+- **`canon setup` and `canon enable-repo`:** optional **pipx self-update**.
+  When the running `canon` binary comes from a pipx venv for `canon-systems`,
+  we run `pipx upgrade canon-systems`; if the installed distribution version
+  **increases**, we **re-exec** `canon` with the same arguments so the rest of
+  the command (and the version pin written by `enable-repo`) uses the new
+  build. Disable with `CANON_SYSTEMS_SKIP_SELF_UPDATE=1` or in CI (`CI=true`).
+  See `src/canon_systems/self_update.py`.
 
 ---
 

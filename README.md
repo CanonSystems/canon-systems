@@ -59,6 +59,11 @@ After **pipx** install, `canon` lives in `~/.local/bin`. Open a **new
 terminal** or run `export PATH="$HOME/.local/bin:$PATH"` — see
 [ONBOARDING §1c](docs/ONBOARDING.md#1c-after-pipx-canon-not-on-path).
 
+**Self-update:** `canon setup` and `canon enable-repo` run
+`pipx upgrade canon-systems` first when the CLI is pipx-managed. If a newer
+version is installed, the command restarts on the new build automatically.
+Set `CANON_SYSTEMS_SKIP_SELF_UPDATE=1` (or `CI=true`) to skip.
+
 Updating after a new push:
 
 ```bash

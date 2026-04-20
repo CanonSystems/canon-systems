@@ -187,6 +187,13 @@ cd /path/to/your-repo
 canon setup
 ```
 
+**Before the questions:** if you installed with **pipx**, `canon setup`
+runs `pipx upgrade canon-systems`. When a **newer version** is pulled from
+git, the process **restarts** so the rest of setup uses that build (and
+writes the matching version pin). To turn this off (pinned CI images,
+air-gapped machines): `export CANON_SYSTEMS_SKIP_SELF_UPDATE=1` first, or
+rely on `CI=true` which also skips the check.
+
 You'll be prompted interactively. **What each prompt means:**
 
 | Prompt | Meaning | What to enter |
@@ -224,7 +231,8 @@ line. No second command needed.
 
 (If you ever want to re-install just the per-repo pieces without
 redoing the credentials step, run `canon enable-repo` on its own in
-any repo.)
+any repo. That command runs the same **pipx self-update** step first.)
+
 
 ---
 
