@@ -48,6 +48,12 @@ pipx install /path/to/canon-systems
 cd /path/to/canon-systems && ./install.sh
 ```
 
+If you use `pip3 install ...` instead of pipx, the install can succeed while
+`canon` is not found: pip puts the script under
+`$(python3 -m site --user-base)/bin`, which macOS often leaves off PATH.
+Add that directory to PATH (see [docs/ONBOARDING.md](docs/ONBOARDING.md#1b-alternative-pip-or-pip3-user-install)),
+or switch to pipx for fewer surprises.
+
 Updating after a new push:
 
 ```bash

@@ -25,10 +25,14 @@ Estimated time: 10 minutes on a machine that already has Python + git.
 You need:
 
 1. **Python 3.10 or newer.** Check: `python3 --version`.
-2. **pipx.** Check: `pipx --version`. If missing:
+2. **A way to install CLI tools.** **Recommended:** `pipx` (keeps canon-systems
+   isolated, puts `canon` on PATH reliably). Check: `pipx --version`. If missing:
    - macOS: `brew install pipx && pipx ensurepath`
    - Linux: `python3 -m pip install --user pipx && python3 -m pipx ensurepath`
    - Then restart your shell so `pipx` is on PATH.
+   **Also works:** `pip3 install ...` (see [§1b](#1b-alternative-pip-or-pip3-user-install)
+   below) — install succeeds but you must add Python's *user scripts* directory
+   to PATH; macOS does not do this by default.
 3. **An SSH key on GitHub** associated with the account Ed added to the
    `CanonSystems` org. Test with `ssh -T git@github.com` — it should
    greet you by your GitHub username.
@@ -64,6 +68,48 @@ pipx upgrade canon-systems
 # or to force a fresh pull from the git repo:
 pipx install --force git+ssh://git@github.com/CanonSystems/canon-systems.git
 ```
+
+### 1b. Alternative: pip or pip3 (user install)
+
+If you ran something like:
+
+```bash
+pip3 install git+ssh://git@github.com/CanonSystems/canon-systems.git
+```
+
+the package **installed correctly**. Pip prints a warning because the
+`canon` executable landed in Python's **user script directory**, which is
+often **not** on your `PATH` (especially on macOS).
+
+Find that directory (works on any OS):
+
+```bash
+python3 -m site --user-base
+```
+
+The scripts live in `<that-output>/bin`. For example, on macOS with
+Python 3.13 you often get:
+
+`/Users/you/Library/Python/3.13/bin`
+
+**Fix — add it to PATH** (zsh on macOS, append to `~/.zshrc`):
+
+```bash
+export PATH="$(python3 -m site --user-base)/bin:$PATH"
+```
+
+Then `source ~/.zshrc` (or open a new terminal) and verify:
+
+```bash
+command -v canon
+canon --version
+```
+
+**Why we still recommend pipx:** upgrades are one command
+(`pipx upgrade canon-systems`), and you avoid sharing one Python
+environment with unrelated packages. `pip3 install --user` is fine if
+you understand PATH and upgrade with
+`pip3 install --upgrade git+ssh://git@github.com/CanonSystems/canon-systems.git`.
 
 ---
 
