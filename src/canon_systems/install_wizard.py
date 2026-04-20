@@ -214,9 +214,15 @@ def run(argv: list[str] | None = None) -> int:
             print(f"Known companies: {', '.join(companies.keys())}")
         company_id = input(f"Company ID [{default_company}]: ").strip() or default_company
         ent = company_entry(registry, company_id)
+        print(
+            "\nAWS credentials profile — a short LABEL on this machine only. It becomes the\n"
+            "section name in ~/.aws/credentials, e.g. [memory-layer-edward]. It is NOT your\n"
+            "AWS console sign-in username and NOT your access key. Pick any name you like;\n"
+            "use the same name you already use in ~/.aws/credentials if keys are there.\n"
+        )
         profile = (
             input(
-                "AWS profile name "
+                "AWS credentials profile "
                 f"[{str(ent.get('suggested_aws_profile', '')).strip() or 'canon-systems'}]: "
             ).strip()
             or str(ent.get("suggested_aws_profile", "")).strip()
@@ -230,9 +236,12 @@ def run(argv: list[str] | None = None) -> int:
             "Secrets name prefix "
             f"[{str(ent.get('aws_secret_name_prefix', '')).strip() or 'canon-systems-v2-dev'}]: "
         ).strip() or str(ent.get("aws_secret_name_prefix", "")).strip() or "canon-systems-v2-dev"
-        print("Provide IAM keys to write ~/.aws/credentials (or press Enter to skip and use SSO).")
-        access_key = input("AWS_ACCESS_KEY_ID: ").strip()
-        secret_key = read_secret("AWS_SECRET_ACCESS_KEY: ").strip() if access_key else ""
+        print(
+            "Optional: paste IAM access key id + secret to WRITE them under the profile above.\n"
+            "Press Enter for AWS_ACCESS_KEY_ID to skip (use SSO or keys already in that profile).\n"
+        )
+        access_key = input("AWS_ACCESS_KEY_ID (AKIA..., or Enter to skip): ").strip()
+        secret_key = read_secret("AWS_SECRET_ACCESS_KEY (or Enter to skip): ").strip() if access_key else ""
 
     if not prefix:
         prefix = (

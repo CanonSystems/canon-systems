@@ -192,7 +192,7 @@ You'll be prompted interactively. **What each prompt means:**
 | Prompt | Meaning | What to enter |
 |---|---|---|
 | **Company ID** | Tenant id sent to the memory APIs (`X-Company-Id`) and used in the Secrets Manager secret name. | Your company slug, e.g. `IMC` or `FMO` — must match how secrets were created in AWS. |
-| **AWS profile name** | Which stanza in `~/.aws/credentials` to use for Secrets Manager + API calls. | The profile where your IAM keys live, e.g. `memory-layer-edward`, or press Enter for `canon-systems` if you use that profile. |
+| **AWS credentials profile** | A **local nickname on your Mac** for which saved keys to use. It becomes the section header in `~/.aws/credentials`, e.g. `[memory-layer-edward]`. It is **not** your AWS console username, **not** your account email, and **not** the access key. | Type any label you like (often something you already use). If keys are already in that profile, you can skip pasting keys below. |
 | **AWS region** | Region for Secrets Manager and boto3. | Usually `us-east-1` unless the secrets live elsewhere. |
 | **REPOSITORY_ID** | Stable id for *this* repo (memory is scoped per company + repo). | **Best:** press Enter to use the value shown as *Detected REPOSITORY_ID* (from `git remote get-url origin`) — avoids collisions with another repo also named `innermost`. **OK:** a short name like `innermost` only if the AWS secret was provisioned for that exact id. |
 | **Secrets name prefix** | First path segment of the secret in Secrets Manager. The full id is built as `{prefix}/memory-layer__{company}__{repo}` (company and repo are lowercased and slugified). | Press Enter for `canon-systems-v2-dev` unless Ed gave you a different prefix for this company/account. |
