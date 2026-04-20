@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "comment": "Copy to company-registry.json and commit per monorepo, or use company-registry.local.json (gitignored) for private overrides.",
+  "companies": {
+    "FMO": {
+      "description": "Example: Family One — dev stack in account 222274634742",
+      "aws_secret_name_prefix": "canon-systems-v2-dev",
+      "aws_region": "us-east-1",
+      "suggested_aws_profile": "canon-memory-layer"
+    }
+  }
+}

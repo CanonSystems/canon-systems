@@ -1,0 +1,39 @@
+---
+description: Offer Canon Memory Layer setup when opening an unwired repository.
+alwaysApply: true
+---
+
+# Canon Memory Layer — Auto-setup Offer
+
+Before your first substantive action in a new repository, check whether it
+is already wired to the Canon Memory Layer:
+
+- Wired: `.canon/memory-layer.local.env` exists at the repo root.
+- Opted out: `.canon/.opted-out` exists at the repo root.
+
+If it is **neither wired nor opted out**, offer the user a one-line setup
+prompt before proceeding:
+
+> "This repo isn't wired to Canon Memory Layer. Set it up now so I can
+> remember what we decide? (y/N — or 'never' to opt out)"
+
+Behavior:
+
+- **y**: run `canon-memory-layer setup` in the repo root, then continue.
+- **N / default**: continue without setup for this turn; ask again next
+  session.
+- **never**: create `.canon/.opted-out` to stop future prompts, then continue.
+
+Rules:
+
+- Only ask once per conversation. Remember the answer for the rest of the
+  session.
+- Do not ask for trivial, read-only, or single-file tasks. Skip for chats
+  that clearly don't need memory (simple edits, quick questions).
+- Do not prompt in repos where `canon-memory-layer` is not installed on the
+  user's machine (i.e. `command -v canon-memory-layer` fails). Instead
+  suggest: `pipx install canon-memory-layer` or `npx canon-memory-layer
+  --help`.
+
+If setup fails (e.g. missing AWS credentials), do not retry automatically —
+surface the error to the user and let them decide.

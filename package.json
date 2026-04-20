@@ -1,0 +1,26 @@
+{
+  "name": "canon-memory-layer",
+  "version": "0.2.0",
+  "description": "Agent-facing memory client for any repository. Tenant-scoped, AWS-backed. Thin npx shim that delegates to the pipx-installed Python CLI.",
+  "bin": {
+    "canon-memory-layer": "bin/canon-memory-layer.js"
+  },
+  "files": [
+    "bin/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "postinstall": "node bin/postinstall.js || true"
+  },
+  "keywords": [
+    "canon",
+    "memory",
+    "cursor",
+    "agent",
+    "mcp"
+  ],
+  "license": "UNLICENSED"
+}

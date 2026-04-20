@@ -1,0 +1,49 @@
+---
+description: Canon Memory Layer defaults for Cursor agents (per-repo).
+alwaysApply: true
+---
+
+# Canon Memory Layer
+
+This repo is wired to the Canon Memory Layer (tenant-scoped to this
+`company_id` + `repository_id`; storage is AWS-backed).
+
+## Before work
+
+1. Read `.canon/memory/context-latest.md` to see prior work relevant to the
+   current prompt. It is auto-refreshed on every user turn by the preflight
+   hook.
+2. If the context looks stale or missing, refresh it yourself:
+   `canon-memory-layer preflight "<what you're about to do>" --quiet`
+3. For targeted questions ("have I solved this before? what did we decide
+   last time?"), use:
+   `canon-memory-layer ask "<question>"`
+   This queries both canonical artifacts and MemPalace, scoped to this repo.
+
+## During work
+
+- Preserve tenant boundaries — `company_id` and `repository_id` are set in
+  `.canon/memory-layer.local.env`. Do not leak information across repos
+  unless the user explicitly authorizes it for the current turn.
+
+## After meaningful work
+
+Capture what changed so future sessions can find it:
+
+```
+canon-memory-layer capture \
+  --summary "<one-line summary>" \
+  --decisions '["<decision>", ...]' \
+  --next-actions '["<next step>", ...]' \
+  --open-questions '["<open question>", ...]'
+```
+
+The afterAgentResponse hook also captures every turn automatically, but the
+explicit call lets you attach distilled decisions/next-actions/open-questions
+that raw-transcript capture can't infer.
+
+## Version drift
+
+If you see "installed version X is older than pinned Y" in hook output,
+offer to run `pipx upgrade canon-memory-layer` (or `npx canon-memory-layer@latest`)
+for the user before proceeding.

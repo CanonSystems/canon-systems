@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": "bash .cursor/hooks/memory-preflight.sh",
+        "matcher": "UserPromptSubmit",
+        "timeout": 20
+      }
+    ],
+    "afterAgentResponse": [
+      {
+        "command": "bash .cursor/hooks/memory-capture.sh",
+        "timeout": 20
+      }
+    ]
+  }
+}
