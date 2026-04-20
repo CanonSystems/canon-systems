@@ -57,9 +57,8 @@ canon --version
 # canon-systems 3.0.0  (or later)
 ```
 
-If pipx installs but `canon` isn't found, run `pipx ensurepath`, restart
-your shell, and try again. On macOS with Apple Silicon, pipx may install
-into `~/.local/bin` — make sure that's on your PATH.
+If pipx installs but `canon` isn't found, see [§1c](#1c-after-pipx-canon-not-on-path)
+below.
 
 To upgrade later when Ed pushes a new commit:
 
@@ -110,6 +109,53 @@ canon --version
 environment with unrelated packages. `pip3 install --user` is fine if
 you understand PATH and upgrade with
 `pip3 install --upgrade git+ssh://git@github.com/CanonSystems/canon-systems.git`.
+
+### 1c. After pipx: `canon` not on PATH
+
+`pipx` installs the `canon` binary into **`~/.local/bin`**. Homebrew's
+`pipx` formula runs `pipx ensurepath`, which tries to append that directory
+to your shell config — but **you must open a new terminal tab** (or
+`source` the right file) before `canon` works. The installer often prints
+`~/.bashrc`; on macOS with **zsh** (default), use **`~/.zshrc`** instead.
+
+**Quick fix for the current terminal only:**
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+canon --version
+```
+
+**Permanent fix (zsh on macOS):**
+
+```bash
+grep -q '\.local/bin' ~/.zshrc 2>/dev/null || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+command -v canon && canon --version
+```
+
+If `~/.zshrc` does not exist yet, create it with the `echo ... >>` line
+above, then `source ~/.zshrc`.
+
+Still stuck? Run `pipx ensurepath` again and read what file it says it
+edited — open that file and confirm a line containing `.local/bin`
+appears.
+
+### 1d. Switching from `pip3 install` to pipx (optional)
+
+If you previously installed with `pip3`, remove it so only pipx owns the
+package (avoids two different `canon` binaries on PATH):
+
+```bash
+pip3 uninstall canon-systems -y
+```
+
+Run that **as its own line** (do not paste other commands on the same
+line). Then install with pipx as in [§1](#1-install-the-cli).
+
+If you ever see pip complain `Invalid requirement: '#'`, you almost
+certainly pasted **multiple commands at once into a single `pip` /
+`pip3` line**, or a comment character ended up where pip expected a
+package name. Run **one command per paste**, one line at a time.
 
 ---
 

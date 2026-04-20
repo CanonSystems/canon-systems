@@ -54,6 +54,10 @@ If you use `pip3 install ...` instead of pipx, the install can succeed while
 Add that directory to PATH (see [docs/ONBOARDING.md](docs/ONBOARDING.md#1b-alternative-pip-or-pip3-user-install)),
 or switch to pipx for fewer surprises.
 
+After **pipx** install, `canon` lives in `~/.local/bin`. Open a **new
+terminal** or run `export PATH="$HOME/.local/bin:$PATH"` — see
+[ONBOARDING §1c](docs/ONBOARDING.md#1c-after-pipx-canon-not-on-path).
+
 Updating after a new push:
 
 ```bash
