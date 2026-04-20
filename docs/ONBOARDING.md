@@ -187,26 +187,30 @@ cd /path/to/your-repo
 canon setup
 ```
 
-You'll be prompted interactively. Here's what to enter:
+You'll be prompted interactively. **What each prompt means:**
 
-| Prompt | What to enter |
-|---|---|
-| `Company ID` | `FMO` (unless Ed tells you a different one for this repo) |
-| `AWS profile name` | Press Enter to accept `canon-systems` |
-| `AWS region` | `us-east-1` (unless Ed says otherwise) |
-| `REPOSITORY_ID` | Press Enter — it auto-detects from the git remote |
-| `Secrets name prefix` | `canon-systems-v2-dev` (again, Ed confirms if different) |
-| `AWS_ACCESS_KEY_ID` | Paste your `AKIA...` key here |
-| `AWS_SECRET_ACCESS_KEY` | Paste your secret key (hidden when typing) |
+| Prompt | Meaning | What to enter |
+|---|---|---|
+| **Company ID** | Tenant id sent to the memory APIs (`X-Company-Id`) and used in the Secrets Manager secret name. | Your company slug, e.g. `IMC` or `FMO` — must match how secrets were created in AWS. |
+| **AWS profile name** | Which stanza in `~/.aws/credentials` to use for Secrets Manager + API calls. | The profile where your IAM keys live, e.g. `memory-layer-edward`, or press Enter for `canon-systems` if you use that profile. |
+| **AWS region** | Region for Secrets Manager and boto3. | Usually `us-east-1` unless the secrets live elsewhere. |
+| **REPOSITORY_ID** | Stable id for *this* repo (memory is scoped per company + repo). | **Best:** press Enter to use the value shown as *Detected REPOSITORY_ID* (from `git remote get-url origin`) — avoids collisions with another repo also named `innermost`. **OK:** a short name like `innermost` only if the AWS secret was provisioned for that exact id. |
+| **Secrets name prefix** | First path segment of the secret in Secrets Manager. The full id is built as `{prefix}/memory-layer__{company}__{repo}` (company and repo are lowercased and slugified). | Press Enter for `canon-systems-v2-dev` unless Ed gave you a different prefix for this company/account. |
+| **AWS keys** (optional) | Writes long-lived keys into `~/.aws/credentials` for the chosen profile. | Paste keys, or press Enter twice to skip if you use SSO / keys already in that profile. |
+
+After you answer **Secrets name prefix**, setup prints the **exact**
+secret name it will request from AWS. Open the AWS console and confirm
+that secret exists in the chosen region; if not, fix `REPOSITORY_ID` or
+prefix and re-run `canon setup`, or set `MEMORY_LAYER_AWS_SECRET_ID` in
+`.canon/memory-layer.local.env` to the full secret id.
 
 `canon setup` does everything in one go:
 
-1. Writes `~/.aws/credentials` with your keys under a `[canon-systems]`
-   profile. (If you already have an AWS profile by that name, it will
-   overwrite it — tell Ed if that's a problem for you and use a
-   different profile name during the prompts.)
+1. Writes `~/.aws/credentials` with your keys under the profile you
+   named (if you pasted keys). If that profile name already exists, it
+   is overwritten for that profile only.
 2. Writes `~/.aws/config` with the region for that profile.
-3. Writes `~/.canon/canon-systems.env` with `AWS_PROFILE=canon-systems`.
+3. Writes `~/.canon/canon-systems.env` with `AWS_PROFILE=<that profile>`.
 4. Writes `<repo>/.canon/memory-layer.local.env` with `COMPANY_ID`,
    `REPOSITORY_ID`, `AWS_REGION`, and `MEMORY_LAYER_AWS_SECRET_NAME_PREFIX`.
 5. Installs user-level Cursor rules and subagents (`~/.cursor/rules/`,
@@ -238,10 +242,12 @@ canon version-check
 **4b. AWS credentials resolve and your profile works.**
 
 ```bash
-AWS_PROFILE=canon-systems aws sts get-caller-identity
+AWS_PROFILE=<your-setup-profile> aws sts get-caller-identity
 ```
 
-You should see a JSON response with an `Arn` matching the IAM user Ed
+Use the same profile name you chose during setup (e.g.
+`memory-layer-edward` or `canon-systems`). You should see a JSON
+response with an `Arn` matching the IAM user Ed
 created for you. If this fails, the keys are wrong — re-run `canon setup`
 or check `~/.aws/credentials`.
 

@@ -239,6 +239,20 @@ def run(argv: list[str] | None = None) -> int:
             str(company_entry(registry, company_id).get("aws_secret_name_prefix", "")).strip()
             or "canon-systems-v2-dev"
         )
+
+    from .aws_secrets import slug_canon_systems_segment
+
+    _secret_preview = (
+        f"{prefix}/memory-layer__{slug_canon_systems_segment(company_id)}__"
+        f"{slug_canon_systems_segment(repo_id)}"
+    )
+    print("")
+    print(f"AWS Secrets Manager will load secret (must exist in {region}):")
+    print(f"  {_secret_preview}")
+    print("If that name does not match AWS, fix COMPANY_ID / REPOSITORY_ID / prefix,")
+    print("or later set MEMORY_LAYER_AWS_SECRET_ID in .canon/memory-layer.local.env.")
+    print("")
+
     if access_key and not secret_key:
         print("AWS secret key required when access key is provided.", file=sys.stderr)
         return 1
