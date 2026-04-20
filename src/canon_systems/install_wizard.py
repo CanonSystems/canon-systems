@@ -163,6 +163,41 @@ def write_machine_env(profile: str, region: str) -> Path:
     return path
 
 
+def resolve_setup_secret_prefix(
+    root: Path,
+    company_id: str,
+    repo_id: str,
+    *,
+    region: str,
+    profile: str,
+    ent: dict[str, Any],
+) -> tuple[str, str]:
+    """Return (prefix, human-readable source) for MEMORY_LAYER_AWS_SECRET_NAME_PREFIX."""
+    from .aws_secrets import (
+        DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX,
+        discover_memory_layer_secret_prefix,
+    )
+    from .shared import load_env_file
+
+    prior = load_env_file(root / ".canon" / "memory-layer.local.env")
+    p = prior.get("MEMORY_LAYER_AWS_SECRET_NAME_PREFIX", "").strip()
+    if p:
+        return p, "existing .canon/memory-layer.local.env"
+
+    p = str(ent.get("aws_secret_name_prefix", "")).strip()
+    if p:
+        return p, f"company-registry entry for {company_id}"
+
+    discovered = discover_memory_layer_secret_prefix(company_id, repo_id, region=region, profile=profile)
+    if discovered:
+        return discovered, "AWS Secrets Manager (matched existing secret)"
+
+    return (
+        DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX,
+        "default (no secret found at new or legacy path — create it or set MEMORY_LAYER_AWS_SECRET_NAME_PREFIX)",
+    )
+
+
 def merge_local_env(root: Path, updates: dict[str, str]) -> Path:
     from .shared import load_env_file
 
@@ -196,8 +231,6 @@ def run(argv: list[str] | None = None) -> int:
     companies = registry.get("companies") if isinstance(registry.get("companies"), dict) else {}
     default_company = next(iter(companies.keys()), "FMO") if companies else "FMO"
     detected_repo_id = git_repository_id(root)
-
-    from .aws_secrets import DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX
 
     if args.non_interactive:
         company_id = os.environ.get("MEMORY_LAYER_COMPANY_ID", default_company).strip()
@@ -234,53 +267,15 @@ def run(argv: list[str] | None = None) -> int:
             ent.get("aws_region", "")
         ).strip() or "us-east-1"
         repo_id = input(f"REPOSITORY_ID [{detected_repo_id}]: ").strip() or detected_repo_id
-        from .aws_secrets import (
-            DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX,
-            LEGACY_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX,
-        )
-        from .shared import load_env_file
-
-        prior_local = load_env_file(root / ".canon" / "memory-layer.local.env")
-        suggested_prefix = (
-            prior_local.get("MEMORY_LAYER_AWS_SECRET_NAME_PREFIX", "").strip()
-            or str(ent.get("aws_secret_name_prefix", "")).strip()
-            or DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX
-        )
-        print(
-            "\nAWS Secrets Manager **name prefix** (first path segment before "
-            "`/memory-layer__/...`). It is your **cloud namespace** (often "
-            "dev vs prod), not the `canon-systems` CLI version and not your "
-            "repo name. Older deployments used "
-            f"`{LEGACY_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX}`; the current "
-            f"default for new work is `{DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX}` "
-            "(press Enter unless your secrets still live under the legacy prefix).\n"
-        )
-        prefix = input(f"Secrets name prefix [{suggested_prefix}]: ").strip() or suggested_prefix
         print(
             "Optional: paste IAM access key id + secret to WRITE them under the profile above.\n"
             "Press Enter for AWS_ACCESS_KEY_ID to skip (use SSO or keys already in that profile).\n"
         )
         access_key = input("AWS_ACCESS_KEY_ID (AKIA..., or Enter to skip): ").strip()
         secret_key = read_secret("AWS_SECRET_ACCESS_KEY (or Enter to skip): ").strip() if access_key else ""
+        prefix = ""
 
-    if not prefix:
-        prefix = (
-            str(company_entry(registry, company_id).get("aws_secret_name_prefix", "")).strip()
-            or DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX
-        )
-
-    from .aws_secrets import slug_canon_systems_segment
-
-    _secret_preview = (
-        f"{prefix}/memory-layer__{slug_canon_systems_segment(company_id)}__"
-        f"{slug_canon_systems_segment(repo_id)}"
-    )
-    print("")
-    print(f"AWS Secrets Manager will load secret (must exist in {region}):")
-    print(f"  {_secret_preview}")
-    print("If that name does not match AWS, fix COMPANY_ID / REPOSITORY_ID / prefix,")
-    print("or later set MEMORY_LAYER_AWS_SECRET_ID in .canon/memory-layer.local.env.")
-    print("")
+    ent = company_entry(registry, company_id)
 
     if access_key and not secret_key:
         print("AWS secret key required when access key is provided.", file=sys.stderr)
@@ -294,6 +289,28 @@ def run(argv: list[str] | None = None) -> int:
     else:
         print("Skipping ~/.aws/credentials write (expecting SSO or preconfigured profile).")
     upsert_aws_config(profile, region)
+
+    ensure_boto3()
+    if not prefix.strip():
+        prefix, prefix_source = resolve_setup_secret_prefix(
+            root, company_id, repo_id, region=region, profile=profile, ent=ent
+        )
+        print(f"\nUsing Secrets name prefix: {prefix} ({prefix_source}).\n")
+    else:
+        print(f"\nUsing Secrets name prefix: {prefix} (from MEMORY_LAYER_AWS_SECRET_NAME_PREFIX).\n")
+
+    from .aws_secrets import slug_canon_systems_segment
+
+    _secret_preview = (
+        f"{prefix}/memory-layer__{slug_canon_systems_segment(company_id)}__"
+        f"{slug_canon_systems_segment(repo_id)}"
+    )
+    print(f"AWS Secrets Manager will load secret (must exist in {region}):")
+    print(f"  {_secret_preview}")
+    print("If that name does not match AWS, fix COMPANY_ID / REPOSITORY_ID / prefix,")
+    print("or later set MEMORY_LAYER_AWS_SECRET_ID in .canon/memory-layer.local.env.")
+    print("")
+
     machine_env = write_machine_env(profile, region)
     repo_env = merge_local_env(
         root,

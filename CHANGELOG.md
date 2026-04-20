@@ -17,6 +17,21 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.0.4] - 2026-04-24
+
+### Changed
+
+- **`canon setup`:** the Secrets Manager **name prefix is no longer an
+  interactive question**. It is chosen automatically from (in order) an
+  existing `MEMORY_LAYER_AWS_SECRET_NAME_PREFIX` in
+  `.canon/memory-layer.local.env`, the company-registry entry, an AWS
+  **DescribeSecret** probe for the built secret id under `canon-memory-dev`
+  then `canon-systems-v2-dev`, and finally the `canon-memory-dev` default.
+  IAM keys / profile are applied **before** the probe so first-time key
+  paste works. See `discover_memory_layer_secret_prefix` in `aws_secrets.py`.
+
+---
+
 ## [3.0.3] - 2026-04-24
 
 ### Changed

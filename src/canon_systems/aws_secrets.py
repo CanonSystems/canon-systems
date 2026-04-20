@@ -27,6 +27,71 @@ DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX = "canon-memory-dev"
 LEGACY_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX = "canon-systems-v2-dev"
 
 
+def _secret_id_exists(secret_id: str, *, region: str) -> bool:
+    """Return True if Secrets Manager has this id (DescribeSecret)."""
+    try:
+        import boto3
+        from botocore.exceptions import ClientError
+    except ImportError:
+        return False
+    if not region.strip():
+        return False
+    try:
+        client = boto3.client("secretsmanager", region_name=region.strip())
+        client.describe_secret(SecretId=secret_id)
+        return True
+    except ClientError as exc:
+        code = exc.response.get("Error", {}).get("Code", "")
+        if code == "ResourceNotFoundException":
+            return False
+        return False
+    except Exception:
+        return False
+
+
+def discover_memory_layer_secret_prefix(
+    company_id: str,
+    repository_id: str,
+    *,
+    region: str,
+    profile: str,
+) -> str | None:
+    """Pick a prefix whose full secret id exists in AWS, or None.
+
+    Tries ``canon-memory-dev`` then the legacy ``canon-systems-v2-dev``.
+    Uses ``AWS_PROFILE`` / region from the caller's environment — set them
+    before calling (``canon setup`` does this after writing credentials).
+    """
+    saved: dict[str, str | None] = {}
+    keys = ("AWS_PROFILE", "AWS_REGION", "AWS_DEFAULT_REGION")
+    for k in keys:
+        saved[k] = os.environ.get(k)
+    try:
+        if profile.strip():
+            os.environ["AWS_PROFILE"] = profile.strip()
+        if region.strip():
+            os.environ["AWS_REGION"] = region.strip()
+            os.environ["AWS_DEFAULT_REGION"] = region.strip()
+
+        for prefix in (
+            DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX,
+            LEGACY_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX,
+        ):
+            sid = (
+                f"{prefix}/memory-layer__{slug_canon_systems_segment(company_id)}__"
+                f"{slug_canon_systems_segment(repository_id)}"
+            )
+            if _secret_id_exists(sid, region=region):
+                return prefix
+        return None
+    finally:
+        for k, old in saved.items():
+            if old is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = old
+
+
 def resolve_canon_systems_secret_id() -> str:
     explicit = (os.environ.get("MEMORY_LAYER_AWS_SECRET_ID") or "").strip()
     if explicit:

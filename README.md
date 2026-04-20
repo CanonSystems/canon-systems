@@ -119,10 +119,11 @@ commit. Set one of the following during setup:
   derives the secret id as
   `<prefix>/memory-layer__<company-slug>__<repo-slug>`.
 
-The default prefix for **new** setups is **`canon-memory-dev`** (an AWS
-namespace, not the CLI version). Older stacks may still use
-**`canon-systems-v2-dev`** until secrets are migrated — set the prefix
-explicitly in `company-registry` or `.canon/memory-layer.local.env`.
+`canon setup` **infers** the prefix (existing repo env → company-registry →
+**probe AWS** for `canon-memory-dev` / legacy `canon-systems-v2-dev` → default
+`canon-memory-dev`). You normally do not type it. Override with
+`MEMORY_LAYER_AWS_SECRET_NAME_PREFIX` in the environment or
+`.canon/memory-layer.local.env` if needed.
 
 The secret's value is a JSON object or dotenv body with keys like
 `CANON_HTTP_BEARER_TOKEN`, `KNOWLEDGE_API_BEARER_TOKEN`,

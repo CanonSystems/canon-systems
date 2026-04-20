@@ -202,13 +202,14 @@ You'll be prompted interactively. **What each prompt means:**
 | **AWS credentials profile** | A **local nickname on your Mac** for which saved keys to use. It becomes the section header in `~/.aws/credentials`, e.g. `[memory-layer-edward]`. It is **not** your AWS console username, **not** your account email, and **not** the access key. | Type any label you like (often something you already use). If keys are already in that profile, you can skip pasting keys below. |
 | **AWS region** | Region for Secrets Manager and boto3. | Usually `us-east-1` unless the secrets live elsewhere. |
 | **REPOSITORY_ID** | Stable id for *this* repo (memory is scoped per company + repo). | **Best:** press Enter to use the value shown as *Detected REPOSITORY_ID* (from `git remote get-url origin`) — avoids collisions with another repo also named `innermost`. **OK:** a short name like `innermost` only if the AWS secret was provisioned for that exact id. |
-| **Secrets name prefix** | First path segment of the secret in Secrets Manager. The full id is `{prefix}/memory-layer__{company}__{repo}` (slugified). This is an **AWS namespace**, not the `canon-systems` CLI version. | Press Enter for the suggested default (`canon-memory-dev` for new work). If your secrets still live under the legacy path, type **`canon-systems-v2-dev`** (or whatever Ed put in `company-registry` for your company). |
+| **Secrets name prefix** | *(No prompt.)* `canon setup` picks it automatically: existing `.canon/memory-layer.local.env` value, else `company-registry.json` for your company, else it **probes AWS** for an existing secret under `canon-memory-dev` then the legacy `canon-systems-v2-dev`, else defaults to **`canon-memory-dev`**. Override any time with `MEMORY_LAYER_AWS_SECRET_NAME_PREFIX` in env or that same file. |
 | **AWS keys** (optional) | Writes long-lived keys into `~/.aws/credentials` for the chosen profile. | Paste keys, or press Enter twice to skip if you use SSO / keys already in that profile. |
 
-After you answer **Secrets name prefix**, setup prints the **exact**
-secret name it will request from AWS. Open the AWS console and confirm
-that secret exists in the chosen region; if not, fix `REPOSITORY_ID` or
-prefix and re-run `canon setup`, or set `MEMORY_LAYER_AWS_SECRET_ID` in
+After **IAM keys** (or skipping them), setup **infers the prefix**, then
+prints the **exact** secret name it will request from AWS. Open the AWS
+console and confirm that secret exists in the chosen region; if not, fix
+`REPOSITORY_ID` or set `MEMORY_LAYER_AWS_SECRET_NAME_PREFIX` / run again
+after secrets exist, or set `MEMORY_LAYER_AWS_SECRET_ID` in
 `.canon/memory-layer.local.env` to the full secret id.
 
 `canon setup` does everything in one go:
