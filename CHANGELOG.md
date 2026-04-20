@@ -17,6 +17,29 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.0.3] - 2026-04-24
+
+### Changed
+
+- **Secrets Manager default prefix** is now **`canon-memory-dev`** instead of
+  **`canon-systems-v2-dev`**. The old string looked like the `canon-systems`
+  package semver (“v2”) and confused people; the prefix is only an AWS path
+  namespace. The legacy value is kept as **`LEGACY_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX`**
+  in `aws_secrets.py` for docs and setup copy.
+- **`canon setup`:** suggested prefix prefers an existing
+  `MEMORY_LAYER_AWS_SECRET_NAME_PREFIX` from `.canon/memory-layer.local.env`
+  (so re-running setup does not silently “upgrade” you to a new AWS path),
+  then company-registry, then the new default. Explainer text moved to just
+  before the prefix prompt.
+
+### Added
+
+- **`examples/company-registry.example.json`:** `IMC` example on the new
+  prefix; `FMO` example still shows the legacy prefix for stacks that have
+  not migrated AWS yet.
+
+---
+
 ## [3.0.2] - 2026-04-23
 
 ### Added

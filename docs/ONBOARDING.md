@@ -202,7 +202,7 @@ You'll be prompted interactively. **What each prompt means:**
 | **AWS credentials profile** | A **local nickname on your Mac** for which saved keys to use. It becomes the section header in `~/.aws/credentials`, e.g. `[memory-layer-edward]`. It is **not** your AWS console username, **not** your account email, and **not** the access key. | Type any label you like (often something you already use). If keys are already in that profile, you can skip pasting keys below. |
 | **AWS region** | Region for Secrets Manager and boto3. | Usually `us-east-1` unless the secrets live elsewhere. |
 | **REPOSITORY_ID** | Stable id for *this* repo (memory is scoped per company + repo). | **Best:** press Enter to use the value shown as *Detected REPOSITORY_ID* (from `git remote get-url origin`) — avoids collisions with another repo also named `innermost`. **OK:** a short name like `innermost` only if the AWS secret was provisioned for that exact id. |
-| **Secrets name prefix** | First path segment of the secret in Secrets Manager. The full id is built as `{prefix}/memory-layer__{company}__{repo}` (company and repo are lowercased and slugified). | Press Enter for `canon-systems-v2-dev` unless Ed gave you a different prefix for this company/account. |
+| **Secrets name prefix** | First path segment of the secret in Secrets Manager. The full id is `{prefix}/memory-layer__{company}__{repo}` (slugified). This is an **AWS namespace**, not the `canon-systems` CLI version. | Press Enter for the suggested default (`canon-memory-dev` for new work). If your secrets still live under the legacy path, type **`canon-systems-v2-dev`** (or whatever Ed put in `company-registry` for your company). |
 | **AWS keys** (optional) | Writes long-lived keys into `~/.aws/credentials` for the chosen profile. | Paste keys, or press Enter twice to skip if you use SSO / keys already in that profile. |
 
 After you answer **Secrets name prefix**, setup prints the **exact**
@@ -327,11 +327,13 @@ has your key loaded: `ssh-add -l`.
 Most common causes, in order:
 
 1. The IAM user doesn't have `secretsmanager:GetSecretValue` permission
-   on the `canon-systems-v2-dev/...` secrets. Tell Ed — this is an
+   on the `canon-memory-dev/...` or legacy `canon-systems-v2-dev/...`
+   secrets. Tell Ed — this is an
    IAM policy problem, not your problem.
-2. Wrong region. `canon-systems-v2-dev` lives in `us-east-1`. Check
+2. Wrong region. Most dev secrets are in `us-east-1`. Check
    `~/.aws/config` for the `[profile canon-systems]` section.
-3. Wrong secret prefix. Default is `canon-systems-v2-dev`. If Ed told
+3. Wrong secret prefix. New default is `canon-memory-dev`; legacy is
+   `canon-systems-v2-dev`. If Ed told
    you something else, edit
    `<repo>/.canon/memory-layer.local.env` and fix
    `MEMORY_LAYER_AWS_SECRET_NAME_PREFIX`.

@@ -197,6 +197,8 @@ def run(argv: list[str] | None = None) -> int:
     default_company = next(iter(companies.keys()), "FMO") if companies else "FMO"
     detected_repo_id = git_repository_id(root)
 
+    from .aws_secrets import DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX
+
     if args.non_interactive:
         company_id = os.environ.get("MEMORY_LAYER_COMPANY_ID", default_company).strip()
         profile = os.environ.get("MEMORY_LAYER_AWS_PROFILE", "canon-systems").strip()
@@ -232,10 +234,28 @@ def run(argv: list[str] | None = None) -> int:
             ent.get("aws_region", "")
         ).strip() or "us-east-1"
         repo_id = input(f"REPOSITORY_ID [{detected_repo_id}]: ").strip() or detected_repo_id
-        prefix = input(
-            "Secrets name prefix "
-            f"[{str(ent.get('aws_secret_name_prefix', '')).strip() or 'canon-systems-v2-dev'}]: "
-        ).strip() or str(ent.get("aws_secret_name_prefix", "")).strip() or "canon-systems-v2-dev"
+        from .aws_secrets import (
+            DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX,
+            LEGACY_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX,
+        )
+        from .shared import load_env_file
+
+        prior_local = load_env_file(root / ".canon" / "memory-layer.local.env")
+        suggested_prefix = (
+            prior_local.get("MEMORY_LAYER_AWS_SECRET_NAME_PREFIX", "").strip()
+            or str(ent.get("aws_secret_name_prefix", "")).strip()
+            or DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX
+        )
+        print(
+            "\nAWS Secrets Manager **name prefix** (first path segment before "
+            "`/memory-layer__/...`). It is your **cloud namespace** (often "
+            "dev vs prod), not the `canon-systems` CLI version and not your "
+            "repo name. Older deployments used "
+            f"`{LEGACY_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX}`; the current "
+            f"default for new work is `{DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX}` "
+            "(press Enter unless your secrets still live under the legacy prefix).\n"
+        )
+        prefix = input(f"Secrets name prefix [{suggested_prefix}]: ").strip() or suggested_prefix
         print(
             "Optional: paste IAM access key id + secret to WRITE them under the profile above.\n"
             "Press Enter for AWS_ACCESS_KEY_ID to skip (use SSO or keys already in that profile).\n"
@@ -246,7 +266,7 @@ def run(argv: list[str] | None = None) -> int:
     if not prefix:
         prefix = (
             str(company_entry(registry, company_id).get("aws_secret_name_prefix", "")).strip()
-            or "canon-systems-v2-dev"
+            or DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX
         )
 
     from .aws_secrets import slug_canon_systems_segment

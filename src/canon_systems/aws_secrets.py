@@ -17,6 +17,16 @@ def slug_canon_systems_segment(value: str) -> str:
     return cleaned.strip("-") or "unknown"
 
 
+# First segment of Secrets Manager ids:
+#   {prefix}/memory-layer__<company-slug>__<repo-slug>
+# This is an **AWS namespace / environment label**, not the canon-systems
+# Python package version (3.x) and not your app or repo display name.
+# Older stacks used LEGACY_*; new installs default to DEFAULT_* until you
+# migrate secrets in AWS or override via company-registry / .env.
+DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX = "canon-memory-dev"
+LEGACY_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX = "canon-systems-v2-dev"
+
+
 def resolve_canon_systems_secret_id() -> str:
     explicit = (os.environ.get("MEMORY_LAYER_AWS_SECRET_ID") or "").strip()
     if explicit:

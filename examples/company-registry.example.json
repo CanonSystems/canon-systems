@@ -3,8 +3,14 @@
   "comment": "Copy to company-registry.json and commit per monorepo, or use company-registry.local.json (gitignored) for private overrides.",
   "companies": {
     "FMO": {
-      "description": "Example: Family One — dev stack in account 222274634742",
+      "description": "Example: Family One — still on the legacy Secrets Manager prefix until AWS paths are migrated.",
       "aws_secret_name_prefix": "canon-systems-v2-dev",
+      "aws_region": "us-east-1",
+      "suggested_aws_profile": "canon-systems"
+    },
+    "IMC": {
+      "description": "Example: Innermost — new installs use the clearer default prefix (canon-memory-dev).",
+      "aws_secret_name_prefix": "canon-memory-dev",
       "aws_region": "us-east-1",
       "suggested_aws_profile": "canon-systems"
     }
