@@ -19,7 +19,8 @@ What ships in one install:
   offer an upgrade.
 
 The CLI is `canon`. The pipx package name is `canon-systems`. The module
-is `canon_systems`. Current major version: **3.x**.
+is `canon_systems`. Current major version: **3.x**. See
+[CHANGELOG.md](CHANGELOG.md) for release history and how we bump versions.
 
 > **New team member?** Start with [docs/ONBOARDING.md](docs/ONBOARDING.md).
 > It walks you through installing the CLI, wiring up AWS credentials with
