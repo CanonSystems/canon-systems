@@ -21,6 +21,10 @@ What ships in one install:
 The CLI is `canon`. The pipx package name is `canon-systems`. The module
 is `canon_systems`. Current major version: **3.x**.
 
+> **New team member?** Start with [docs/ONBOARDING.md](docs/ONBOARDING.md).
+> It walks you through installing the CLI, wiring up AWS credentials with
+> an IAM key pair, and enabling your first repo in about ten minutes.
+
 ## Distribution
 
 This is **proprietary software**, not published to PyPI or npm. It is

@@ -274,7 +274,7 @@ def run(argv: list[str] | None = None) -> int:
     print(f"Wrote machine env: {machine_env}")
     print(f"Wrote repo env:    {repo_env}")
     print(user_scope_msg)
-    print("Next: run `canon enable-repo` in this repo.")
+    print("Credentials + config written. Installing Cursor hooks + subagents next...")
     return 0
 
 
