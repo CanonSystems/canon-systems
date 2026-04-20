@@ -1,8 +1,8 @@
-"""Install Canon Memory Layer into a repository.
+"""Install Canon Systems into a repository.
 
 Copies the template hooks, rule, and subagent definitions into the target
 repo's .cursor/ tree, merges .cursor/hooks.json, and pins the installed
-canon-memory-layer version in .canon/memory-layer.local.env so hooks can
+canon-systems version in .canon/memory-layer.local.env so hooks can
 detect version drift.
 """
 
@@ -17,7 +17,9 @@ from . import __version__
 from .shared import load_env_file
 
 
-_PKG_TEMPLATES = "memory_layer.templates"
+_PKG_TEMPLATES = "canon_systems.templates"
+_VERSION_KEY = "CANON_SYSTEMS_VERSION"
+_LEGACY_VERSION_KEY = "CANON_MEMORY_LAYER_VERSION"
 
 
 def _copy_template(resource_path: str, dest: Path, *, executable: bool = False) -> None:
@@ -75,11 +77,16 @@ def _merge_hooks_json(repo_root: Path) -> None:
 
 
 def _pin_version(repo_root: Path) -> None:
-    """Write CANON_MEMORY_LAYER_VERSION=<installed> into .canon/memory-layer.local.env."""
+    """Write CANON_SYSTEMS_VERSION=<installed> into .canon/memory-layer.local.env.
+
+    Also strips the legacy CANON_MEMORY_LAYER_VERSION key if present, so a
+    single source of truth lives in the file going forward.
+    """
     env_path = repo_root / ".canon" / "memory-layer.local.env"
     env_path.parent.mkdir(parents=True, exist_ok=True)
     existing = load_env_file(env_path) if env_path.exists() else {}
-    existing["CANON_MEMORY_LAYER_VERSION"] = __version__
+    existing.pop(_LEGACY_VERSION_KEY, None)
+    existing[_VERSION_KEY] = __version__
     body = "\n".join(f"{k}={v}" for k, v in sorted(existing.items())) + "\n"
     env_path.write_text(body, encoding="utf-8")
 
@@ -112,8 +119,8 @@ def install_user_scope() -> None:
     """Install the user-level rule + subagents under ~/.cursor/ for fallback use.
 
     These apply when the user opens a repo that hasn't been enabled yet —
-    the autosetup rule offers to run `canon-memory-layer setup`, and the
-    subagents are available immediately even in unwired repos.
+    the autosetup rule offers to run `canon setup`, and the subagents are
+    available immediately even in unwired repos.
     """
     home = Path.home() / ".cursor"
     (home / "rules").mkdir(parents=True, exist_ok=True)

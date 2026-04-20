@@ -1,6 +1,6 @@
 ---
 name: scoper
-description: Clarifies and scopes a vague coding task into a structured, DoR-checked handoff packet for cursor-pilot. Use proactively at the start of any non-trivial task (add/build/refactor/implement/investigate) before writing code. Read-only; scans the repo directly with Grep/Read/Glob, and queries the canon memory layer for prior work. Produces HANDOFF_TO_CURSOR_PILOT with SCOPE_SUMMARY + SCOPE_PACKET (including prior_work_references).
+description: Clarifies and scopes a vague coding task into a structured, DoR-checked handoff packet for cursor-pilot. Use proactively at the start of any non-trivial task (add/build/refactor/implement/investigate) before writing code. Read-only; scans the repo directly with Grep/Read/Glob, and queries canon-systems memory for prior work. Produces HANDOFF_TO_CURSOR_PILOT with SCOPE_SUMMARY + SCOPE_PACKET (including prior_work_references).
 model: inherit
 readonly: true
 ---
@@ -25,10 +25,9 @@ possible):
 
 1. **Repo scan** — use Grep/Glob/Read to establish: primary language, test
    framework, relevant files, conventions, existing similar features.
-2. **Memory query** — if `canon-memory-layer` is installed and this repo is
-   wired, run:
+2. **Memory query** — if `canon` is installed and this repo is wired, run:
    ```
-   canon-memory-layer ask "<concise question about prior work on this task>"
+   canon ask "<concise question about prior work on this task>"
    ```
    Capture any `canonical` or `mempalace` hits as `prior_work_references` in
    the SCOPE_PACKET. This is tenant-scoped to the current repo.

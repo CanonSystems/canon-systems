@@ -1,19 +1,21 @@
 """Version drift guard.
 
-When a repo was enabled with a version of canon-memory-layer, the pinned
-version is written to `.canon/memory-layer.local.env` as
-`CANON_MEMORY_LAYER_VERSION=<installed_version>`. On every hook invocation we
-compare the installed CLI version against the pinned one.
+When a repo is enabled with canon-systems, the pinned version is written
+to `.canon/memory-layer.local.env` as `CANON_SYSTEMS_VERSION=<installed>`.
+On every hook invocation we compare the installed CLI version against the
+pinned one.
 
 Rules (hard-fail with auto-upgrade offer):
 - installed == pinned         -> OK
 - installed >  pinned          -> OK (user upgraded; we don't downgrade-warn)
-- installed <  pinned          -> FAIL with actionable message; agent is
-                                  instructed (via Cursor rule) to offer running
-                                  `pipx upgrade canon-memory-layer`.
-- pinned missing               -> OK the first time, but write pinned=installed
-                                  on first successful run so drift detection
-                                  activates from then on.
+- installed <  pinned          -> FAIL with actionable message; the
+                                  Cursor rule instructs the agent to offer
+                                  running `pipx upgrade canon-systems`.
+- pinned missing               -> OK the first time. The next `enable-repo`
+                                  run will write the pin.
+
+Back-compat: the legacy key `CANON_MEMORY_LAYER_VERSION` is still read as
+a fallback so repos wired with the previous package name keep working.
 """
 
 from __future__ import annotations
@@ -38,6 +40,10 @@ def _version_tuple(v: str) -> tuple[int, ...]:
 
 def _pinned_version(root: Path) -> str:
     env = load_env_file(root / ".canon" / "memory-layer.local.env")
+    pinned = env.get("CANON_SYSTEMS_VERSION", "").strip()
+    if pinned:
+        return pinned
+    # Legacy pin from the canon-memory-layer era.
     return env.get("CANON_MEMORY_LAYER_VERSION", "").strip()
 
 
@@ -46,21 +52,21 @@ def check(root: Path | None = None) -> tuple[bool, str]:
     r = root or repo_root()
     pinned = _pinned_version(r)
     if not pinned:
-        return True, f"canon-memory-layer: version pin not set yet (installed={INSTALLED_VERSION})"
+        return True, f"canon-systems: version pin not set yet (installed={INSTALLED_VERSION})"
     if _version_tuple(INSTALLED_VERSION) >= _version_tuple(pinned):
-        return True, f"canon-memory-layer: version ok ({INSTALLED_VERSION} >= pinned {pinned})"
+        return True, f"canon-systems: version ok ({INSTALLED_VERSION} >= pinned {pinned})"
     return False, (
-        f"canon-memory-layer: installed version {INSTALLED_VERSION} is older than "
+        f"canon-systems: installed version {INSTALLED_VERSION} is older than "
         f"pinned {pinned} for this repo. Upgrade with:\n"
-        "  pipx upgrade canon-memory-layer\n"
-        "  # or: pipx install --force git+ssh://git@github.com/<your-org>/canon-memory-layer.git\n"
+        "  pipx upgrade canon-systems\n"
+        "  # or: pipx install --force git+ssh://git@github.com/<your-org>/canon-systems.git\n"
         "Then re-run your prompt. (If this is unexpected, inspect "
-        ".canon/memory-layer.local.env CANON_MEMORY_LAYER_VERSION.)"
+        ".canon/memory-layer.local.env CANON_SYSTEMS_VERSION.)"
     )
 
 
 def run(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Check canon-memory-layer version drift.")
+    parser = argparse.ArgumentParser(description="Check canon-systems version drift.")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args(argv)
     ok, msg = check()

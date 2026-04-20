@@ -11,13 +11,13 @@ from pathlib import Path
 from typing import Any
 
 
-def slug_memory_layer_segment(value: str) -> str:
+def slug_canon_systems_segment(value: str) -> str:
     cleaned = value.strip().lower()
     cleaned = re.sub(r"[^a-z0-9]+", "-", cleaned)
     return cleaned.strip("-") or "unknown"
 
 
-def resolve_memory_layer_secret_id() -> str:
+def resolve_canon_systems_secret_id() -> str:
     explicit = (os.environ.get("MEMORY_LAYER_AWS_SECRET_ID") or "").strip()
     if explicit:
         return explicit
@@ -27,8 +27,8 @@ def resolve_memory_layer_secret_id() -> str:
     if not (prefix and company and repo):
         return ""
     return (
-        f"{prefix}/memory-layer__{slug_memory_layer_segment(company)}__"
-        f"{slug_memory_layer_segment(repo)}"
+        f"{prefix}/memory-layer__{slug_canon_systems_segment(company)}__"
+        f"{slug_canon_systems_segment(repo)}"
     )
 
 
@@ -122,8 +122,8 @@ def _secretsmanager_client():
     return boto3.client("secretsmanager")
 
 
-def apply_memory_layer_secrets_from_aws() -> None:
-    secret_id = resolve_memory_layer_secret_id()
+def apply_canon_systems_secrets_from_aws() -> None:
+    secret_id = resolve_canon_systems_secret_id()
     if not secret_id:
         return
     region_tag = (os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "default").strip()

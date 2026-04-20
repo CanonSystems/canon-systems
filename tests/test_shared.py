@@ -1,14 +1,14 @@
 from pathlib import Path
 
-from memory_layer.shared import merge_memory_layer_env_files, repo_root, resolve_auth_bearer
+from canon_systems.shared import merge_canon_systems_env_files, repo_root, resolve_auth_bearer
 
 
-def test_merge_memory_layer_env_files_order(tmp_path: Path) -> None:
+def test_merge_canon_systems_env_files_order(tmp_path: Path) -> None:
     a = tmp_path / "a.env"
     b = tmp_path / "b.env"
     a.write_text("FOO=1\nBAR=a\n", encoding="utf-8")
     b.write_text("BAR=b\nBAZ=2\n", encoding="utf-8")
-    merged = merge_memory_layer_env_files([a, b])
+    merged = merge_canon_systems_env_files([a, b])
     assert merged == {"FOO": "1", "BAR": "b", "BAZ": "2"}
 
 

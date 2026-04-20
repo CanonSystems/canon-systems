@@ -1,6 +1,6 @@
 import json
 
-from memory_layer.aws_secrets import parse_secret_string
+from canon_systems.aws_secrets import parse_secret_string
 
 
 def test_parse_secret_string_json() -> None:

@@ -1,4 +1,4 @@
-"""Shared helpers for memory-layer session automation."""
+"""Shared helpers for canon-systems session automation."""
 
 from __future__ import annotations
 
@@ -62,7 +62,10 @@ def repo_root() -> Path:
     global _CACHED_REPO_ROOT
     if _CACHED_REPO_ROOT is not None:
         return _CACHED_REPO_ROOT
-    explicit = os.environ.get("CANON_MEMORY_LAYER_REPO_ROOT", "").strip()
+    explicit = (
+        os.environ.get("CANON_SYSTEMS_REPO_ROOT", "").strip()
+        or os.environ.get("CANON_MEMORY_LAYER_REPO_ROOT", "").strip()
+    )
     if explicit:
         _CACHED_REPO_ROOT = Path(explicit).expanduser().resolve()
         return _CACHED_REPO_ROOT
@@ -87,7 +90,7 @@ def load_env_file(path: Path) -> dict[str, str]:
     return out
 
 
-def merge_memory_layer_env_files(paths: list[Path]) -> dict[str, str]:
+def merge_canon_systems_env_files(paths: list[Path]) -> dict[str, str]:
     merged: dict[str, str] = {}
     for path in paths:
         if path.exists():
@@ -240,7 +243,7 @@ def ensure_layered_memory_env() -> None:
     if _LAYERED_MEMORY_ENV_APPLIED:
         return
     root = repo_root()
-    merged = merge_memory_layer_env_files(
+    merged = merge_canon_systems_env_files(
         [
             Path.home() / ".canon" / "canon-memory-layer.env",
             root / ".canon" / "memory-layer.team.env",
@@ -253,9 +256,9 @@ def ensure_layered_memory_env() -> None:
     for key, value in merged.items():
         if key.strip():
             os.environ.setdefault(key.strip(), value)
-    from .aws_secrets import apply_memory_layer_secrets_from_aws
+    from .aws_secrets import apply_canon_systems_secrets_from_aws
 
-    apply_memory_layer_secrets_from_aws()
+    apply_canon_systems_secrets_from_aws()
     _LAYERED_MEMORY_ENV_APPLIED = True
 
 

@@ -1,12 +1,13 @@
 ---
-description: Canon Memory Layer defaults for Cursor agents (per-repo).
+description: Canon Systems defaults for Cursor agents (per-repo).
 alwaysApply: true
 ---
 
-# Canon Memory Layer
+# Canon Systems
 
-This repo is wired to the Canon Memory Layer (tenant-scoped to this
-`company_id` + `repository_id`; storage is AWS-backed).
+This repo is wired to Canon Systems (tenant-scoped to this `company_id` +
+`repository_id`; memory storage is AWS-backed). The CLI is invoked as
+`canon`.
 
 ## Before work
 
@@ -14,10 +15,10 @@ This repo is wired to the Canon Memory Layer (tenant-scoped to this
    current prompt. It is auto-refreshed on every user turn by the preflight
    hook.
 2. If the context looks stale or missing, refresh it yourself:
-   `canon-memory-layer preflight "<what you're about to do>" --quiet`
+   `canon preflight "<what you're about to do>" --quiet`
 3. For targeted questions ("have I solved this before? what did we decide
    last time?"), use:
-   `canon-memory-layer ask "<question>"`
+   `canon ask "<question>"`
    This queries both canonical artifacts and MemPalace, scoped to this repo.
 
 ## During work
@@ -31,7 +32,7 @@ This repo is wired to the Canon Memory Layer (tenant-scoped to this
 Capture what changed so future sessions can find it:
 
 ```
-canon-memory-layer capture \
+canon capture \
   --summary "<one-line summary>" \
   --decisions '["<decision>", ...]' \
   --next-actions '["<next step>", ...]' \
@@ -45,6 +46,6 @@ that raw-transcript capture can't infer.
 ## Version drift
 
 If you see "installed version X is older than pinned Y" in hook output,
-offer to run `pipx upgrade canon-memory-layer` for the user before
-proceeding. (The package is installed from a private GitHub repo, not
-PyPI; `pipx upgrade` pulls the latest from that repo.)
+offer to run `pipx upgrade canon-systems` for the user before proceeding.
+(The package is installed from a private GitHub repo, not PyPI;
+`pipx upgrade` pulls the latest from that repo.)

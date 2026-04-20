@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from memory_layer import __version__
-from memory_layer.repo_enable import enable_repo
+from canon_systems import __version__
+from canon_systems.repo_enable import enable_repo
 
 
 def test_enable_repo_writes_hooks_rule_agents_and_version(tmp_path: Path) -> None:
@@ -29,11 +29,30 @@ def test_enable_repo_writes_hooks_rule_agents_and_version(tmp_path: Path) -> Non
     for name in ("scoper.md", "cursor-pilot.md", "qa-gate.md"):
         assert (repo / ".cursor" / "agents" / name).exists(), f"missing subagent {name}"
 
-    # Version pin
+    # Version pin (new key)
     env_path = repo / ".canon" / "memory-layer.local.env"
     assert env_path.exists()
     body = env_path.read_text(encoding="utf-8")
-    assert f"CANON_MEMORY_LAYER_VERSION={__version__}" in body
+    assert f"CANON_SYSTEMS_VERSION={__version__}" in body
+    # Legacy key should not be re-emitted when pinning.
+    assert "CANON_MEMORY_LAYER_VERSION=" not in body
+
+
+def test_enable_repo_strips_legacy_version_pin(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    env_path = repo / ".canon" / "memory-layer.local.env"
+    env_path.parent.mkdir(parents=True)
+    env_path.write_text(
+        "CANON_MEMORY_LAYER_VERSION=0.1.0\nCOMPANY_ID=FMO\n",
+        encoding="utf-8",
+    )
+
+    enable_repo(repo)
+    body = env_path.read_text(encoding="utf-8")
+    assert f"CANON_SYSTEMS_VERSION={__version__}" in body
+    assert "CANON_MEMORY_LAYER_VERSION" not in body
+    assert "COMPANY_ID=FMO" in body, "unrelated keys preserved"
 
 
 def test_enable_repo_merges_existing_hooks_json(tmp_path: Path) -> None:

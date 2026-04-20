@@ -1,4 +1,4 @@
-"""Global CLI for canon-memory-layer in any repository."""
+"""Global CLI for canon-systems (`canon`) in any repository."""
 
 from __future__ import annotations
 
@@ -18,13 +18,14 @@ from .version_check import run as run_version_check
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="canon-memory-layer",
+        prog="canon",
         description=(
-            "Canon Memory Layer — agent-facing memory client. "
-            "Tenant-scoped by company_id + repository_id; storage backed by AWS."
+            "Canon Systems — Cursor-native workflow: tenant-scoped AWS-backed "
+            "memory, the Scoper → Cursor Pilot → QA Gate agent chain, hooks, "
+            "and auto-setup."
         ),
     )
-    parser.add_argument("--version", action="version", version=f"canon-memory-layer {__version__}")
+    parser.add_argument("--version", action="version", version=f"canon-systems {__version__}")
     parser.add_argument("--repo-root", default="", help="Target repository root.")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -71,7 +72,9 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     root = detect_repo_root(args.repo_root)
-    os.environ["CANON_MEMORY_LAYER_REPO_ROOT"] = str(root)
+    os.environ["CANON_SYSTEMS_REPO_ROOT"] = str(root)
+    # Back-compat: legacy env var name still honored downstream.
+    os.environ.setdefault("CANON_MEMORY_LAYER_REPO_ROOT", str(root))
 
     if args.command == "setup":
         setup_args: list[str] = ["--repo-root", str(root)]
@@ -81,12 +84,12 @@ def main(argv: list[str] | None = None) -> int:
         if code != 0:
             return code
         enable_repo(root)
-        print(f"Enabled memory-layer in {root}")
+        print(f"Enabled canon-systems in {root}")
         return 0
 
     if args.command == "enable-repo":
         enable_repo(root)
-        print(f"Enabled memory-layer in {root}")
+        print(f"Enabled canon-systems in {root}")
         return 0
 
     if args.command == "preflight":

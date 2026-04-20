@@ -1,4 +1,4 @@
-"""Interactive plug-and-play setup for a target repository."""
+"""Interactive plug-and-play setup of canon-systems for a target repository."""
 
 from __future__ import annotations
 
@@ -132,13 +132,19 @@ def upsert_aws_config(profile: str, region: str) -> None:
 
 
 def write_machine_env(profile: str, region: str) -> Path:
+    """Write machine-level AWS env to ~/.canon/canon-systems.env.
+
+    Also prunes the legacy ~/.canon/canon-memory-layer.env on new runs so
+    we don't leave two stale files side by side. `shared.py` still reads
+    the legacy path as a fallback for machines that haven't rerun setup.
+    """
     canon_home = Path.home() / ".canon"
     canon_home.mkdir(mode=0o700, exist_ok=True)
-    path = canon_home / "canon-memory-layer.env"
+    path = canon_home / "canon-systems.env"
     path.write_text(
         "\n".join(
             (
-                "# Written by canon-memory-layer setup",
+                "# Written by canon setup",
                 f"AWS_PROFILE={profile}",
                 f"AWS_REGION={region}",
                 f"AWS_DEFAULT_REGION={region}",
@@ -148,6 +154,12 @@ def write_machine_env(profile: str, region: str) -> Path:
         encoding="utf-8",
     )
     os.chmod(path, 0o600)
+    legacy = canon_home / "canon-memory-layer.env"
+    if legacy.exists():
+        try:
+            legacy.unlink()
+        except OSError:
+            pass
     return path
 
 
@@ -174,7 +186,7 @@ def ensure_boto3() -> None:
 
 
 def run(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Configure memory-layer for current repo.")
+    parser = argparse.ArgumentParser(description="Configure canon-systems for current repo.")
     parser.add_argument("--repo-root", default="", help="Repository root to configure.")
     parser.add_argument("--non-interactive", action="store_true")
     args = parser.parse_args(argv)
@@ -187,14 +199,14 @@ def run(argv: list[str] | None = None) -> int:
 
     if args.non_interactive:
         company_id = os.environ.get("MEMORY_LAYER_COMPANY_ID", default_company).strip()
-        profile = os.environ.get("MEMORY_LAYER_AWS_PROFILE", "canon-memory-layer").strip()
+        profile = os.environ.get("MEMORY_LAYER_AWS_PROFILE", "canon-systems").strip()
         region = os.environ.get("AWS_REGION", "us-east-1").strip()
         repo_id = os.environ.get("REPOSITORY_ID", detected_repo_id).strip()
         prefix = os.environ.get("MEMORY_LAYER_AWS_SECRET_NAME_PREFIX", "").strip()
         access_key = os.environ.get("AWS_ACCESS_KEY_ID", "").strip()
         secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "").strip()
     else:
-        print("Canon memory-layer setup")
+        print("Canon Systems setup")
         print(f"Target repo: {root}")
         if detected_repo_id:
             print(f"Detected REPOSITORY_ID: {detected_repo_id}")
@@ -205,10 +217,10 @@ def run(argv: list[str] | None = None) -> int:
         profile = (
             input(
                 "AWS profile name "
-                f"[{str(ent.get('suggested_aws_profile', '')).strip() or 'canon-memory-layer'}]: "
+                f"[{str(ent.get('suggested_aws_profile', '')).strip() or 'canon-systems'}]: "
             ).strip()
             or str(ent.get("suggested_aws_profile", "")).strip()
-            or "canon-memory-layer"
+            or "canon-systems"
         )
         region = input(f"AWS region [{str(ent.get('aws_region', '')).strip() or 'us-east-1'}]: ").strip() or str(
             ent.get("aws_region", "")
@@ -262,7 +274,7 @@ def run(argv: list[str] | None = None) -> int:
     print(f"Wrote machine env: {machine_env}")
     print(f"Wrote repo env:    {repo_env}")
     print(user_scope_msg)
-    print("Next: run `canon-memory-layer enable-repo` in this repo.")
+    print("Next: run `canon enable-repo` in this repo.")
     return 0
 
 

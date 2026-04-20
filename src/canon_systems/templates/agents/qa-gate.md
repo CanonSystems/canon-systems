@@ -45,11 +45,11 @@ Refuse to run if either input is missing.
 
 ## Capture distilled findings
 
-If `canon-memory-layer` is installed, capture the verification result so
-future sessions can find it:
+If `canon` is installed, capture the verification result so future
+sessions can find it:
 
 ```
-canon-memory-layer capture \
+canon capture \
   --summary "QA gate: <task title>" \
   --decisions '["<fix you applied>", ...]' \
   --next-actions '["<deferred follow-up>", ...]' \
