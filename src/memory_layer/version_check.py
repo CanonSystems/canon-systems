@@ -52,8 +52,8 @@ def check(root: Path | None = None) -> tuple[bool, str]:
     return False, (
         f"canon-memory-layer: installed version {INSTALLED_VERSION} is older than "
         f"pinned {pinned} for this repo. Upgrade with:\n"
-        "  pipx upgrade canon-memory-layer   # if installed via pipx\n"
-        "  npx canon-memory-layer@latest --help   # if using the npx wrapper\n"
+        "  pipx upgrade canon-memory-layer\n"
+        "  # or: pipx install --force git+ssh://git@github.com/<your-org>/canon-memory-layer.git\n"
         "Then re-run your prompt. (If this is unexpected, inspect "
         ".canon/memory-layer.local.env CANON_MEMORY_LAYER_VERSION.)"
     )

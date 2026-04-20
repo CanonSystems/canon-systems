@@ -15,17 +15,35 @@ A single installable package that gives any Cursor workspace:
   than the version a repo was wired with; the agent is instructed to offer
   an upgrade.
 
+## Distribution
+
+This is **proprietary software**, not published to PyPI or npm. It is
+installed directly from its private GitHub repo. Only people with read
+access to the repo can install it.
+
+Do **not** publish to public registries. When this is productized, the
+intended customer-facing distribution is **AWS CodeArtifact** (same AWS
+account as the memory-layer backend), with per-customer IAM-scoped
+install tokens.
+
 ## Install
 
 ```bash
-# Primary (Python CLI, global)
-pipx install canon-memory-layer
+# From the private GitHub repo (primary path for you + Romi):
+pipx install git+ssh://git@github.com/<your-org>/canon-memory-layer.git
 
-# Or from the source checkout:
-./install.sh
+# Or from a local checkout during development:
+pipx install /path/to/canon-memory-layer
+# or
+cd /path/to/canon-memory-layer && ./install.sh
+```
 
-# Node-native users can also drive it via npx:
-npx canon-memory-layer --help
+Updating after a new push to the repo:
+
+```bash
+pipx upgrade canon-memory-layer
+# or force-reinstall from git:
+pipx install --force git+ssh://git@github.com/<your-org>/canon-memory-layer.git
 ```
 
 `install.sh` (or `pipx install`) installs:
@@ -84,7 +102,7 @@ process environment before HTTP calls.
 Install the `[aws]` extra to enable this path:
 
 ```bash
-pipx install 'canon-memory-layer[aws]'
+pipx install 'git+ssh://git@github.com/<your-org>/canon-memory-layer.git#egg=canon-memory-layer[aws]'
 ```
 
 ## Commands
@@ -109,7 +127,7 @@ The preflight hook runs `canon-memory-layer version-check --quiet` on every
 prompt. If the installed CLI is older than the pinned version, it fails and
 surfaces a `systemMessage` with exactly:
 
-> `pipx upgrade canon-memory-layer` (or `npx canon-memory-layer@latest`)
+> `pipx upgrade canon-memory-layer` (pulls latest from the private git repo)
 
 The agent rule `memory-layer-defaults.mdc` instructs the model to offer
 running that upgrade for the user before continuing.

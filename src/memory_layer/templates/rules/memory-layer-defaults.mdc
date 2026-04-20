@@ -45,5 +45,6 @@ that raw-transcript capture can't infer.
 ## Version drift
 
 If you see "installed version X is older than pinned Y" in hook output,
-offer to run `pipx upgrade canon-memory-layer` (or `npx canon-memory-layer@latest`)
-for the user before proceeding.
+offer to run `pipx upgrade canon-memory-layer` for the user before
+proceeding. (The package is installed from a private GitHub repo, not
+PyPI; `pipx upgrade` pulls the latest from that repo.)
