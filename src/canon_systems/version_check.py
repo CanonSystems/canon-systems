@@ -59,7 +59,7 @@ def check(root: Path | None = None) -> tuple[bool, str]:
         f"canon-systems: installed version {INSTALLED_VERSION} is older than "
         f"pinned {pinned} for this repo. Upgrade with:\n"
         "  pipx upgrade canon-systems\n"
-        "  # or: pipx install --force git+ssh://git@github.com/<your-org>/canon-systems.git\n"
+        "  # or: pipx install --force git+ssh://git@github.com/CanonSystems/canon-systems.git\n"
         "Then re-run your prompt. (If this is unexpected, inspect "
         ".canon/memory-layer.local.env CANON_SYSTEMS_VERSION.)"
     )

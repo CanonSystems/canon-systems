@@ -36,7 +36,7 @@ install tokens.
 
 ```bash
 # From the private GitHub repo (primary path for you + Romi):
-pipx install git+ssh://git@github.com/<your-org>/canon-systems.git
+pipx install git+ssh://git@github.com/CanonSystems/canon-systems.git
 
 # Or from a local checkout during development:
 pipx install /path/to/canon-systems
@@ -49,7 +49,7 @@ Updating after a new push:
 ```bash
 pipx upgrade canon-systems
 # or force-reinstall from git:
-pipx install --force git+ssh://git@github.com/<your-org>/canon-systems.git
+pipx install --force git+ssh://git@github.com/CanonSystems/canon-systems.git
 ```
 
 `install.sh` (or `pipx install`) installs:
@@ -108,7 +108,7 @@ process environment before HTTP calls.
 Install with the `[aws]` extra to enable this path:
 
 ```bash
-pipx install 'git+ssh://git@github.com/<your-org>/canon-systems.git#egg=canon-systems[aws]'
+pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-systems[aws]'
 ```
 
 ## Commands
