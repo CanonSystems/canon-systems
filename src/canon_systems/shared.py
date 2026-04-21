@@ -60,14 +60,15 @@ def _git_toplevel_from_cwd() -> Path | None:
 
 def repo_root() -> Path:
     global _CACHED_REPO_ROOT
-    if _CACHED_REPO_ROOT is not None:
-        return _CACHED_REPO_ROOT
     explicit = (
         os.environ.get("CANON_SYSTEMS_REPO_ROOT", "").strip()
         or os.environ.get("CANON_MEMORY_LAYER_REPO_ROOT", "").strip()
     )
     if explicit:
-        _CACHED_REPO_ROOT = Path(explicit).expanduser().resolve()
+        resolved = Path(explicit).expanduser().resolve()
+        _CACHED_REPO_ROOT = resolved
+        return resolved
+    if _CACHED_REPO_ROOT is not None:
         return _CACHED_REPO_ROOT
     git_root = _git_toplevel_from_cwd()
     if git_root is not None:

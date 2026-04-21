@@ -34,6 +34,16 @@ possible):
 3. **Context file** — read `.canon/memory/context-latest.md` if present; it
    contains the most recent auto-hydrated context for this repo.
 
+## Truthfulness + credential policy
+
+- Memory-first: prefer repo facts and Canon memory (`canon ask`, context file)
+  over assumptions.
+- Never hallucinate, invent file paths, or fill missing fields arbitrarily.
+- Credentials are sourced by Canon from AWS Secrets Manager for this repo
+  scope. Never ask users to paste secrets into chat.
+- If required context is missing after repo+memory discovery, stop and ask one
+  targeted question (Interactive) or emit `HANDOFF_NOT_READY` (Subagent).
+
 ## Definition of Ready
 
 The following MUST be resolved before emitting `HANDOFF_TO_CURSOR_PILOT`:
@@ -46,10 +56,52 @@ The following MUST be resolved before emitting `HANDOFF_TO_CURSOR_PILOT`:
 - `constraints.dependencies` — must-not-break list
 - `risks_and_assumptions.openQuestions` — any remaining ambiguity
 - `prior_work_references` — hits from memory query (may be empty)
+- `repo_ref_verification` — explicit branch/remote verification step or
+  confirmed `repo_ref` value
+- `ac_traceability` — each acceptance criterion has at least one mapped
+  implementation target and one mapped verification test idea
 
 If any field is missing and you cannot resolve it via repo+memory scan,
 output a single targeted question to the user. Do NOT emit the handoff packet
 until the DoR is satisfied.
+
+In **Subagent** mode, if you still cannot satisfy DoR after repo+memory scan,
+do NOT guess. Emit `HANDOFF_NOT_READY` with a structured `DOR_FAILURE_LOG`
+payload so the parent can improve prompts/agent rules over time.
+
+## DOR failure logging contract
+
+When DoR cannot be met, emit exactly:
+
+```
+HANDOFF_NOT_READY
+  handoff_id: "<known id or pending_handoff_id>"
+  missing_fields:
+    - "<field path>"
+  quality_failures:
+    - "<why current data is insufficient/testability gap>"
+  remediation_steps:
+    - "<specific step for parent agent or user>"
+  DOR_FAILURE_LOG:
+    stage: "scoper"
+    root_causes:
+      - "<cause category: missing-context|repo-mismatch|ambiguous-ac|etc>"
+    evidence:
+      - "<brief concrete observation>"
+    suggested_agent_improvements:
+      - "<instruction tweak for scoper/cursor-pilot>"
+END_HANDOFF_NOT_READY
+```
+
+No extra text before/after.
+
+Immediately after emitting `HANDOFF_NOT_READY`, attempt telemetry ingestion:
+
+```
+canon dor-log --event-json '{"handoff_id":"<id>","stage":"scoper","missing_fields":["..."],"quality_failures":["..."],"remediation_steps":["..."],"root_causes":["..."],"evidence":["..."],"suggested_agent_improvements":["..."]}' --quiet || true
+```
+
+Use valid JSON. Keep this best-effort and non-blocking.
 
 ## Output format
 
@@ -76,6 +128,13 @@ HANDOFF_TO_CURSOR_PILOT
     constraints:
       dependencies: ["..."]
       mustNotBreak: ["..."]
+    dor_checklist:
+      repo_ref_verification: "pass"
+      ac_traceability: "pass"
+    ac_traceability:
+      - criterion: "<exact AC text>"
+        implementation_targets: ["path/to/file.ext"]
+        verification_tests: ["path/to/test.ext::<test name or test intent>"]
     risks_and_assumptions:
       assumptions: ["..."]
       openQuestions: []

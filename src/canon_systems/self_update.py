@@ -21,6 +21,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from .version_check import _version_tuple
@@ -80,7 +81,40 @@ def _run_pipx_upgrade() -> tuple[int, str]:
     return proc.returncode, out
 
 
-def try_self_update(argv: list[str]) -> None:
+def _self_update_state_path() -> Path:
+    return Path.home() / ".canon" / "self-update-state.json"
+
+
+def _should_throttle_self_update() -> bool:
+    """True when a recent self-update check already happened.
+
+    Controlled by CANON_SYSTEMS_SELF_UPDATE_INTERVAL_SEC (default 6h).
+    Set 0 to disable throttling.
+    """
+    try:
+        interval = int(os.environ.get("CANON_SYSTEMS_SELF_UPDATE_INTERVAL_SEC", "21600"))
+    except ValueError:
+        interval = 21600
+    interval = max(0, interval)
+    if interval == 0:
+        return False
+    path = _self_update_state_path()
+    if not path.exists():
+        return False
+    try:
+        last = float(path.read_text(encoding="utf-8").strip() or "0")
+    except Exception:
+        return False
+    return (time.time() - last) < interval
+
+
+def _mark_self_update_check() -> None:
+    path = _self_update_state_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(str(time.time()), encoding="utf-8")
+
+
+def try_self_update(argv: list[str], *, force: bool = False) -> None:
     """Maybe upgrade via pipx and re-exec `canon` with the same args tail.
 
     `argv` should be the full argv list (including program name at index 0).
@@ -91,12 +125,15 @@ def try_self_update(argv: list[str]) -> None:
         return
     if not shutil.which("pipx"):
         return
+    if not force and _should_throttle_self_update():
+        return
 
     venv_python = Path(sys.executable).resolve()
     before = _installed_dist_version(venv_python)
     if not before:
         return
 
+    _mark_self_update_check()
     print("canon-systems: checking for updates (pipx upgrade canon-systems)...", flush=True)
     code, combined = _run_pipx_upgrade()
     if code != 0:

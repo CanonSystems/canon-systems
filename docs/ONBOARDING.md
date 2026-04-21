@@ -223,9 +223,31 @@ after secrets exist, or set `MEMORY_LAYER_AWS_SECRET_ID` in
    `REPOSITORY_ID`, `AWS_REGION`, and `MEMORY_LAYER_AWS_SECRET_NAME_PREFIX`.
 5. Installs user-level Cursor rules and subagents (`~/.cursor/rules/`,
    `~/.cursor/agents/`) so every repo gets the auto-setup prompt on
-   first use and has `scoper`, `cursor-pilot`, `qa-gate` available.
+   first use and has `scoper`, `cursor-pilot`, `implementer`, `qa-gate`
+   available.
 6. Installs per-repo Cursor hooks + rule + subagents into `.cursor/`
    in this repo and pins the canon-systems version for drift detection.
+
+### Structured secret provisioning (recommended)
+
+When you need to create or update the repo's runtime secret, use the wizard:
+
+```bash
+canon secrets
+```
+
+The wizard supports reusing values from an existing secret ("use credentials
+from X") or entering new values inline.
+
+If you need file-driven automation, use:
+
+```bash
+canon secrets template --company-id <COMPANY_ID> --repository-id <REPOSITORY_ID> > /tmp/canon-secret.json
+# edit /tmp/canon-secret.json with real URLs/tokens
+canon secrets submit --payload-file /tmp/canon-secret.json --create-if-missing
+```
+
+This keeps secret shape consistent and avoids ad hoc AWS console edits.
 
 You end with `Enabled canon-systems in /path/to/repo` as the final
 line. No second command needed.
@@ -288,8 +310,10 @@ Open the repo in Cursor. From this point:
 - **When asking the agent a question about prior work**, it can run
   `canon ask "..."` itself on the fly — it's baked into the rule.
 - **For non-trivial tasks**, you (or the agent) can invoke the
-  `scoper` → `cursor-pilot` → `qa-gate` subagent chain via `/spq` or
-  by explicit parent-agent orchestration.
+  `scoper` → `cursor-pilot` → `implementer` → `qa-gate` subagent chain
+  via `/spq` or by explicit parent-agent orchestration. `cursor-pilot`
+  should produce a parallel-first workstream plan, and parent should launch
+  as many `implementer` subagents concurrently as dependencies allow.
 
 You don't need to do anything further for this to work. It's passive
 after setup.

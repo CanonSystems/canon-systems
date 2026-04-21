@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -78,6 +79,28 @@ def test_try_self_update_reexec_when_version_bumps(
     monkeypatch.setattr(self_update.shutil, "which", fake_which)
 
     with pytest.raises(SystemExit) as exc:
-        self_update.try_self_update(["canon", "setup", "--repo-root", "/tmp/r"])
+        self_update.try_self_update(["canon", "setup", "--repo-root", "/tmp/r"], force=True)
     assert exc.value.code == 0
     assert execv_args == [("/fake/canon", ["/fake/canon", "setup", "--repo-root", "/tmp/r"])]
+
+
+def test_try_self_update_throttled_without_force(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("CANON_SYSTEMS_SKIP_SELF_UPDATE", raising=False)
+    monkeypatch.delenv("CI", raising=False)
+    fake_py = tmp_path / "venvs" / "canon-systems" / "bin" / "python3.13"
+    fake_py.parent.mkdir(parents=True)
+    fake_py.touch()
+    monkeypatch.setattr(sys, "executable", str(fake_py))
+    monkeypatch.setenv("CANON_SYSTEMS_SELF_UPDATE_INTERVAL_SEC", "3600")
+    monkeypatch.setattr(self_update, "_self_update_state_path", lambda: tmp_path / "state.txt")
+    (tmp_path / "state.txt").write_text(str(time.time()), encoding="utf-8")
+
+    called: list[str] = []
+    monkeypatch.setattr(self_update, "_run_pipx_upgrade", lambda: (called.append("x") or (0, "ok")))
+    monkeypatch.setattr(self_update.shutil, "which", lambda name: "/bin/ok" if name in ("pipx", "canon") else None)
+    monkeypatch.setattr(self_update, "_installed_dist_version", lambda _p: "3.0.4")
+
+    self_update.try_self_update(["canon", "ask", "x"])
+    assert called == []

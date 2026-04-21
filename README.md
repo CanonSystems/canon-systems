@@ -12,7 +12,7 @@ What ships in one install:
   transcripts).
 - **Agent-callable Q&A**: `canon ask "..."` surfaces repo-scoped prior
   work from canonical artifacts + MemPalace.
-- **Subagent chain**: `scoper`, `cursor-pilot`, and `qa-gate` — a
+- **Subagent chain**: `scoper`, `cursor-pilot`, `implementer`, and `qa-gate` — a
   Definition-of-Ready-driven workflow for non-trivial tasks.
 - **Version-drift guard**: hooks hard-fail if the installed CLI is older
   than the version a repo was wired with; the agent is instructed to
@@ -59,10 +59,18 @@ After **pipx** install, `canon` lives in `~/.local/bin`. Open a **new
 terminal** or run `export PATH="$HOME/.local/bin:$PATH"` — see
 [ONBOARDING §1c](docs/ONBOARDING.md#1c-after-pipx-canon-not-on-path).
 
-**Self-update:** `canon setup` and `canon enable-repo` run
-`pipx upgrade canon-systems` first when the CLI is pipx-managed. If a newer
-version is installed, the command restarts on the new build automatically.
-Set `CANON_SYSTEMS_SKIP_SELF_UPDATE=1` (or `CI=true`) to skip.
+**Self-update:** when pipx-managed, `canon` periodically checks for updates via
+`pipx upgrade canon-systems` and restarts on newer builds automatically.
+`setup`/`enable-repo` force an immediate check; other commands are throttled
+(default every 6h). Set `CANON_SYSTEMS_SKIP_SELF_UPDATE=1` (or `CI=true`) to
+skip, or tune interval with `CANON_SYSTEMS_SELF_UPDATE_INTERVAL_SEC`.
+
+**Plug-and-play template refresh:** if installed `canon-systems` is newer than
+the repo pin, normal commands (`preflight`, `capture`, `ask`, etc.) now
+auto-refresh repo wiring (hooks/rules/agents) and bump the pin. This keeps
+agent template updates (including DoR telemetry behavior) rolling out across
+machines without asking users to run extra wiring commands. Set
+`CANON_SYSTEMS_DISABLE_AUTO_REWIRE=1` to disable.
 
 Updating after a new push:
 
@@ -78,7 +86,7 @@ pipx install --force git+ssh://git@github.com/CanonSystems/canon-systems.git
 - `~/.cursor/rules/canon-autosetup.mdc` — offers setup when you open an
   unwired repo.
 - `~/.cursor/rules/memory-layer-defaults.mdc` — memory usage defaults.
-- `~/.cursor/agents/{scoper,cursor-pilot,qa-gate}.md` — the subagent
+- `~/.cursor/agents/{scoper,cursor-pilot,implementer,qa-gate}.md` — the subagent
   chain, available globally.
 
 ## Per-repo setup
@@ -101,7 +109,7 @@ This:
 4. Installs `<repo>/.cursor/hooks/memory-{preflight,capture}.sh` +
    merges `<repo>/.cursor/hooks.json`.
 5. Installs `<repo>/.cursor/rules/memory-layer-defaults.mdc`.
-6. Installs `<repo>/.cursor/agents/{scoper,cursor-pilot,qa-gate}.md`.
+6. Installs `<repo>/.cursor/agents/{scoper,cursor-pilot,implementer,qa-gate}.md`.
 
 From this point, every user prompt hydrates context and every assistant
 turn gets captured to AWS-backed memory — tenant-scoped to this repo.
@@ -148,6 +156,11 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon capture --summary ... --decisions '[...]'` | Capture a turn with distilled fields. |
 | `canon actor-report` | Recent run summaries + Jira keys for an actor. |
 | `canon version-check` | Hard-fail if installed < pinned. |
+| `canon auth-migration <status\|prepare\|canary\|enforce\|rollback>` | Manage phased domain/auth migration state in repo env. |
+| `canon dor-log --event-json '{...}'` | Push DoR failure telemetry to server; queue locally on send failure. |
+| `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
+| `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
+| `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |
 
 ## Version drift
 
@@ -166,6 +179,44 @@ The agent rule `memory-layer-defaults.mdc` instructs the model to offer
 running that upgrade for the user before continuing.
 
 The CLI never auto-upgrades or auto-downgrades; the user decides.
+
+## Structured secret submission
+
+Use the interactive wizard as the default flow (no payload handcrafting):
+
+```bash
+canon secrets
+# (equivalent: canon secrets wizard)
+```
+
+The wizard prompts for scope, endpoints, bucket, token, and write behavior;
+then validates and submits with a redacted plan/confirmation step.
+It can also import existing values from another secret/repo so users can say
+"use the credentials we used for <other repo>" and avoid manual re-entry.
+
+Hooks now include credential-recovery detection. When preflight/capture hits
+auth/secret errors, they trigger Canon secret recovery flow and retry once; if
+still blocked, they surface a recovery-needed message on the next prompt.
+
+If you need automation/CI, use the explicit workflow below:
+
+```bash
+# 1) Generate canonical payload shape
+canon secrets template --company-id IMC --repository-id innermost > /tmp/canon-secret.json
+
+# 2) Fill real values (URLs, bucket, tokens) in the file
+
+# 3) Validate and submit
+canon secrets submit \
+  --payload-file /tmp/canon-secret.json \
+  --aws-profile <profile> \
+  --aws-region us-east-1 \
+  --create-if-missing
+```
+
+`canon secrets submit` enforces required keys by default, derives scope from
+repo wiring (`.canon/memory-layer.local.env`) when available, and prints a
+redacted write plan before submission. Use `--dry-run` for validation-only.
 
 ### Back-compat with the old name
 
@@ -192,6 +243,32 @@ parameters. By default, agents cannot read another repo's memory.
 cross-repo reads to specific repo_ids within the same `company_id`, with
 all grants logged.)
 
+## Cognito + Domain Migration
+
+For long-term production wiring (stable domain endpoint + phased Cognito rollout),
+use:
+
+- `docs/migrations/cognito-ingress-migration.md`
+- `docs/runbooks/auth-migration-rollback.md`
+- `scripts/auth-migration/rollout-phase.sh`
+- `scripts/auth-migration/rollback.sh`
+- `scripts/migrate_memory_secrets.py`
+- `scripts/validate_memory_endpoints.py`
+
+Recommended operator flow:
+
+```bash
+# Preview changes first
+canon auth-migration prepare --dry-run --domain memory.canon-systems.com
+
+# Apply repo phase state
+canon auth-migration prepare --domain memory.canon-systems.com
+
+# Update + validate AWS secret endpoints
+python scripts/migrate_memory_secrets.py --profile <aws-profile> --phase prepare --apply
+python scripts/validate_memory_endpoints.py --profile <aws-profile> --secret-id <secret-id>
+```
+
 ## Subagents
 
 Installed globally by `install.sh` and into each wired repo by
@@ -200,8 +277,12 @@ Installed globally by `install.sh` and into each wired repo by
 - **`scoper`** — read-only. Takes a vague prompt, scans repo + memory,
   enforces a strict Definition of Ready, emits `HANDOFF_TO_CURSOR_PILOT`.
 - **`cursor-pilot`** — read-only. Takes the Scoper handoff, emits a
-  precise implementation prompt with a mandatory `HANDOFF_TO_QA` stop
-  condition.
+  precise implementation prompt for the implementer subagent with a
+  mandatory `HANDOFF_TO_QA` stop condition.
+- **`implementer`** — full access, model `composer-2-fast` by default.
+  Executes the cursor-pilot prompt by writing code/tests. For parallel plans,
+  parent launches multiple implementers concurrently and each emits
+  `HANDOFF_TO_QA_SHARD`, then parent aggregates to `HANDOFF_TO_QA`.
 - **`qa-gate`** — full access. Writes or augments tests, runs them,
   iterates fixes up to 3 times, emits `GATE_RESULTS`.
 

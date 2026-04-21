@@ -26,7 +26,7 @@ def test_enable_repo_writes_hooks_rule_agents_and_version(tmp_path: Path) -> Non
     assert (repo / ".cursor" / "rules" / "memory-layer-defaults.mdc").exists()
 
     # Subagents
-    for name in ("scoper.md", "cursor-pilot.md", "qa-gate.md"):
+    for name in ("scoper.md", "cursor-pilot.md", "implementer.md", "qa-gate.md"):
         assert (repo / ".cursor" / "agents" / name).exists(), f"missing subagent {name}"
 
     # Version pin (new key)

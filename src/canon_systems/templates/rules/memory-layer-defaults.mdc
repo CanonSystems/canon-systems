@@ -27,6 +27,99 @@ This repo is wired to Canon Systems (tenant-scoped to this `company_id` +
   `.canon/memory-layer.local.env`. Do not leak information across repos
   unless the user explicitly authorizes it for the current turn.
 
+## Truthfulness + secrets handling (required)
+
+- Memory-first: use `.canon/memory/context-latest.md` and `canon ask` before
+  making assumptions about prior work.
+- Never hallucinate, fabricate outputs, or fill missing technical details
+  arbitrarily.
+- Do not ask users to paste credentials/tokens/secrets into chat. Canon
+  resolves runtime secrets from AWS Secrets Manager for the current repo scope.
+- If required context, permissions, or credentials are missing, stop and ask a
+  targeted question (or emit the workflow's blocked/not-ready format).
+
+## Credential recovery automation (required)
+
+When a Canon command reports credential/secret failures (for example:
+`Unable to locate credentials`, `AWS Secrets Manager fetch failed`,
+`secret does not exist`, missing bearer token), do not leave remediation ad hoc.
+
+Run this loop automatically:
+
+1. Launch `canon secrets` (interactive wizard) in the repo context.
+2. If the user says "use credentials from <other repo/system>", run wizard with
+   `--copy-from-*` inputs or enter those values in prompts to import source
+   secret values.
+3. If the user provides new credentials/tokens, enter them in the wizard and
+   submit.
+4. Retry the original failed Canon command once.
+5. If still failing, report exact missing prerequisite and ask one targeted
+   follow-up.
+
+## Planning + execution cycle (required)
+
+For any non-trivial request (multi-file changes, architecture/auth/infra work,
+migration/refactor, unclear requirements, or meaningful trade-offs), run this
+cycle in order:
+
+1. `scoper` first (read-only) to produce `HANDOFF_TO_CURSOR_PILOT`.
+2. `cursor-pilot` second (read-only) to convert scope into an execution prompt.
+3. `implementer` third (coding subagent, model `composer-2-fast`) to execute
+   the prompt and emit `HANDOFF_TO_QA`.
+4. `qa-gate` last to verify with real tests and emit `GATE_RESULTS`.
+
+Do not skip directly to implementation for non-trivial tasks. The parent agent
+should orchestrate planning and handoffs; coding should happen inside the
+`implementer` subagent unless the user explicitly requests otherwise.
+For all non-planning/non-QA execution work (coding, test authoring, focused
+refactors, and implementation shell tasks), use `implementer` subagents with
+`model: composer-2-fast`.
+Use a parallel-first strategy: if `cursor-pilot` provides independent
+workstreams, launch as many `implementer` subagents in parallel as the
+dependency graph allows, in a single parallel tool call when possible.
+Only run sequentially for streams with explicit dependencies.
+If `HANDOFF_NOT_READY` is returned, resolve the listed gaps and rerun `scoper`
+until DoR passes; then continue the cycle.
+
+For planning-first user intent ("make a plan", "how should we do this?",
+"design this migration"), stop after step 2 and present the plan for approval
+before coding.
+
+## Parallel implementer orchestration template
+
+When `cursor-pilot` emits a `PARALLELIZATION_PLAN`, the parent agent should use
+this exact execution pattern:
+
+1. Build ready set = all workstreams where `can_run_parallel=true` and
+   `depends_on` is empty or already satisfied.
+2. Launch all ready workstreams in **one parent message** containing **multiple
+   implementer subagent calls** (one per workstream), each pinned to
+   `composer-2-fast`.
+3. Wait for all launched streams to finish.
+4. Collect each `HANDOFF_TO_QA_SHARD`.
+5. Repeat for newly unblocked dependent streams.
+6. Aggregate shard outputs into one `HANDOFF_TO_QA`, then invoke `qa-gate`.
+
+Parent launch shape (illustrative):
+
+```
+PARALLEL_IMPLEMENTER_BATCH
+  batch_id: "<handoff_id>::wave_1"
+  workstreams:
+    - shard_id: "ws1"
+      subagent: "implementer"
+      model: "composer-2-fast"
+      prompt: "<CURSOR_PILOT_PROMPT + assigned shard ws1>"
+    - shard_id: "ws3"
+      subagent: "implementer"
+      model: "composer-2-fast"
+      prompt: "<CURSOR_PILOT_PROMPT + assigned shard ws3>"
+END_PARALLEL_IMPLEMENTER_BATCH
+```
+
+If no streams are parallelizable, run a single implementer stream and continue
+with dependency-driven waves until complete.
+
 ## After meaningful work
 
 Capture what changed so future sessions can find it:

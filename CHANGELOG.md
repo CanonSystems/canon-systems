@@ -17,6 +17,55 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.1.0] - 2026-04-24
+
+### Added
+
+- `canon auth-migration <status|prepare|canary|enforce|rollback>` for phased
+  repo-level auth + endpoint migration state management, including dry-run and
+  rollback restore of prior endpoint values.
+- Operator scripts under `scripts/auth-migration/` for phase rollout and
+  rollback.
+- `scripts/migrate_memory_secrets.py` to bulk rewrite memory secrets from
+  raw-IP endpoints to canonical domain URLs and set migration phase flags.
+- `scripts/validate_memory_endpoints.py` to validate secret endpoint
+  reachability and detect raw-IP endpoint drift.
+- Migration documentation:
+  `docs/migrations/cognito-ingress-migration.md` and
+  `docs/runbooks/auth-migration-rollback.md`.
+- Terraform scaffolding for long-term ingress + Cognito resources under
+  `infra/auth-ingress/`.
+- `canon dor-log` command with queued retry behavior for structured DoR failure
+  telemetry.
+- New `implementer` subagent template pinned to `composer-2-fast` for coding
+  execution between planning and QA phases.
+- `canon secrets` interactive wizard (default `canon secrets` behavior) for
+  guided Secrets Manager provisioning, validation, and write confirmation.
+- CI policy guard workflow (`.github/workflows/template-policy-guard.yml`) to
+  prevent drift in agent template safety/parallelization policies.
+
+### Changed
+
+- Required non-trivial workflow is now explicitly
+  `scoper -> cursor-pilot -> implementer -> qa-gate`.
+- `cursor-pilot` now emits a `PARALLELIZATION_PLAN` with dependency-aware
+  workstreams and shard handoff format (`HANDOFF_TO_QA_SHARD`) so parent agents
+  can launch multiple coding subagents concurrently.
+- Rule templates enforce memory-first behavior, no-hallucination policy, and
+  strict "stop and ask" behavior for missing prerequisites.
+- `README.md` and `docs/ONBOARDING.md` now document auth-migration operations,
+  wizard-first secret handling, and parallel implementer orchestration.
+
+### Fixed
+
+- Hook templates (`memory-preflight.sh`, `memory-capture.sh`) now detect
+  credential/secret failures, trigger Canon secret recovery flow, retry once,
+  and surface a recovery-needed marker message when still blocked.
+- Subagent templates now include explicit guardrails against asking users to
+  paste secrets into chat, while supporting credential reuse/import flows.
+
+---
+
 ## [3.0.4] - 2026-04-24
 
 ### Changed
