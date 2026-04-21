@@ -19,7 +19,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install package
-        run: python -m pip install -e .
+        run: python -m pip install -e . pytest
 
       - name: Enforce template policy
         run: pytest -q tests/test_agent_templates.py
