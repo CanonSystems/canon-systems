@@ -246,6 +246,7 @@ def ensure_layered_memory_env() -> None:
     root = repo_root()
     merged = merge_canon_systems_env_files(
         [
+            Path.home() / ".canon" / "canon-systems.env",
             Path.home() / ".canon" / "canon-memory-layer.env",
             root / ".canon" / "memory-layer.team.env",
             root / ".canon" / "scoper-chat.env",

@@ -17,6 +17,22 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.2.2] - 2026-04-24
+
+### Fixed
+
+- Runtime env layering now reads `~/.canon/canon-systems.env` (current machine
+  config path) before legacy fallbacks, so `AWS_PROFILE` and region set by
+  `canon setup` are available during `canon ask/capture/secrets` in fresh
+  sessions.
+
+### Added
+
+- Regression test to ensure `ensure_layered_memory_env()` loads
+  `canon-systems.env` machine values.
+
+---
+
 ## [3.2.1] - 2026-04-24
 
 ### Fixed
