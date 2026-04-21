@@ -403,62 +403,77 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "secrets":
         sec_cmd = args.secrets_command or "wizard"
         sec_args: list[str] = [sec_cmd]
+        payload_file = getattr(args, "payload_file", "")
+        set_items = getattr(args, "set", [])
+        secret_id = getattr(args, "secret_id", "")
+        company_id = getattr(args, "company_id", "")
+        repository_id = getattr(args, "repository_id", "")
+        prefix = getattr(args, "prefix", "")
+        aws_profile = getattr(args, "aws_profile", "")
+        aws_region = getattr(args, "aws_region", "")
+        create_if_missing = bool(getattr(args, "create_if_missing", False))
+        allow_partial = bool(getattr(args, "allow_partial", False))
+        dry_run = bool(getattr(args, "dry_run", False))
+        copy_from_secret_id = getattr(args, "copy_from_secret_id", "")
+        copy_from_company_id = getattr(args, "copy_from_company_id", "")
+        copy_from_repository_id = getattr(args, "copy_from_repository_id", "")
+        copy_from_prefix = getattr(args, "copy_from_prefix", "")
         if sec_cmd == "submit":
-            if args.payload_file:
-                sec_args += ["--payload-file", args.payload_file]
-            for item in args.set:
+            if payload_file:
+                sec_args += ["--payload-file", payload_file]
+            for item in set_items:
                 sec_args += ["--set", item]
-            if args.secret_id:
-                sec_args += ["--secret-id", args.secret_id]
-            if args.company_id:
-                sec_args += ["--company-id", args.company_id]
-            if args.repository_id:
-                sec_args += ["--repository-id", args.repository_id]
-            if args.prefix:
-                sec_args += ["--prefix", args.prefix]
-            if args.aws_profile:
-                sec_args += ["--aws-profile", args.aws_profile]
-            if args.aws_region:
-                sec_args += ["--aws-region", args.aws_region]
-            if args.create_if_missing:
+            if secret_id:
+                sec_args += ["--secret-id", secret_id]
+            if company_id:
+                sec_args += ["--company-id", company_id]
+            if repository_id:
+                sec_args += ["--repository-id", repository_id]
+            if prefix:
+                sec_args += ["--prefix", prefix]
+            if aws_profile:
+                sec_args += ["--aws-profile", aws_profile]
+            if aws_region:
+                sec_args += ["--aws-region", aws_region]
+            if create_if_missing:
                 sec_args.append("--create-if-missing")
-            if args.allow_partial:
+            if allow_partial:
                 sec_args.append("--allow-partial")
-            if args.dry_run:
+            if dry_run:
                 sec_args.append("--dry-run")
         if sec_cmd == "template":
-            if args.company_id:
-                sec_args += ["--company-id", args.company_id]
-            if args.repository_id:
-                sec_args += ["--repository-id", args.repository_id]
-            if args.prefix:
-                sec_args += ["--prefix", args.prefix]
-            if args.aws_region:
-                sec_args += ["--aws-region", args.aws_region]
+            if company_id:
+                sec_args += ["--company-id", company_id]
+            if repository_id:
+                sec_args += ["--repository-id", repository_id]
+            if prefix:
+                sec_args += ["--prefix", prefix]
+            if aws_region:
+                sec_args += ["--aws-region", aws_region]
         if sec_cmd == "wizard":
-            if args.company_id:
-                sec_args += ["--company-id", args.company_id]
-            if args.repository_id:
-                sec_args += ["--repository-id", args.repository_id]
-            if args.prefix:
-                sec_args += ["--prefix", args.prefix]
-            if args.aws_profile:
-                sec_args += ["--aws-profile", args.aws_profile]
-            if args.aws_region:
-                sec_args += ["--aws-region", args.aws_region]
-            if args.secret_id:
-                sec_args += ["--secret-id", args.secret_id]
-            if args.copy_from_secret_id:
-                sec_args += ["--copy-from-secret-id", args.copy_from_secret_id]
-            if args.copy_from_company_id:
-                sec_args += ["--copy-from-company-id", args.copy_from_company_id]
-            if args.copy_from_repository_id:
-                sec_args += ["--copy-from-repository-id", args.copy_from_repository_id]
-            if args.copy_from_prefix:
-                sec_args += ["--copy-from-prefix", args.copy_from_prefix]
-            if args.allow_partial:
+            if company_id:
+                sec_args += ["--company-id", company_id]
+            if repository_id:
+                sec_args += ["--repository-id", repository_id]
+            if prefix:
+                sec_args += ["--prefix", prefix]
+            if aws_profile:
+                sec_args += ["--aws-profile", aws_profile]
+            if aws_region:
+                sec_args += ["--aws-region", aws_region]
+            if secret_id:
+                sec_args += ["--secret-id", secret_id]
+            if copy_from_secret_id:
+                sec_args += ["--copy-from-secret-id", copy_from_secret_id]
+            if copy_from_company_id:
+                sec_args += ["--copy-from-company-id", copy_from_company_id]
+            if copy_from_repository_id:
+                sec_args += ["--copy-from-repository-id", copy_from_repository_id]
+            if copy_from_prefix:
+                sec_args += ["--copy-from-prefix", copy_from_prefix]
+            if allow_partial:
                 sec_args.append("--allow-partial")
-            if args.dry_run:
+            if dry_run:
                 sec_args.append("--dry-run")
         return run_secrets_submit(sec_args)
 

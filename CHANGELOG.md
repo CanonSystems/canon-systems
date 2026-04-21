@@ -17,6 +17,21 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.2.1] - 2026-04-24
+
+### Fixed
+
+- `canon secrets` no-subcommand path no longer crashes in CLI dispatch
+  (`AttributeError: Namespace has no attribute company_id`). It now reliably
+  defaults to wizard mode and safely handles missing optional parser fields.
+
+### Added
+
+- Regression test `tests/test_cli_secrets.py` to ensure `cli.main(["secrets"])`
+  routes to `wizard` without attribute errors.
+
+---
+
 ## [3.2.0] - 2026-04-24
 
 ### Added

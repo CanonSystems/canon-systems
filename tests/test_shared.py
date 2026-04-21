@@ -32,5 +32,6 @@ def test_resolve_auth_bearer_profiles(monkeypatch) -> None:
 
 
 def test_repo_root_respects_explicit_env(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(tmp_path))
     monkeypatch.setenv("CANON_MEMORY_LAYER_REPO_ROOT", str(tmp_path))
     assert repo_root() == tmp_path.resolve()
