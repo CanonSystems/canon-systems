@@ -17,6 +17,21 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.1.2] - 2026-04-24
+
+### Changed
+
+- Once-per-version auto-rewire now refreshes user-level Cursor scope
+  (`~/.cursor/agents` + `~/.cursor/rules`) in addition to the cross-repo pass,
+  so global subagent templates update automatically after upgrade.
+
+### Added
+
+- `CANON_SYSTEMS_DISABLE_USER_SCOPE_REWIRE=1` to disable only the user-scope
+  refresh while keeping cross-repo rewires enabled.
+
+---
+
 ## [3.1.1] - 2026-04-24
 
 ### Changed

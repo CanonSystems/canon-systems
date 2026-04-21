@@ -16,7 +16,7 @@ from .capture_session import run as run_capture
 from .dor_log import run as run_dor_log
 from .context_preload import run as run_preflight
 from .install_wizard import detect_repo_root, run as run_setup
-from .repo_enable import enable_repo
+from .repo_enable import enable_repo, install_user_scope
 from .secrets_submit import run as run_secrets_submit
 from .store_pending_user import run as run_store_pending_user
 from .version_check import _version_tuple
@@ -123,9 +123,21 @@ def _maybe_auto_rewire_all(command: str) -> None:
         return
     if _truthy_env("CANON_SYSTEMS_DISABLE_AUTO_REWIRE"):
         return
-    if _truthy_env("CANON_SYSTEMS_DISABLE_GLOBAL_REWIRE"):
-        return
     if not _should_run_global_rewire():
+        return
+
+    # Always refresh user-level scope first so ~/.cursor/agents stays current.
+    if not _truthy_env("CANON_SYSTEMS_DISABLE_USER_SCOPE_REWIRE"):
+        try:
+            install_user_scope()
+        except Exception as exc:
+            print(
+                f"canon-systems: user-scope auto-rewire skipped: {exc}",
+                file=sys.stderr,
+            )
+
+    if _truthy_env("CANON_SYSTEMS_DISABLE_GLOBAL_REWIRE"):
+        _mark_global_rewire_done()
         return
     try:
         max_depth = int(os.environ.get("CANON_SYSTEMS_GLOBAL_REWIRE_MAX_DEPTH", "3"))
