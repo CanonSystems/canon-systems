@@ -17,6 +17,26 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.2.0] - 2026-04-24
+
+### Added
+
+- New `project-planner` subagent template for large-initiative decomposition
+  into an epic/task backlog with dependencies, parallel waves, and explicit
+  completion criteria.
+
+### Changed
+
+- Planning workflow now enforces plan-first for broad projects: switch to Plan
+  mode, run `project-planner`, then execute each task via
+  `scoper -> cursor-pilot -> implementer -> qa-gate` until backlog completion.
+- Repo and user-scope installs now include `project-planner.md` so decomposition
+  capability is available everywhere after rewire/update.
+- Docs updated to describe decomposition-first execution instead of treating
+  large initiatives as a single monolithic task.
+
+---
+
 ## [3.1.2] - 2026-04-24
 
 ### Changed

@@ -12,6 +12,17 @@ def test_implementer_template_pins_composer_fast() -> None:
     assert "run `canon secrets` (wizard), then retry" in body
 
 
+def test_project_planner_template_emits_backlog_packet() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("project-planner.md").read_text(
+        encoding="utf-8"
+    )
+    assert "PROJECT_EXECUTION_PLAN" in body
+    assert "epic_backlog" in body
+    assert "depends_on" in body
+    assert "can_run_parallel" in body
+    assert "per_task_workflow" in body
+
+
 def test_cursor_pilot_requires_parallelization_plan() -> None:
     body = resources.files("canon_systems.templates.agents").joinpath("cursor-pilot.md").read_text(
         encoding="utf-8"
@@ -35,6 +46,8 @@ def test_default_rule_requires_parallel_implementer_fanout() -> None:
     assert "Do not ask users to paste credentials/tokens/secrets into chat." in body
     assert "Credential recovery automation (required)" in body
     assert "Run this loop automatically:" in body
+    assert "switch to **Plan mode** and run" in body
+    assert "`project-planner` first" in body
 
 
 def test_scoper_and_qa_gate_include_no_guessing_policy() -> None:

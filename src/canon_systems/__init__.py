@@ -10,4 +10,4 @@ Module internals are implementation details; the public surface is the
 
 from __future__ import annotations
 
-__version__ = "3.1.2"
+__version__ = "3.2.0"

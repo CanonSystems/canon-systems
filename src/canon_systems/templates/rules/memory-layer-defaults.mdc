@@ -62,11 +62,14 @@ For any non-trivial request (multi-file changes, architecture/auth/infra work,
 migration/refactor, unclear requirements, or meaningful trade-offs), run this
 cycle in order:
 
-1. `scoper` first (read-only) to produce `HANDOFF_TO_CURSOR_PILOT`.
-2. `cursor-pilot` second (read-only) to convert scope into an execution prompt.
-3. `implementer` third (coding subagent, model `composer-2-fast`) to execute
-   the prompt and emit `HANDOFF_TO_QA`.
-4. `qa-gate` last to verify with real tests and emit `GATE_RESULTS`.
+1. For broad or multi-epic work, switch to **Plan mode** and run
+   `project-planner` first to produce a complete epic/task dependency backlog.
+2. For each task in dependency order (parallel where allowed):
+   - `scoper` to produce `HANDOFF_TO_CURSOR_PILOT`
+   - `cursor-pilot` to produce execution prompt
+   - `implementer` (model `composer-2-fast`) to execute
+   - `qa-gate` to verify and emit `GATE_RESULTS`
+3. Continue until all task_ids from `PROJECT_EXECUTION_PLAN` are complete.
 
 Do not skip directly to implementation for non-trivial tasks. The parent agent
 should orchestrate planning and handoffs; coding should happen inside the
@@ -82,7 +85,7 @@ If `HANDOFF_NOT_READY` is returned, resolve the listed gaps and rerun `scoper`
 until DoR passes; then continue the cycle.
 
 For planning-first user intent ("make a plan", "how should we do this?",
-"design this migration"), stop after step 2 and present the plan for approval
+"design this migration"), stop after planning and present the plan for approval
 before coding.
 
 ## Parallel implementer orchestration template

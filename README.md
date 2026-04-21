@@ -12,8 +12,8 @@ What ships in one install:
   transcripts).
 - **Agent-callable Q&A**: `canon ask "..."` surfaces repo-scoped prior
   work from canonical artifacts + MemPalace.
-- **Subagent chain**: `scoper`, `cursor-pilot`, `implementer`, and `qa-gate` — a
-  Definition-of-Ready-driven workflow for non-trivial tasks.
+- **Subagent system**: `project-planner`, `scoper`, `cursor-pilot`,
+  `implementer`, and `qa-gate` — backlog planning plus DoR-driven execution.
 - **Version-drift guard**: hooks hard-fail if the installed CLI is older
   than the version a repo was wired with; the agent is instructed to
   offer an upgrade.
@@ -91,7 +91,7 @@ pipx install --force git+ssh://git@github.com/CanonSystems/canon-systems.git
 - `~/.cursor/rules/canon-autosetup.mdc` — offers setup when you open an
   unwired repo.
 - `~/.cursor/rules/memory-layer-defaults.mdc` — memory usage defaults.
-- `~/.cursor/agents/{scoper,cursor-pilot,implementer,qa-gate}.md` — the subagent
+- `~/.cursor/agents/{project-planner,scoper,cursor-pilot,implementer,qa-gate}.md` — the subagent
   chain, available globally.
 
 ## Per-repo setup
@@ -114,7 +114,7 @@ This:
 4. Installs `<repo>/.cursor/hooks/memory-{preflight,capture}.sh` +
    merges `<repo>/.cursor/hooks.json`.
 5. Installs `<repo>/.cursor/rules/memory-layer-defaults.mdc`.
-6. Installs `<repo>/.cursor/agents/{scoper,cursor-pilot,implementer,qa-gate}.md`.
+6. Installs `<repo>/.cursor/agents/{project-planner,scoper,cursor-pilot,implementer,qa-gate}.md`.
 
 From this point, every user prompt hydrates context and every assistant
 turn gets captured to AWS-backed memory — tenant-scoped to this repo.
@@ -281,6 +281,8 @@ Installed globally by `install.sh` and into each wired repo by
 
 - **`scoper`** — read-only. Takes a vague prompt, scans repo + memory,
   enforces a strict Definition of Ready, emits `HANDOFF_TO_CURSOR_PILOT`.
+- **`project-planner`** — read-only. Decomposes large initiatives into epic/task
+  backlog with dependencies and parallel waves before implementation starts.
 - **`cursor-pilot`** — read-only. Takes the Scoper handoff, emits a
   precise implementation prompt for the implementer subagent with a
   mandatory `HANDOFF_TO_QA` stop condition.
