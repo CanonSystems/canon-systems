@@ -51,3 +51,39 @@ def test_auto_rewire_skips_setup_enable_repo(monkeypatch, tmp_path: Path) -> Non
     cli._maybe_auto_rewire(tmp_path, "setup")
     cli._maybe_auto_rewire(tmp_path, "enable-repo")
     assert calls == []
+
+
+def test_auto_rewire_all_refreshes_multiple_repos_once(monkeypatch, tmp_path: Path) -> None:
+    repo_a = tmp_path / "a"
+    repo_b = tmp_path / "b"
+    for repo in (repo_a, repo_b):
+        (repo / ".git").mkdir(parents=True)
+        _write_pin(repo, "3.0.0")
+    monkeypatch.setattr(cli, "__version__", "3.1.0")
+    monkeypatch.setenv("CANON_SYSTEMS_REWIRE_ROOTS", str(tmp_path))
+    state_path = tmp_path / "rewire-state.json"
+    monkeypatch.setattr(cli, "_global_rewire_state_path", lambda: state_path)
+    touched: list[Path] = []
+    monkeypatch.setattr(cli, "enable_repo", lambda root: touched.append(root))
+
+    cli._maybe_auto_rewire_all("ask")
+    assert sorted(touched) == sorted([repo_a, repo_b])
+    # Second run on same version should no-op.
+    cli._maybe_auto_rewire_all("ask")
+    assert sorted(touched) == sorted([repo_a, repo_b])
+
+
+def test_auto_rewire_all_honors_disable_flag(monkeypatch, tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    (repo / ".git").mkdir(parents=True)
+    _write_pin(repo, "3.0.0")
+    monkeypatch.setattr(cli, "__version__", "3.1.0")
+    monkeypatch.setenv("CANON_SYSTEMS_REWIRE_ROOTS", str(tmp_path))
+    monkeypatch.setenv("CANON_SYSTEMS_DISABLE_GLOBAL_REWIRE", "1")
+    state_path = tmp_path / "rewire-state.json"
+    monkeypatch.setattr(cli, "_global_rewire_state_path", lambda: state_path)
+    touched: list[Path] = []
+    monkeypatch.setattr(cli, "enable_repo", lambda root: touched.append(root))
+
+    cli._maybe_auto_rewire_all("capture")
+    assert touched == []

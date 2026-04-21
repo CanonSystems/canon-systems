@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -60,6 +61,97 @@ def _maybe_auto_rewire(root: Path, command: str) -> None:
     except Exception as exc:
         print(
             f"canon-systems: auto-rewire skipped due to error: {exc}",
+            file=sys.stderr,
+        )
+
+
+def _global_rewire_state_path() -> Path:
+    return Path.home() / ".canon" / "global-rewire-state.json"
+
+
+def _global_rewire_roots() -> list[Path]:
+    raw = os.environ.get("CANON_SYSTEMS_REWIRE_ROOTS", "").strip()
+    if raw:
+        items = [p for p in raw.split(os.pathsep) if p.strip()]
+        return [Path(p).expanduser().resolve() for p in items]
+    return [(Path.home() / "localwork").resolve()]
+
+
+def _iter_wired_repos_under(root: Path, *, max_depth: int) -> list[Path]:
+    repos: list[Path] = []
+    if not root.exists() or not root.is_dir():
+        return repos
+    root_parts = len(root.parts)
+    for dirpath, dirnames, _filenames in os.walk(root):
+        current = Path(dirpath)
+        depth = len(current.parts) - root_parts
+        if depth > max_depth:
+            dirnames[:] = []
+            continue
+        if (current / ".git").exists() and (current / ".canon" / "memory-layer.local.env").exists():
+            repos.append(current)
+            dirnames[:] = []
+            continue
+        # Skip heavyweight folders during scan.
+        dirnames[:] = [d for d in dirnames if d not in (".git", ".venv", "node_modules", ".cursor")]
+    return repos
+
+
+def _should_run_global_rewire() -> bool:
+    path = _global_rewire_state_path()
+    if not path.exists():
+        return True
+    try:
+        parsed = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return True
+    if not isinstance(parsed, dict):
+        return True
+    return str(parsed.get("version", "")).strip() != __version__
+
+
+def _mark_global_rewire_done() -> None:
+    path = _global_rewire_state_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"version": __version__}
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _maybe_auto_rewire_all(command: str) -> None:
+    """Auto-refresh all wired repos once per installed canon-systems version."""
+    if command in ("setup", "enable-repo"):
+        return
+    if _truthy_env("CANON_SYSTEMS_DISABLE_AUTO_REWIRE"):
+        return
+    if _truthy_env("CANON_SYSTEMS_DISABLE_GLOBAL_REWIRE"):
+        return
+    if not _should_run_global_rewire():
+        return
+    try:
+        max_depth = int(os.environ.get("CANON_SYSTEMS_GLOBAL_REWIRE_MAX_DEPTH", "3"))
+    except ValueError:
+        max_depth = 3
+    max_depth = max(1, max_depth)
+
+    touched = 0
+    scanned = 0
+    for scan_root in _global_rewire_roots():
+        for repo in _iter_wired_repos_under(scan_root, max_depth=max_depth):
+            scanned += 1
+            pinned = _pinned_version(repo)
+            if pinned and _version_tuple(__version__) > _version_tuple(pinned):
+                try:
+                    enable_repo(repo)
+                    touched += 1
+                except Exception as exc:
+                    print(
+                        f"canon-systems: global auto-rewire skipped for {repo}: {exc}",
+                        file=sys.stderr,
+                    )
+    _mark_global_rewire_done()
+    if touched:
+        print(
+            f"canon-systems: auto-refreshed wiring in {touched} repo(s) (scanned {scanned}).",
             file=sys.stderr,
         )
 
@@ -193,6 +285,7 @@ def main(argv: list[str] | None = None) -> int:
         try_self_update(argv_for_exec)
 
     _maybe_auto_rewire(root, args.command)
+    _maybe_auto_rewire_all(args.command)
 
     if args.command == "setup":
         setup_args: list[str] = ["--repo-root", str(root)]

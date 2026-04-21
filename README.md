@@ -67,10 +67,13 @@ skip, or tune interval with `CANON_SYSTEMS_SELF_UPDATE_INTERVAL_SEC`.
 
 **Plug-and-play template refresh:** if installed `canon-systems` is newer than
 the repo pin, normal commands (`preflight`, `capture`, `ask`, etc.) now
-auto-refresh repo wiring (hooks/rules/agents) and bump the pin. This keeps
+auto-refresh repo wiring (hooks/rules/agents) and bump the pin. In addition,
+once per installed version, `canon` scans configured workspace roots (default
+`~/localwork`) and rewires all previously wired repos automatically. This keeps
 agent template updates (including DoR telemetry behavior) rolling out across
-machines without asking users to run extra wiring commands. Set
-`CANON_SYSTEMS_DISABLE_AUTO_REWIRE=1` to disable.
+machines without repo-by-repo manual commands. Set
+`CANON_SYSTEMS_DISABLE_AUTO_REWIRE=1` to disable all auto-rewire, or
+`CANON_SYSTEMS_DISABLE_GLOBAL_REWIRE=1` to disable only the cross-repo pass.
 
 Updating after a new push:
 

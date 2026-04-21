@@ -17,6 +17,24 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.1.1] - 2026-04-24
+
+### Changed
+
+- Auto-rewire now includes a cross-repo pass once per installed version: on
+  the first `canon` command after upgrade, it scans configured roots (default
+  `~/localwork`) for previously wired repos and refreshes hooks/rules/subagents
+  in one shot when repo pins are older.
+
+### Added
+
+- New tuning env vars for cross-repo auto-rewire:
+  - `CANON_SYSTEMS_REWIRE_ROOTS` (path-separated scan roots)
+  - `CANON_SYSTEMS_GLOBAL_REWIRE_MAX_DEPTH` (scan depth, default `3`)
+  - `CANON_SYSTEMS_DISABLE_GLOBAL_REWIRE=1` (disable only global pass)
+
+---
+
 ## [3.1.0] - 2026-04-24
 
 ### Added
