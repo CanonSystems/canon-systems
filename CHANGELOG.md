@@ -10,12 +10,37 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - `docs/MEMORY-PLATFORM-BACKLOG.md`: agent-executable `PROJECT_EXECUTION_PLAN`
-  for the memory platform (E1 stabilize -> E6 observability), including the
-  checkpoint schema, canonical event envelope, and CLI surface targeted by each
-  wave. Cross-linked from `docs/SYSTEM-WORKFLOW.md`,
+  for the Canon Memory Platform v1 build, now in 7-wave shape
+  (E0 consolidation -> E1 stabilize -> E2 state-api + DynamoDB ->
+  E3 backend/axon-service -> E4 resume + concurrency ->
+  E5 server-rendered synthesis vault with three read paths ->
+  E6 observability -> E7 cleanup + canon-wire distribution), including the
+  checkpoint schema, canonical event envelope, and CLI surface targeted by
+  each wave. Cross-linked from `docs/SYSTEM-WORKFLOW.md`,
   `docs/MEMORY-PLATFORM-PLAN.md`, and `README.md`.
+- `.cursor/rules/memory-platform-build-discipline.mdc`: hard-lock workspace
+  rule that mechanically enforces the
+  `scoper -> cursor-pilot -> implementer -> qa-gate -> release-orchestrator`
+  chain, forbids non-markdown writes until valid scoper + cursor-pilot packets
+  exist, mandates pre-flight context-window assessment at every wave boundary,
+  and requires the DoR telemetry triple on every rejection. Wave 7 will
+  template this rule into `src/canon_systems/templates/rules/` so
+  `canon wire` distributes it to every wired repo.
+- `.cursor/plans/canon_memory_platform_build_d21073e1.plan.md`: workspace-local
+  copy of the self-executing Build Kickoff plan for the Memory Platform v1
+  build.
 
 ### Changed
+
+- Backlog epic shape moved from E1-E6 to E0-E7. Adds Wave 0 (inventory +
+  consolidation into `backend/` monorepo with imported IaC) and Wave 7
+  (cleanup + canon-wire distribution of the hard-lock rule). Retargets
+  component paths from `src/canon_systems/checkpoint.py` etc. to
+  `backend/state-api/`, `backend/axon-service/`, `backend/synthesis/`,
+  `backend/synthesis-web/`. Expands Wave 5 to absorb useful `obsidian-mind`
+  logic server-side and deliver three independent read paths (browser,
+  agent CLI, automatic in-repo mirror) over a single S3-hosted
+  Obsidian-compatible vault.
 
 ### Fixed
 
