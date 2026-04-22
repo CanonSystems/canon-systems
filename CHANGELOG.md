@@ -9,6 +9,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- E0-T3: consolidated `knowledge-api`, `knowledge-worker`, and `memory-adapter`
+  from `canon-systems-v2` into `backend/` (copy + history waiver), plus v2 libs
+  `knowledge-schema`, `knowledge-policy`, and `knowledge-client` under `backend/`
+  so editable installs resolve imports without a sibling `libs/` tree; see
+  [docs/E0-T3-MIGRATION-NOTES.md](docs/E0-T3-MIGRATION-NOTES.md) and
+  `scripts/backend/build-services.sh` for install/import smoke.
 - E0-T2: backend/ skeleton + shared lib
 - `docs/SYSTEM-WORKFLOW.md` §5.1 "Auto-branching + per-task commits +
   PR-at-wave-close": mirrors `.cursor/rules/memory-platform-build-discipline.mdc`

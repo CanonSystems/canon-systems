@@ -154,4 +154,13 @@ Python backend services and the stdlib-only shared library (`canon_backend_share
 under `backend/shared/`) are colocated in `backend/` as setuptools packages, with
 `synthesis-web/` reserved for a future UI entrypoint (see E5-T4). Use
 `uv sync --all-packages` or `bash scripts/backend/install-workspace.sh` from the
-repo root to install the workspace. Details: `backend/README.md`.
+repo root to install the workspace. **`knowledge-api`** (flat `app/` + Alembic),
+**`knowledge-worker`**, and **`memory-adapter`** use the consolidated sources from
+`sibling` `canon-systems-v2` documented in
+[`docs/E0-T3-MIGRATION-NOTES.md`](E0-T3-MIGRATION-NOTES.md) (git history waived
+there in favor of a per-file map). The same migration brought **`knowledge-schema`**,
+**`knowledge-policy`**, and **`knowledge-client`** into `backend/` so `pip install -e`
+does not depend on a v2-style `libs/` checkout. For a quick CI-oriented check, run
+`bash scripts/backend/build-services.sh` after `pip`/`uv` resolves deps — it
+installs `backend/shared` and each leaf Python package, then import-smokes
+`*.main.app`. Details: `backend/README.md`.

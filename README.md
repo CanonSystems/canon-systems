@@ -39,10 +39,16 @@ is `canon_systems`. Current major version: **3.x**. See
 ## Backend monorepo
 
 Service packages and shared types for the Canon Memory Platform live under
-[`backend/`](backend/README.md). Install the workspace with `uv sync
---all-packages` or `bash scripts/backend/install-workspace.sh` from the repo
-root. The layout is described in
-[docs/SYSTEM-WORKFLOW.md](docs/SYSTEM-WORKFLOW.md) §10.
+[`backend/`](backend/README.md). **`knowledge-api`**, **`knowledge-worker`**, and
+**`memory-adapter`** now carry the production FastAPI sources consolidated from
+`sibling` repo `canon-systems-v2`, with v2 libs **`knowledge-schema`**,
+**`knowledge-policy`**, and **`knowledge-client`** also under `backend/` for
+editable-install import closure (see
+[docs/E0-T3-MIGRATION-NOTES.md](docs/E0-T3-MIGRATION-NOTES.md)). Install the
+workspace with `uv sync --all-packages` or
+`bash scripts/backend/install-workspace.sh` from the repo root; verify editable
+installs with `bash scripts/backend/build-services.sh`. The layout is described
+in [docs/SYSTEM-WORKFLOW.md](docs/SYSTEM-WORKFLOW.md) §10.
 
 ## Distribution
 
