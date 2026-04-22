@@ -1,0 +1,60 @@
+{
+  "request": {
+    "artifact_id": "art_memcap_20260422T133118Z_usr_new.moon3461",
+    "version_id": "ver_art_memcap_20260422T133118Z_usr_new.moon3461",
+    "title": "Session memory capture (edward-Nf8bZHgYi9)",
+    "transcript_text": "## User Prompt\n\nprobe user\n\n## Assistant Output\n\nprobe assistant\n\n## Metadata\n\n- actor_id: usr_new.moon3461\n- actor_display_name: edward-Nf8bZHgYi9\n- company_id: IMC\n- repository_id: innermost\n- source_surface: cursor\n",
+    "created_by": "usr_new.moon3461",
+    "source_system": "cursor-memory-hooks",
+    "body_bucket": "canon-systems-v2-dev-artifacts-4952f257",
+    "summary": "health probe",
+    "decisions": [],
+    "next_actions": [],
+    "open_questions": [],
+    "owners": [
+      "usr_new.moon3461"
+    ],
+    "scope_ids": [
+      "IMC"
+    ],
+    "repo_ids": [
+      "innermost"
+    ],
+    "conversation_ids": []
+  },
+  "response_status": 201,
+  "response_payload": {
+    "fallback": "knowledge_api.create_artifact",
+    "payload": {
+      "artifact_id": "art_memcap_20260422T133118Z_usr_new.moon3461",
+      "version_id": "ver_art_memcap_20260422T133118Z_usr_new.moon3461",
+      "artifact_type": "memory_capture",
+      "title": "Session memory capture (edward-Nf8bZHgYi9)",
+      "status": "draft",
+      "visibility": "team",
+      "owners": [
+        "usr_new.moon3461"
+      ],
+      "groups": [],
+      "scope_ids": [
+        "IMC"
+      ],
+      "repo_ids": [
+        "innermost"
+      ],
+      "work_item_ids": [],
+      "conversation_ids": [],
+      "source_system": "cursor-memory-hooks",
+      "supersedes_artifact_id": null,
+      "body_ref": {
+        "storage": "s3",
+        "bucket": "canon-systems-v2-dev-artifacts-4952f257",
+        "key": "artifacts/art_memcap_20260422T133118Z_usr_new.moon3461/ver_art_memcap_20260422T133118Z_usr_new.moon3461/body.md",
+        "content_type": "text/markdown"
+      },
+      "summary": "health probe",
+      "created_at": "2026-04-22T13:31:18.586613+00:00",
+      "created_by": "usr_new.moon3461"
+    }
+  }
+}
