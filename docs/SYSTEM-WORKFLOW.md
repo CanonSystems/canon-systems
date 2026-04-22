@@ -42,6 +42,8 @@ Plan state file:
 
 - `.cursor/plans/<plan-id>.plan.md` updated on every task status transition.
 
+- **Resume engine (`canon resume`)**: Read-only, idempotent scanner over state-api checkpoints. Given a `--plan-id` + tenant scope and a task list (via `--tasks-file` or `--handoffs-dir`), it returns a JSON envelope identifying the first incomplete `(task_id, phase)` pair per the canonical 5-phase order (`scoper → cursor-pilot → implementer → qa-gate → release-orchestrator`). The engine emits zero canonical events — operators (or the parent agent) use the output to decide which agent to re-invoke; the re-invocation itself happens elsewhere. Running `canon resume` twice on unchanged plan state yields byte-identical stdout.
+
 ## 4) DoR rejection telemetry contract
 
 When `scoper` or `cursor-pilot` returns `HANDOFF_NOT_READY`, parent orchestration
