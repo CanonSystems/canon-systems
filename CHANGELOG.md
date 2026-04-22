@@ -17,6 +17,21 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.3.2] - 2026-04-24
+
+### Changed
+
+- Release/task orchestration now enforces strict per-`task_id` progression to
+  prevent untracked "slice" execution drift.
+- Handoff packets are now required to be persisted to
+  `.cursor/handoffs/<handoff_id>/<task_id>/...` files, not only emitted in chat.
+- Added stalled-background watchdog policy (>10 min no progress) with required
+  blocker escalation and targeted unblock prompt.
+- Added explicit per-task `canon capture` discipline for terminal task states to
+  improve memory quality and retrieval coverage.
+
+---
+
 ## [3.3.1] - 2026-04-24
 
 ### Changed

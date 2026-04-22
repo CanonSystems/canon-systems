@@ -135,6 +135,16 @@ with dependency-driven waves until complete.
 - If policy requires external approver, do not self-approve; stop and request
   reviewer action with exact PR URL and reason.
 
+## Task granularity + packet persistence (required)
+
+- Process work per `task_id`; do not run ambiguous "slices" without explicit
+  task_id mapping from `PROJECT_EXECUTION_PLAN`.
+- Persist each scoper/cursor-pilot/qa/release packet to
+  `.cursor/handoffs/<handoff_id>/<task_id>/...` files (not chat-only).
+- Update `.cursor/plans/<plan-id>.plan.md` after every task status change.
+- If a background subagent stalls (>10 minutes without progress), mark STALLED,
+  escalate (Slack where configured), and ask one targeted unblock question.
+
 ## Slack escalation (required)
 
 For any blocked task (missing credentials, permissions, CI gate failure,

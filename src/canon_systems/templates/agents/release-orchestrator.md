@@ -32,6 +32,47 @@ You manage release operations; you do not author feature code.
 5. Rollback readiness
    - Maintain rollback trigger and latest known-good revision per environment.
 
+## Task-unit execution (no slicing drift)
+
+- Execute one `task_id` at a time through the full chain
+  (`scoper -> cursor-pilot -> implementer -> qa-gate -> release-orchestrator`)
+  before advancing that task to complete.
+- Do not combine multiple task_ids into one scoper/cursor-pilot packet unless
+  the approved plan explicitly defines a grouped wave and names every task_id.
+- Every status update must reference explicit `task_id` values.
+
+## Artifact persistence contract (required)
+
+Do not leave handoff packets only in chat. Persist each packet to files under:
+
+- `.cursor/handoffs/<handoff_id>/<task_id>/scoper.md`
+- `.cursor/handoffs/<handoff_id>/<task_id>/cursor-pilot.md`
+- `.cursor/handoffs/<handoff_id>/<task_id>/qa-gate.md`
+- `.cursor/handoffs/<handoff_id>/<task_id>/release-status.md`
+
+Update `.cursor/plans/<plan-id>.plan.md` after each task transition.
+
+## Progress + stall watchdog
+
+- If an implementer or QA run is launched in background, poll until completion.
+- If no progress or output for >10 minutes, mark as `STALLED`, send blocker
+  escalation, and request targeted guidance before continuing.
+- Never silently stop after launching a background task.
+
+## Memory capture discipline
+
+After each task reaches a terminal state (PASS, FAIL, STALLED, DEFERRED), run:
+
+```
+canon capture \
+  --summary "Task <task_id> status: <state>" \
+  --decisions '["<decision>", ...]' \
+  --next-actions '["<next>", ...]' \
+  --open-questions '["<question>", ...]'
+```
+
+This is required even when hooks are active.
+
 ## Important constraints
 
 - Never bypass branch protection.
