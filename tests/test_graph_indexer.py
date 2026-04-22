@@ -440,8 +440,102 @@ def test_reindex_status_http_4xx(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def test_query_placeholder_does_not_call_http(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_graph_query_help_returns_0() -> None:
+    assert graph_indexer.run(["query", "--help"]) == 0
+
+
+def test_graph_impact_help_returns_0() -> None:
+    assert graph_indexer.run(["impact", "--help"]) == 0
+
+
+def test_graph_query_success(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_http(
+        url: str,
+        *,
+        method: str,
+        headers: dict[str, str] | None = None,
+        body: bytes | None = None,
+        timeout: float = 30.0,
+    ) -> tuple[int, bytes, dict[str, str]]:
+        captured["url"] = url
+        captured["headers"] = dict(headers or {})
+        assert method == "GET"
+        return (200, b'{"ok":true}\n', {})
+
+    monkeypatch.setattr(graph_indexer, "_http_request", fake_http)
+    assert (
+        graph_indexer.run(
+            [
+                "query",
+                "--commit-sha",
+                "abc",
+                "--company-id",
+                "acme",
+                "--repository-id",
+                "repo1",
+                "--q",
+                "hello",
+                "--base-url",
+                "http://h",
+                "--service-token",
+                "tok",
+            ]
+        )
+        == 0
+    )
+    assert "/axon/acme/repo1/query?" in captured["url"]
+    assert "q=hello" in captured["url"]
+    assert "commit_sha=abc" in captured["url"]
+    assert captured["headers"].get("Authorization") == "Bearer tok"
+    assert "true" in capsys.readouterr().out
+
+
+def test_graph_query_with_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_http(
+        url: str,
+        *,
+        method: str,
+        headers: dict[str, str] | None = None,
+        body: bytes | None = None,
+        timeout: float = 30.0,
+    ) -> tuple[int, bytes, dict[str, str]]:
+        captured["url"] = url
+        return (200, b"{}\n", {})
+
+    monkeypatch.setattr(graph_indexer, "_http_request", fake_http)
+    assert (
+        graph_indexer.run(
+            [
+                "query",
+                "--commit-sha",
+                "s",
+                "--company-id",
+                "c",
+                "--repository-id",
+                "r",
+                "--q",
+                "x",
+                "--limit",
+                "25",
+                "--base-url",
+                "http://h",
+                "--service-token",
+                "t",
+            ]
+        )
+        == 0
+    )
+    assert "limit=25" in captured["url"]
+
+
+def test_graph_query_missing_token_returns_2(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[int] = []
+    monkeypatch.delenv("AXON_SERVICE_URL", raising=False)
+    monkeypatch.delenv("AXON_SERVICE_TOKEN", raising=False)
 
     def fake_http(
         url: str,
@@ -455,12 +549,30 @@ def test_query_placeholder_does_not_call_http(monkeypatch: pytest.MonkeyPatch) -
         return (200, b"{}", {})
 
     monkeypatch.setattr(graph_indexer, "_http_request", fake_http)
-    assert graph_indexer.run(["query", "--x"]) == 2
+    assert (
+        graph_indexer.run(
+            [
+                "query",
+                "--commit-sha",
+                "abc",
+                "--company-id",
+                "c",
+                "--repository-id",
+                "r",
+                "--q",
+                "hello",
+                "--base-url",
+                "http://h",
+            ]
+        )
+        == 2
+    )
     assert calls == []
 
 
-def test_impact_placeholder_does_not_call_http(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_graph_query_missing_base_url_returns_2(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[int] = []
+    monkeypatch.delenv("AXON_SERVICE_URL", raising=False)
 
     def fake_http(
         url: str,
@@ -474,5 +586,243 @@ def test_impact_placeholder_does_not_call_http(monkeypatch: pytest.MonkeyPatch) 
         return (200, b"{}", {})
 
     monkeypatch.setattr(graph_indexer, "_http_request", fake_http)
-    assert graph_indexer.run(["impact", "sym"]) == 2
+    assert (
+        graph_indexer.run(
+            [
+                "query",
+                "--commit-sha",
+                "abc",
+                "--company-id",
+                "c",
+                "--repository-id",
+                "r",
+                "--q",
+                "q",
+                "--service-token",
+                "t",
+            ]
+        )
+        == 2
+    )
     assert calls == []
+
+
+def test_graph_query_http_4xx_returns_3_and_unwraps_detail(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def fake_http(
+        url: str,
+        *,
+        method: str,
+        headers: dict[str, str] | None = None,
+        body: bytes | None = None,
+        timeout: float = 30.0,
+    ) -> tuple[int, bytes, dict[str, str]]:
+        return (404, b'{"detail":"no snapshot"}', {})
+
+    monkeypatch.setattr(graph_indexer, "_http_request", fake_http)
+    assert (
+        graph_indexer.run(
+            [
+                "query",
+                "--commit-sha",
+                "c",
+                "--company-id",
+                "a",
+                "--repository-id",
+                "b",
+                "--q",
+                "q",
+                "--base-url",
+                "http://h",
+                "--service-token",
+                "t",
+            ]
+        )
+        == 3
+    )
+    assert "no snapshot" in capsys.readouterr().err
+
+
+def test_graph_query_transport_error_returns_5(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_http(
+        url: str,
+        *,
+        method: str,
+        headers: dict[str, str] | None = None,
+        body: bytes | None = None,
+        timeout: float = 30.0,
+    ) -> tuple[int, bytes, dict[str, str]]:
+        raise graph_indexer.TransportError("boom")
+
+    monkeypatch.setattr(graph_indexer, "_http_request", fake_http)
+    assert (
+        graph_indexer.run(
+            [
+                "query",
+                "--commit-sha",
+                "a",
+                "--company-id",
+                "a",
+                "--repository-id",
+                "a",
+                "--q",
+                "a",
+                "--base-url",
+                "http://h",
+                "--service-token",
+                "h",
+            ]
+        )
+        == 5
+    )
+
+
+def test_graph_query_unexpected_http_returns_1(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_http(
+        url: str,
+        *,
+        method: str,
+        headers: dict[str, str] | None = None,
+        body: bytes | None = None,
+        timeout: float = 30.0,
+    ) -> tuple[int, bytes, dict[str, str]]:
+        return (204, b"", {})
+
+    monkeypatch.setattr(graph_indexer, "_http_request", fake_http)
+    assert (
+        graph_indexer.run(
+            [
+                "query",
+                "--commit-sha",
+                "a",
+                "--company-id",
+                "a",
+                "--repository-id",
+                "a",
+                "--q",
+                "a",
+                "--base-url",
+                "http://h",
+                "--service-token",
+                "h",
+            ]
+        )
+        == 1
+    )
+
+
+def test_graph_impact_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_http(
+        url: str,
+        *,
+        method: str,
+        headers: dict[str, str] | None = None,
+        body: bytes | None = None,
+        timeout: float = 30.0,
+    ) -> tuple[int, bytes, dict[str, str]]:
+        captured["url"] = url
+        assert method == "GET"
+        assert headers and "Bearer" in headers.get("Authorization", "")
+        return (200, b'{"d":1}\n', {})
+
+    monkeypatch.setattr(graph_indexer, "_http_request", fake_http)
+    assert (
+        graph_indexer.run(
+            [
+                "impact",
+                "--commit-sha",
+                "c2",
+                "--company-id",
+                "a",
+                "--repository-id",
+                "a",
+                "--symbol",
+                "foo.bar",
+                "--base-url",
+                "http://h",
+                "--service-token",
+                "h",
+            ]
+        )
+        == 0
+    )
+    assert "/axon/a/a/impact?" in captured["url"]
+    assert "symbol=foo.bar" in captured["url"]
+    assert "commit_sha=c2" in captured["url"]
+
+
+def test_graph_impact_with_depth(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_http(
+        url: str,
+        *,
+        method: str,
+        headers: dict[str, str] | None = None,
+        body: bytes | None = None,
+        timeout: float = 30.0,
+    ) -> tuple[int, bytes, dict[str, str]]:
+        captured["url"] = url
+        return (200, b"{}\n", {})
+
+    monkeypatch.setattr(graph_indexer, "_http_request", fake_http)
+    assert (
+        graph_indexer.run(
+            [
+                "impact",
+                "--commit-sha",
+                "s",
+                "--company-id",
+                "a",
+                "--repository-id",
+                "a",
+                "--symbol",
+                "S",
+                "--depth",
+                "3",
+                "--base-url",
+                "http://h",
+                "--service-token",
+                "h",
+            ]
+        )
+        == 0
+    )
+    assert "depth=3" in captured["url"]
+
+
+def test_graph_impact_http_5xx_returns_4(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_http(
+        url: str,
+        *,
+        method: str,
+        headers: dict[str, str] | None = None,
+        body: bytes | None = None,
+        timeout: float = 30.0,
+    ) -> tuple[int, bytes, dict[str, str]]:
+        return (503, b"{}", {})
+
+    monkeypatch.setattr(graph_indexer, "_http_request", fake_http)
+    assert (
+        graph_indexer.run(
+            [
+                "impact",
+                "--commit-sha",
+                "a",
+                "--company-id",
+                "a",
+                "--repository-id",
+                "a",
+                "--symbol",
+                "x",
+                "--base-url",
+                "http://h",
+                "--service-token",
+                "h",
+            ]
+        )
+        == 4
+    )

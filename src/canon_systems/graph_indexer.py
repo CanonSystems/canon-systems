@@ -200,6 +200,11 @@ def _cmd_reindex_status(args: argparse.Namespace) -> int:
         return EXIT_USAGE
     sha_q = quote(args.commit_sha, safe="")
     url = f"{base_url}/axon/{args.company_id}/{args.repository_id}/reindex-status?commit_sha={sha_q}"
+    return _get_bearer_and_print(url, token)
+
+
+def _get_bearer_and_print(url: str, token: str) -> int:
+    """GET with Bearer; print response body on 200; map 4xx/5xx/transport to exit codes."""
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     try:
         status, resp_body, _h = _http_request(url, method="GET", headers=headers, timeout=30.0)
@@ -218,14 +223,36 @@ def _cmd_reindex_status(args: argparse.Namespace) -> int:
     return EXIT_SERVER
 
 
-def _cmd_query(_args: argparse.Namespace) -> int:
-    print("canon graph query: deferred to E3-T3; use canon graph index for writes", file=sys.stderr)
-    return EXIT_USAGE
+def _cmd_query(args: argparse.Namespace) -> int:
+    base_url = _resolve_base_url(args)
+    if not base_url:
+        print(f"error: missing --base-url or {ENV_BASE}", file=sys.stderr)
+        return EXIT_USAGE
+    token = _resolve_token(args)
+    if not token:
+        print(f"error: missing --service-token or {ENV_TOKEN}", file=sys.stderr)
+        return EXIT_USAGE
+    params = [f"q={quote(args.q, safe='')}", f"commit_sha={quote(args.commit_sha, safe='')}"]
+    if args.limit is not None:
+        params.append(f"limit={int(args.limit)}")
+    url = f"{base_url}/axon/{args.company_id}/{args.repository_id}/query?{'&'.join(params)}"
+    return _get_bearer_and_print(url, token)
 
 
-def _cmd_impact(_args: argparse.Namespace) -> int:
-    print("canon graph query: deferred to E3-T3; use canon graph index for writes", file=sys.stderr)
-    return EXIT_USAGE
+def _cmd_impact(args: argparse.Namespace) -> int:
+    base_url = _resolve_base_url(args)
+    if not base_url:
+        print(f"error: missing --base-url or {ENV_BASE}", file=sys.stderr)
+        return EXIT_USAGE
+    token = _resolve_token(args)
+    if not token:
+        print(f"error: missing --service-token or {ENV_TOKEN}", file=sys.stderr)
+        return EXIT_USAGE
+    params = [f"symbol={quote(args.symbol, safe='')}", f"commit_sha={quote(args.commit_sha, safe='')}"]
+    if args.depth is not None:
+        params.append(f"depth={int(args.depth)}")
+    url = f"{base_url}/axon/{args.company_id}/{args.repository_id}/impact?{'&'.join(params)}"
+    return _get_bearer_and_print(url, token)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -251,8 +278,23 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--base-url", default=None)
     pr.add_argument("--service-token", default=None)
 
-    sp.add_parser("query", help="Deferred (E3-T3).")
-    sp.add_parser("impact", help="Deferred (E3-T3).")
+    pq = sp.add_parser("query", help="GET /axon/.../query (graph retrieval).")
+    pq.add_argument("--commit-sha", required=True)
+    pq.add_argument("--company-id", required=True)
+    pq.add_argument("--repository-id", required=True)
+    pq.add_argument("--q", required=True, help="Free-text query string.")
+    pq.add_argument("--limit", type=int, default=None)
+    pq.add_argument("--base-url", default=None)
+    pq.add_argument("--service-token", default=None)
+
+    pimp = sp.add_parser("impact", help="GET /axon/.../impact (blast radius).")
+    pimp.add_argument("--commit-sha", required=True)
+    pimp.add_argument("--company-id", required=True)
+    pimp.add_argument("--repository-id", required=True)
+    pimp.add_argument("--symbol", required=True, help="Fully-qualified symbol or file path.")
+    pimp.add_argument("--depth", type=int, default=None)
+    pimp.add_argument("--base-url", default=None)
+    pimp.add_argument("--service-token", default=None)
     return p
 
 
