@@ -26,6 +26,50 @@ is `canon_systems`. Current major version: **3.x**. See
 > **New team member?** Start with [docs/ONBOARDING.md](docs/ONBOARDING.md).
 > It walks you through installing the CLI, wiring up AWS credentials with
 > an IAM key pair, and enabling your first repo in about ten minutes.
+>
+> **Need the current operating model?** See
+> [docs/SYSTEM-WORKFLOW.md](docs/SYSTEM-WORKFLOW.md) (living spec; update each
+> Canon iteration).
+>
+> **Want the forward plan?** See the target architecture in
+> [docs/MEMORY-PLATFORM-PLAN.md](docs/MEMORY-PLATFORM-PLAN.md) and the
+> agent-executable backlog in
+> [docs/MEMORY-PLATFORM-BACKLOG.md](docs/MEMORY-PLATFORM-BACKLOG.md).
+
+## Backend monorepo
+
+Service packages and shared types for the Canon Memory Platform live under
+[`backend/`](backend/README.md). **`knowledge-api`**, **`knowledge-worker`**, and
+**`memory-adapter`** now carry the production FastAPI sources consolidated from
+`sibling` repo `canon-systems-v2`, with v2 libs **`knowledge-schema`**,
+**`knowledge-policy`**, and **`knowledge-client`** also under `backend/` for
+editable-install import closure (see
+[docs/E0-T3-MIGRATION-NOTES.md](docs/E0-T3-MIGRATION-NOTES.md)). Install the
+workspace with `uv sync --all-packages` or
+`bash scripts/backend/install-workspace.sh` from the repo root; verify editable
+installs with `bash scripts/backend/build-services.sh`. The layout is described
+in [docs/SYSTEM-WORKFLOW.md](docs/SYSTEM-WORKFLOW.md) §10.
+
+## Infra
+
+Declarative AWS for the **knowledge-api / knowledge-worker dev plane** (VPC, ECR,
+RDS, S3, Secrets, baseline ECS) lives under [`infra/terraform/`](infra/terraform/README.md),
+mirrored from sibling `canon-systems-v2` with provenance in
+[`docs/E0-T4-INFRA-IMPORT.md`](docs/E0-T4-INFRA-IMPORT.md). Cognito and public-ingress
+Terraform remain under [`infra/auth-ingress/`](infra/auth-ingress/) (separate root).
+
+### Smoke test (Wave 0)
+
+From the repo root, after a normal editable install, run
+`bash scripts/smoke-test.sh`. It runs `scripts/backend/build-services.sh`, the full
+`pytest -q` suite, then `terraform` init/validate under `infra/terraform` (no AWS
+credentials, no `apply`). If `VIRTUAL_ENV` is unset, the script creates
+`.venv-smoke/`, installs `pip install -e . pytest` plus `requirements-dev.txt`, then
+runs the stages. CI runs the same script in **Canon Smoke Test**
+(`.github/workflows/ci.yml`) on `pull_request` and pushes to `main` and `wave/**`.
+To skip the terraform stage when the binary is missing locally, set
+`SMOKE_SKIP_TERRAFORM=1` (default is to require `terraform` on `PATH`). Closeout
+notes and operator follow-ups: [`docs/WAVE-0-CLOSEOUT.md`](docs/WAVE-0-CLOSEOUT.md).
 
 ## Distribution
 
@@ -164,7 +208,8 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon version-check` | Hard-fail if installed < pinned. |
 | `canon auth-migration <status\|prepare\|canary\|enforce\|rollback>` | Manage phased domain/auth migration state in repo env. |
 | `canon dor-log --event-json '{...}'` | Push DoR failure telemetry to server; queue locally on send failure. |
-| `canon qa-validate --file <path> --require-pass` | Validate persisted QA gate packet fields and referenced test files. |
+| `canon qa-validate --file <path> --require-pass [--handoff-id <id> --task-id <id> --require-dor-telemetry]` | Validate persisted QA gate packet fields/referenced tests; optionally require DoR rejection telemetry artifacts for the task. |
+| `canon flow-audit --handoff-id <id> --task-id <id>` | Audit process compliance artifacts (handoff files + plan/task tracking), with optional sampling. |
 | `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
 | `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |

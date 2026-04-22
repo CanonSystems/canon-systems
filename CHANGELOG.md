@@ -9,11 +9,98 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- E0-T5: consolidation smoke harness — `scripts/smoke-test.sh` (build → `pytest -q` →
+  `terraform` validate), GitHub Actions **Canon Smoke Test** (`.github/workflows/ci.yml`),
+  `requirements-dev.txt` (PyYAML for workflow assertions), `tests/test_consolidation_smoke.py`,
+  and closeout doc [`docs/WAVE-0-CLOSEOUT.md`](docs/WAVE-0-CLOSEOUT.md). No AWS or live URL
+  calls; `SMOKE_SKIP_TERRAFORM=1` optional local escape hatch.
+- E0-T4: `infra/terraform/` Terraform root (byte-faithful mirror of
+  `canon-systems-v2/infra/terraform/` @ `ebecb91`, excluding state/lock/cache/plan
+  artifacts) plus import manifest in `infra/terraform/README.md`; migration note
+  [`docs/E0-T4-INFRA-IMPORT.md`](docs/E0-T4-INFRA-IMPORT.md); layout tests in
+  `tests/test_infra_layout.py`; `infra/README.md` index. No cloud commands executed
+  in-task.
+- E0-T3: consolidated `knowledge-api`, `knowledge-worker`, and `memory-adapter`
+  from `canon-systems-v2` into `backend/` (copy + history waiver), plus v2 libs
+  `knowledge-schema`, `knowledge-policy`, and `knowledge-client` under `backend/`
+  so editable installs resolve imports without a sibling `libs/` tree; see
+  [docs/E0-T3-MIGRATION-NOTES.md](docs/E0-T3-MIGRATION-NOTES.md) and
+  `scripts/backend/build-services.sh` for install/import smoke.
+- E0-T2: backend/ skeleton + shared lib
+- `docs/SYSTEM-WORKFLOW.md` §5.1 "Auto-branching + per-task commits +
+  PR-at-wave-close": mirrors `.cursor/rules/memory-platform-build-discipline.mdc`
+  §§9-10 into the living workflow spec so the living-spec invariant
+  (`docs/MEMORY-PLATFORM-BACKLOG.md` §G) stays satisfied for multi-wave
+  initiatives. The rule file remains authoritative; §5.1 is the summary.
+- `docs/MEMORY-PLATFORM-BACKLOG.md`: agent-executable `PROJECT_EXECUTION_PLAN`
+  for the Canon Memory Platform v1 build, now in 7-wave shape
+  (E0 consolidation -> E1 stabilize -> E2 state-api + DynamoDB ->
+  E3 backend/axon-service -> E4 resume + concurrency ->
+  E5 server-rendered synthesis vault with three read paths ->
+  E6 observability -> E7 cleanup + canon-wire distribution), including the
+  checkpoint schema, canonical event envelope, and CLI surface targeted by
+  each wave. Cross-linked from `docs/SYSTEM-WORKFLOW.md`,
+  `docs/MEMORY-PLATFORM-PLAN.md`, and `README.md`.
+- `.cursor/rules/memory-platform-build-discipline.mdc`: hard-lock workspace
+  rule that mechanically enforces the
+  `scoper -> cursor-pilot -> implementer -> qa-gate -> release-orchestrator`
+  chain, forbids non-markdown writes until valid scoper + cursor-pilot packets
+  exist, mandates pre-flight context-window assessment at every wave boundary,
+  and requires the DoR telemetry triple on every rejection. Wave 7 will
+  template this rule into `src/canon_systems/templates/rules/` so
+  `canon wire` distributes it to every wired repo.
+- `.cursor/plans/canon_memory_platform_build_d21073e1.plan.md`: workspace-local
+  copy of the self-executing Build Kickoff plan for the Memory Platform v1
+  build.
+
 ### Changed
+
+- Backlog epic shape moved from E1-E6 to E0-E7. Adds Wave 0 (inventory +
+  consolidation into `backend/` monorepo with imported IaC) and Wave 7
+  (cleanup + canon-wire distribution of the hard-lock rule). Retargets
+  component paths from `src/canon_systems/checkpoint.py` etc. to
+  `backend/state-api/`, `backend/axon-service/`, `backend/synthesis/`,
+  `backend/synthesis-web/`. Expands Wave 5 to absorb useful `obsidian-mind`
+  logic server-side and deliver three independent read paths (browser,
+  agent CLI, automatic in-repo mirror) over a single S3-hosted
+  Obsidian-compatible vault.
 
 ### Fixed
 
 ### Removed
+
+---
+
+## [3.3.5] - 2026-04-24
+
+### Added
+
+- `qa-validate` now supports optional DoR rejection telemetry gating via:
+  `--handoff-id`, `--task-id`, and `--require-dor-telemetry`.
+- New living operations spec: `docs/SYSTEM-WORKFLOW.md`, documenting the
+  current end-to-end Canon execution model and required update checklist for
+  every future iteration.
+
+### Changed
+
+- Release governance templates/rules now require `qa-validate` DoR telemetry
+  checks for task-level rejection events before merge.
+- `flow-audit` and `qa-validate` contracts now align on persisted
+  `handoff-not-ready` and `dor-failure` artifact requirements.
+
+---
+
+## [3.3.4] - 2026-04-24
+
+### Added
+
+- New `canon flow-audit` command to audit process compliance artifacts
+  (handoff packet files and plan/task tracking) without reviewing code.
+- Flow-audit sampling support via `--sample-rate` for lightweight random checks.
+
+### Changed
+
+- Release governance now includes sampled `flow-audit` in merge gates.
 
 ---
 

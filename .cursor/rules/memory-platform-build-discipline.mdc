@@ -1,0 +1,202 @@
+---
+description: Hard-locked execution discipline for the Canon Memory Platform v1 build. Auto-loaded every agent turn in this workspace. Overrides conflicting defaults.
+alwaysApply: true
+---
+
+# Canon Memory Platform Build Discipline (hard lock)
+
+This rule applies to **every** agent turn in this workspace. It supersedes any
+conflicting prior instruction, template default, or "be helpful" heuristic.
+
+The authoritative plan is at
+`.cursor/plans/canon_memory_platform_build_d21073e1.plan.md`
+(see its "Build Kickoff" section). This rule enforces that plan.
+
+## 1. The agent chain is mandatory and strictly ordered
+
+For any task derived from the Canon Memory Platform v1 plan, implementation
+work MUST be delegated through the following subagents, **in this exact
+order**, one at a time per `task_id`:
+
+`scoper -> cursor-pilot -> implementer -> qa-gate -> release-orchestrator`
+
+You are the **parent orchestrator**. Your job is to:
+
+- pick the next task (respecting `depends_on`),
+- hand it to `scoper`,
+- persist every packet,
+- enforce merge gates,
+- advance to the next task.
+
+You are **not** the implementer. You do not skip phases. You do not combine
+phases. You do not reorder phases.
+
+## 2. No direct non-markdown writes without valid packets
+
+For any `task_id`, you are forbidden from writing any non-markdown file
+(no code, tests, YAML, JSON, config, binary, or infra artifacts) until
+**all three** of these are true:
+
+- `.cursor/handoffs/<handoff_id>/<task_id>/scoper.md` exists,
+- `.cursor/handoffs/<handoff_id>/<task_id>/cursor-pilot.md` exists,
+- the `cursor-pilot` packet contains a `CURSOR_PILOT_PROMPT` (not `HANDOFF_NOT_READY`).
+
+Markdown edits to the plan file, `docs/**/*.md`, `README.md`, `CHANGELOG.md`,
+rule files, and agent templates are permitted as orchestration artifacts.
+
+Writing any other file type without the above packets is a policy violation
+and must be rolled back.
+
+## 3. Pre-flight is non-negotiable
+
+Before handing any task to `scoper`, every execution-starting turn MUST:
+
+1. State the **context-window assessment** from the plan's Build Kickoff
+   Step 0 in plain language, as the first visible output, before any
+   non-trivial tool calls.
+2. Verify `docs/MEMORY-PLATFORM-BACKLOG.md`'s `PROJECT_EXECUTION_PLAN` block
+   matches the 7-wave shape described in the plan. If it does not, the very
+   first action is the `rewrite_backlog` todo (markdown-only edit).
+3. Verify this rule file still exists and has not been weakened since plan
+   approval. If it has been modified, refuse to execute and surface the diff.
+
+Only after all three are satisfied may the first `scoper` invocation occur.
+
+## 4. Every phase must persist its packet
+
+No phase is "done" until its packet is on disk at the path specified by
+`docs/SYSTEM-WORKFLOW.md` Section 3:
+
+- `.cursor/handoffs/<handoff_id>/<task_id>/scoper.md`
+- `.cursor/handoffs/<handoff_id>/<task_id>/cursor-pilot.md`
+- `.cursor/handoffs/<handoff_id>/<task_id>/qa-gate.md`
+- `.cursor/handoffs/<handoff_id>/<task_id>/release-status.md`
+
+Chat-only claims of completion are not acceptable evidence.
+
+## 5. DoR rejections produce the full telemetry triple
+
+When `scoper` or `cursor-pilot` returns `HANDOFF_NOT_READY`, the parent MUST
+persist all three of:
+
+- the rejection packet under `.cursor/handoffs/<handoff_id>/<task_id>/handoff-not-ready/`,
+- the DoR telemetry JSON under `.cursor/handoffs/<handoff_id>/<task_id>/dor-failure/`,
+- the telemetry send status (with `exit_code:`) under the same `dor-failure/` dir,
+
+and run `canon dor-log --event-file <that.json> --quiet` from the parent
+context. Without all three files present and the command executed, the task
+does not advance.
+
+## 6. Merge gates are cumulative, not optional
+
+Before any merge, ALL of the following must pass:
+
+- `qa-gate` verdict is `PASS`,
+- `canon qa-validate --file <qa-gate.md> --require-pass`,
+- `canon qa-validate ... --handoff-id <id> --task-id <id> --require-dor-telemetry`,
+- sampled `canon flow-audit --handoff-id <id> --task-id <id>`,
+- required CI checks,
+- `canon memory-health` (once Wave 1 delivers it).
+
+Missing any gate = no merge.
+
+## 7. Wave boundaries re-run Step 0
+
+On completion of each wave (E0 through E7), before starting the next wave,
+the parent MUST re-run the context-window assessment from the plan's Build
+Kickoff Step 0 and explicitly recommend continue-or-fresh-window. Skipping
+this is a policy violation.
+
+## 8. Escape hatch
+
+If any rule above conflicts with user intent, **stop and ask**. Do not
+silently bypass. Do not assume you know better than the rule.
+
+## 9. Per-task commit protocol (mandatory, automatic)
+
+When a task's `release-status.md` records `verdict: READY_TO_MERGE`, the
+parent orchestrator MUST, without asking:
+
+1. Stage the task's artifacts PLUS its packet quartet
+   (`.cursor/handoffs/<handoff_id>/<task_id>/{scoper,cursor-pilot,qa-gate,release-status}.md`).
+2. Commit with a Conventional Commit message:
+
+   ```
+   <task_id>: <task title from scoper scope_summary>
+
+   - qa_gate: PASS (X/X ACs)
+   - qa_validate: PASS
+   - flow_audit: PASS
+   - pytest: <one-line summary>
+
+   handoff_id: <handoff_id>
+   plan_id: <plan_id>
+   workstream_id: <workstream_id>
+   ```
+
+3. The commit MUST be on the wave branch (see §10), not on `main`.
+4. One commit per task. No squashing. No amending once pushed.
+5. A pre-flight / pre-task chore (e.g., installing this rule file, rewriting
+   the backlog, copying the plan into the workspace) commits as
+   `chore(memory-platform-v1): <brief>` on the same wave branch before the
+   first task commit of that wave.
+
+Failure to commit after READY_TO_MERGE = policy violation. The next task's
+`scoper` invocation MUST refuse to start until the prior task's commit is
+on the wave branch.
+
+## 10. Auto-branching + PR + merge policy
+
+### Branch scheme
+
+- One long-lived branch per wave: `wave/<wave-number>/<handoff_id>`.
+  - Wave 0 of the Canon Memory Platform v1 build: `wave/0/canon-memory-v1`.
+  - Wave 1: `wave/1/canon-memory-v1`. Etc.
+- The parent orchestrator MUST create the wave branch from the tip of `main`
+  at the start of each wave, BEFORE the pre-flight chore commit.
+- All task commits in a wave land on that wave's branch.
+
+### PR at wave close
+
+On completion of the last task in the wave (per the backlog's `epic_backlog`
+listing for that `epic_id`), parent MUST:
+
+1. Push the wave branch with `git push -u origin <wave-branch>`.
+2. Open a PR with:
+   - title: `wave/<N>: <epic title from backlog>`
+   - body: a per-task summary table (task_id, title, qa verdict, artifacts).
+   - base: `main`.
+3. Add the wave's `handoff_id` + `plan_id` as trailers in the PR body.
+
+### Merge policy
+
+Auto-merge is permitted iff ALL of the following are true:
+
+- Every task commit in the wave has a qa-gate PASS, qa-validate PASS, and
+  flow-audit PASS packet on disk.
+- Required CI checks on the PR are green.
+- Environment variable `CANON_AUTO_MERGE=1` is set in the parent's shell, OR
+  the PR has at least one required-reviewer approval.
+- `canon memory-health` exits 0 against the orchestration-critical backends
+  (Wave 1 onward — ignored for Wave 0 since this gate predates E1-T1).
+
+If any condition is false, the parent MUST leave the PR open for human review
+and proceed to the next wave branch rather than blocking.
+
+### Cross-wave sequencing
+
+- The next wave's branch is cut from `main` AFTER the prior wave's PR merges.
+  It is NOT cut from the prior wave branch. This prevents skewed histories.
+- If a wave branch is open for review and the next wave is ready to start,
+  parent MAY cut the next wave branch speculatively from `main` and begin
+  executing it. On merge of the prior wave, parent MUST rebase the open
+  wave branch onto `main` before continuing.
+
+### Out-of-scope operations
+
+Never do any of the following automatically:
+
+- `git push --force` or `git push --force-with-lease`.
+- Rewriting commits that have been pushed.
+- Merging to `main` without either a CI-green PR or `CANON_AUTO_MERGE=1`.
+- Deleting branches other than the wave branch after its PR is merged.
