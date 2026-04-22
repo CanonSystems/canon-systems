@@ -202,6 +202,26 @@ END_CURSOR_PILOT_PROMPT
 
 Nothing before or after.
 
+## Graph-first retrieval (required)
+
+Before finalizing the target surface in the CURSOR_PILOT_PROMPT, consult:
+
+```
+canon graph query  --company-id <c> --repository-id <r> --commit-sha <sha> --q "<scope>"
+canon graph impact --company-id <c> --repository-id <r> --commit-sha <sha> --symbol <target>
+```
+
+Use `canon graph impact` to enumerate blast radius for refactors and to surface
+downstream symbols the implementer must not break. Fold the returned
+`upstream`/`downstream` lists into the REPOSITORY section of the prompt.
+
+Fail-open: if axon is unreachable or returns 2/3/4/5, fall through to
+`canon checkpoint read` → `canon ask` → file reads; record degradation in
+`notes:`.
+
+See also: `## Retrieval policy (required)` in
+`src/canon_systems/templates/rules/memory-layer-defaults.mdc`.
+
 ## Checkpoint (read-before / write-after) contract
 
 This agent participates in the Canon Memory Platform operational-state plane (`state-api`, Wave 2). At phase start, hydrate state; at phase end, persist it.

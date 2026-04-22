@@ -66,6 +66,29 @@ END_IMPLEMENTATION_BLOCKED
 - Final completion output must include one `HANDOFF_TO_QA` block.
 - If blocked, emit `IMPLEMENTATION_BLOCKED` and stop.
 
+## Graph-first retrieval (required)
+
+Before broad repo exploration (repo-wide `grep`, speculative `ls -R`, opening
+unrelated files), run:
+
+```
+canon graph query --company-id <c> --repository-id <r> --commit-sha <sha> --q "<current-task>"
+```
+
+and, when the task is a refactor, rename, or cross-file change:
+
+```
+canon graph impact --company-id <c> --repository-id <r> --commit-sha <sha> --symbol <target>
+```
+
+Cite `results[].source_spans` in `HANDOFF_TO_QA.acceptance_criteria[].evidence`
+where applicable. If axon is unset or returns 2/3/4/5, fall back to
+`canon checkpoint read` → `canon ask` → file reads and record the degradation
+in the HANDOFF_TO_QA `notes:` field.
+
+See also: `## Retrieval policy (required)` in
+`src/canon_systems/templates/rules/memory-layer-defaults.mdc`.
+
 ## Checkpoint (read-before / write-after) contract
 
 This agent participates in the Canon Memory Platform operational-state plane (`state-api`, Wave 2). At phase start, hydrate state; at phase end, persist it.

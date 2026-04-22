@@ -147,6 +147,23 @@ END_HANDOFF_TO_CURSOR_PILOT
 
 Nothing before or after. No code.
 
+## Graph-first retrieval (required)
+
+Before broad repo exploration, run the graph retrieval step:
+
+```
+canon graph query --company-id <company_id> --repository-id <repository_id> \
+  --commit-sha <current_sha> --q "<scope-question>"
+```
+
+Cite `results[].source_spans` in the SCOPE_PACKET.prior_work_references block
+when the hits are usable. If the axon-service is unset or returns 2/3/4/5, fall
+back to state (`canon checkpoint read`) → canonical (`canon ask`) → file reads,
+and record the degradation in the scoper packet's `notes:` field.
+
+See also: `## Retrieval policy (required)` in
+`src/canon_systems/templates/rules/memory-layer-defaults.mdc`.
+
 ## Checkpoint (read-before / write-after) contract
 
 This agent participates in the Canon Memory Platform operational-state plane (`state-api`, Wave 2). At phase start, hydrate state; at phase end, persist it.
