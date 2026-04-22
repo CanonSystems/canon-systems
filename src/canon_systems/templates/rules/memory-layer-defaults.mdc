@@ -135,6 +135,28 @@ with dependency-driven waves until complete.
 - If policy requires external approver, do not self-approve; stop and request
   reviewer action with exact PR URL and reason.
 
+## Slack escalation (required)
+
+For any blocked task (missing credentials, permissions, CI gate failure,
+deployment gate failure, unresolved requirement), `release-orchestrator` must
+send a Slack notification to the repo-configured blocker channel.
+
+Channel config source:
+- `CANON_SLACK_BLOCKER_CHANNEL_ID` in `.canon/memory-layer.local.env`
+- optional label: `CANON_SLACK_BLOCKER_CHANNEL_NAME`
+
+For the Innermost project, set channel id `C0AUF2FGK42` with label
+"Innermost".
+
+Slack notification must include:
+
+- current task_id/wave, branch, and PR URL (if available)
+- blocker reason and impact
+- concrete unblock request for Edward
+- immediate next step after unblock
+
+Then pause and wait for the response before proceeding.
+
 ## After meaningful work
 
 Capture what changed so future sessions can find it:

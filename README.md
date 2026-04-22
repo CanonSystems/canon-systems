@@ -295,6 +295,8 @@ Installed globally by `install.sh` and into each wired repo by
   iterates fixes up to 3 times, emits `GATE_RESULTS`.
 - **`release-orchestrator`** — full access. Manages branch/PR/merge/deploy
   lifecycle and enforces QA + CI + environment gates before promotion.
+  Blockers escalate to the repo-configured Slack channel
+  (`CANON_SLACK_BLOCKER_CHANNEL_ID`).
 
 Use `/spq` or invoke them explicitly in your parent agent's plan.
 

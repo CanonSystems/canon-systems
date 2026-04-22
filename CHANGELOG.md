@@ -17,6 +17,18 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.3.1] - 2026-04-24
+
+### Changed
+
+- Slack blocker escalation is now repo-scoped via
+  `CANON_SLACK_BLOCKER_CHANNEL_ID` (with optional
+  `CANON_SLACK_BLOCKER_CHANNEL_NAME`) instead of a globally hardcoded channel.
+- Innermost channel `C0AUF2FGK42` is now documented as an Innermost-specific
+  configuration example rather than a universal default.
+
+---
+
 ## [3.3.0] - 2026-04-24
 
 ### Added

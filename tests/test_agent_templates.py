@@ -32,6 +32,8 @@ def test_release_orchestrator_template_has_merge_and_deploy_gates() -> None:
     assert "dev -> staging -> production/TestFlight" in body
     assert "Never bypass branch protection." in body
     assert "RELEASE_STATUS" in body
+    assert "CANON_SLACK_BLOCKER_CHANNEL_ID" in body
+    assert "Blocker escalation (repo-scoped Slack channel)" in body
 
 
 def test_cursor_pilot_requires_parallelization_plan() -> None:
@@ -61,6 +63,8 @@ def test_default_rule_requires_parallel_implementer_fanout() -> None:
     assert "`project-planner` first" in body
     assert "`release-orchestrator` governs branch/PR/merge/deploy" in body
     assert "Release governance (required)" in body
+    assert "Slack escalation (required)" in body
+    assert "CANON_SLACK_BLOCKER_CHANNEL_ID" in body
 
 
 def test_scoper_and_qa_gate_include_no_guessing_policy() -> None:

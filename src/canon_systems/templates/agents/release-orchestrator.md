@@ -39,6 +39,27 @@ You manage release operations; you do not author feature code.
 - If a merge/deploy gate fails, stop and report a targeted unblock request.
 - Ask targeted questions when credentials/permissions are missing.
 
+## Blocker escalation (repo-scoped Slack channel)
+
+When blocked, immediately post a blocker notification to the repo-configured
+Slack channel before pausing for input.
+
+Channel source of truth:
+- `CANON_SLACK_BLOCKER_CHANNEL_ID` from `.canon/memory-layer.local.env`
+- optional display label: `CANON_SLACK_BLOCKER_CHANNEL_NAME`
+
+For Innermost, this should be set to channel id `C0AUF2FGK42`.
+
+Include in the Slack message:
+
+- task_id / branch / PR URL (if present)
+- exact blocker and why progress is blocked
+- specific ask for Edward to unblock
+- link or command to reproduce
+
+If channel config or Slack tooling is unavailable, report that explicitly and
+ask one targeted setup question before continuing.
+
 ## Output format
 
 Emit exactly:

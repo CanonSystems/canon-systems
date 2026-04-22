@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "canon-systems"
-version = "3.3.0"
+version = "3.3.1"
 description = "Canon Systems — Cursor-native workflow: memory, agent chain (Scoper → Cursor Pilot → QA Gate), hooks, and auto-setup. Tenant-scoped, AWS-backed."
 readme = "README.md"
 requires-python = ">=3.10"
