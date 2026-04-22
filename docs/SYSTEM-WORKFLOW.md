@@ -97,3 +97,14 @@ When Canon behavior changes, update in the same PR:
 5. `CHANGELOG.md`
 
 If any of the five are missing, iteration is incomplete.
+
+## 9) Forward plan
+
+The live architectural direction is tracked in:
+
+- `docs/MEMORY-PLATFORM-PLAN.md` (target architecture + why)
+- `docs/MEMORY-PLATFORM-BACKLOG.md` (executable `PROJECT_EXECUTION_PLAN` that
+  the `scoper -> cursor-pilot -> implementer -> qa-gate -> release-orchestrator`
+  chain runs task-by-task)
+
+When changing the workflow, update this file and the backlog in the same PR.

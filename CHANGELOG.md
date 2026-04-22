@@ -9,6 +9,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `docs/MEMORY-PLATFORM-BACKLOG.md`: agent-executable `PROJECT_EXECUTION_PLAN`
+  for the memory platform (E1 stabilize -> E6 observability), including the
+  checkpoint schema, canonical event envelope, and CLI surface targeted by each
+  wave. Cross-linked from `docs/SYSTEM-WORKFLOW.md`,
+  `docs/MEMORY-PLATFORM-PLAN.md`, and `README.md`.
+
 ### Changed
 
 ### Fixed

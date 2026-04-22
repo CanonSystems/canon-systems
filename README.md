@@ -30,6 +30,11 @@ is `canon_systems`. Current major version: **3.x**. See
 > **Need the current operating model?** See
 > [docs/SYSTEM-WORKFLOW.md](docs/SYSTEM-WORKFLOW.md) (living spec; update each
 > Canon iteration).
+>
+> **Want the forward plan?** See the target architecture in
+> [docs/MEMORY-PLATFORM-PLAN.md](docs/MEMORY-PLATFORM-PLAN.md) and the
+> agent-executable backlog in
+> [docs/MEMORY-PLATFORM-BACKLOG.md](docs/MEMORY-PLATFORM-BACKLOG.md).
 
 ## Distribution
 
