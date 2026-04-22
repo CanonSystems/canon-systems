@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 from pathlib import Path
 
@@ -48,10 +49,53 @@ def _collect_errors(block: str, *, root: Path, require_pass: bool) -> list[str]:
     return errors
 
 
+def _collect_rejection_telemetry_errors(*, root: Path, handoff_id: str, task_id: str) -> list[str]:
+    errors: list[str] = []
+    base = root / ".cursor" / "handoffs" / handoff_id / task_id
+    rejection_dir = base / "handoff-not-ready"
+    telemetry_dir = base / "dor-failure"
+    rejection_packets = sorted(rejection_dir.glob("*.md")) if rejection_dir.exists() else []
+    if not rejection_packets:
+        return errors
+
+    for packet in rejection_packets:
+        stem = packet.stem
+        payload_file = telemetry_dir / f"{stem}.json"
+        status_file = telemetry_dir / f"{stem}.status"
+        if not payload_file.exists():
+            errors.append(f"missing DoR telemetry JSON for rejection packet: {packet}")
+            continue
+        if not status_file.exists():
+            errors.append(f"missing DoR telemetry status file for rejection packet: {packet}")
+            continue
+        try:
+            payload = json.loads(payload_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            errors.append(f"invalid JSON in DoR telemetry file: {payload_file}")
+            continue
+        if not isinstance(payload, dict):
+            errors.append(f"DoR telemetry payload must be object: {payload_file}")
+            continue
+        if str(payload.get("handoff_id", "")).strip() != handoff_id:
+            errors.append(f"DoR telemetry handoff_id mismatch in: {payload_file}")
+        if not str(payload.get("stage", "")).strip():
+            errors.append(f"DoR telemetry stage missing in: {payload_file}")
+        if "exit_code:" not in status_file.read_text(encoding="utf-8"):
+            errors.append(f"DoR telemetry status missing exit_code marker: {status_file}")
+    return errors
+
+
 def run(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="canon qa-validate", description="Validate QA gate packet artifacts.")
     parser.add_argument("--file", required=True, help="Path to qa-gate packet file.")
     parser.add_argument("--require-pass", action="store_true", help="Fail unless verdict is PASS.")
+    parser.add_argument("--handoff-id", default="", help="Handoff id for rejection telemetry checks.")
+    parser.add_argument("--task-id", default="", help="Task id for rejection telemetry checks.")
+    parser.add_argument(
+        "--require-dor-telemetry",
+        action="store_true",
+        help="If HANDOFF_NOT_READY packets exist for this task, require matching DoR telemetry artifacts.",
+    )
     args = parser.parse_args(argv)
 
     root = repo_root()
@@ -67,6 +111,17 @@ def run(argv: list[str] | None = None) -> int:
         print("qa-validate: missing GATE_RESULTS block")
         return 2
     errors = _collect_errors(block, root=root, require_pass=bool(args.require_pass))
+    if args.require_dor_telemetry:
+        if not args.handoff_id or not args.task_id:
+            print("qa-validate: --require-dor-telemetry requires --handoff-id and --task-id")
+            return 2
+        errors.extend(
+            _collect_rejection_telemetry_errors(
+                root=root,
+                handoff_id=args.handoff_id.strip(),
+                task_id=args.task_id.strip(),
+            )
+        )
     if errors:
         print("qa-validate: FAILED")
         for err in errors:

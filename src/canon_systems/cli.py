@@ -14,6 +14,7 @@ from .auth_migration import run as run_auth_migration
 from .ask_hybrid import run as run_ask
 from .capture_session import run as run_capture
 from .dor_log import run as run_dor_log
+from .flow_audit import run as run_flow_audit
 from .context_preload import run as run_preflight
 from .install_wizard import detect_repo_root, run as run_setup
 from .repo_enable import enable_repo, install_user_scope
@@ -248,6 +249,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     qv.add_argument("--file", required=True)
     qv.add_argument("--require-pass", action="store_true")
+    qv.add_argument("--handoff-id", default="")
+    qv.add_argument("--task-id", default="")
+    qv.add_argument("--require-dor-telemetry", action="store_true")
+
+    fa = sub.add_parser(
+        "flow-audit",
+        help="Audit per-task agent flow artifacts and plan tracking.",
+    )
+    fa.add_argument("--handoff-id", required=True)
+    fa.add_argument("--task-id", required=True)
+    fa.add_argument("--plan-file", default="")
+    fa.add_argument("--sample-rate", type=float, default=1.0)
+    fa.add_argument("--require-release-status", action="store_true")
 
     sec = sub.add_parser(
         "secrets",
@@ -412,7 +426,28 @@ def main(argv: list[str] | None = None) -> int:
         qv_args: list[str] = ["--file", args.file]
         if args.require_pass:
             qv_args.append("--require-pass")
+        if args.handoff_id:
+            qv_args += ["--handoff-id", args.handoff_id]
+        if args.task_id:
+            qv_args += ["--task-id", args.task_id]
+        if args.require_dor_telemetry:
+            qv_args.append("--require-dor-telemetry")
         return run_qa_validate(qv_args)
+
+    if args.command == "flow-audit":
+        fa_args: list[str] = [
+            "--handoff-id",
+            args.handoff_id,
+            "--task-id",
+            args.task_id,
+            "--sample-rate",
+            str(args.sample_rate),
+        ]
+        if args.plan_file:
+            fa_args += ["--plan-file", args.plan_file]
+        if args.require_release_status:
+            fa_args.append("--require-release-status")
+        return run_flow_audit(fa_args)
 
     if args.command == "secrets":
         sec_cmd = args.secrets_command or "wizard"

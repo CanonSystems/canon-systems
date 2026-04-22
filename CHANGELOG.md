@@ -17,6 +17,39 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.3.5] - 2026-04-24
+
+### Added
+
+- `qa-validate` now supports optional DoR rejection telemetry gating via:
+  `--handoff-id`, `--task-id`, and `--require-dor-telemetry`.
+- New living operations spec: `docs/SYSTEM-WORKFLOW.md`, documenting the
+  current end-to-end Canon execution model and required update checklist for
+  every future iteration.
+
+### Changed
+
+- Release governance templates/rules now require `qa-validate` DoR telemetry
+  checks for task-level rejection events before merge.
+- `flow-audit` and `qa-validate` contracts now align on persisted
+  `handoff-not-ready` and `dor-failure` artifact requirements.
+
+---
+
+## [3.3.4] - 2026-04-24
+
+### Added
+
+- New `canon flow-audit` command to audit process compliance artifacts
+  (handoff packet files and plan/task tracking) without reviewing code.
+- Flow-audit sampling support via `--sample-rate` for lightweight random checks.
+
+### Changed
+
+- Release governance now includes sampled `flow-audit` in merge gates.
+
+---
+
 ## [3.3.3] - 2026-04-24
 
 ### Added

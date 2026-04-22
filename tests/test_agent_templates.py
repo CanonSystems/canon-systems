@@ -40,6 +40,12 @@ def test_release_orchestrator_template_has_merge_and_deploy_gates() -> None:
     assert "If no progress or output for >10 minutes" in body
     assert "Memory capture discipline" in body
     assert "canon qa-validate --file" in body
+    assert "--require-dor-telemetry" in body
+    assert "canon flow-audit --handoff-id" in body
+    assert "DoR rejection telemetry contract (required)" in body
+    assert "handoff-not-ready/<stage>-<timestamp>.md" in body
+    assert "dor-failure/<stage>-<timestamp>.json" in body
+    assert "canon dor-log --event-file" in body
 
 
 def test_cursor_pilot_requires_parallelization_plan() -> None:
@@ -73,8 +79,12 @@ def test_default_rule_requires_parallel_implementer_fanout() -> None:
     assert "CANON_SLACK_BLOCKER_CHANNEL_ID" in body
     assert "Task granularity + packet persistence (required)" in body
     assert ".cursor/handoffs/<handoff_id>/<task_id>/" in body
+    assert "HANDOFF_NOT_READY" in body
+    assert "run `canon dor-log --event-file <that json>`" in body
     assert "stalls (>10 minutes without progress)" in body
     assert "canon qa-validate --require-pass" in body
+    assert "--require-dor-telemetry" in body
+    assert "sampled `canon flow-audit` PASS" in body
 
 
 def test_scoper_and_qa_gate_include_no_guessing_policy() -> None:

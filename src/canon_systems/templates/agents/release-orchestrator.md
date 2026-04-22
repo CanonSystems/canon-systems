@@ -24,7 +24,8 @@ You manage release operations; you do not author feature code.
    - Open one PR per branch with task_id, AC coverage, and QA evidence.
 3. Merge gates (all required)
    - `qa-gate` verdict PASS for that task.
-   - `canon qa-validate --file .cursor/handoffs/<handoff_id>/<task_id>/qa-gate.md --require-pass` returns PASS.
+   - `canon qa-validate --file .cursor/handoffs/<handoff_id>/<task_id>/qa-gate.md --require-pass --handoff-id <handoff_id> --task-id <task_id> --require-dor-telemetry` returns PASS.
+   - `canon flow-audit --handoff-id <handoff_id> --task-id <task_id> --plan-file .cursor/plans/<plan-id>.plan.md --sample-rate 0.2` passes when selected.
    - Required CI checks PASS.
    - No unresolved blocking comments.
 4. Deploy gates
@@ -53,12 +54,32 @@ Do not leave handoff packets only in chat. Persist each packet to files under:
 
 Update `.cursor/plans/<plan-id>.plan.md` after each task transition.
 
+## DoR rejection telemetry contract (required)
+
+Whenever `scoper` or `cursor-pilot` returns `HANDOFF_NOT_READY`, the parent
+orchestrator must do all of the following before proceeding:
+
+1. Persist the full rejection packet:
+   - `.cursor/handoffs/<handoff_id>/<task_id>/handoff-not-ready/<stage>-<timestamp>.md`
+2. Persist telemetry payload JSON:
+   - `.cursor/handoffs/<handoff_id>/<task_id>/dor-failure/<stage>-<timestamp>.json`
+3. Send telemetry using the payload file:
+   - `canon dor-log --event-file .cursor/handoffs/<handoff_id>/<task_id>/dor-failure/<stage>-<timestamp>.json --quiet`
+4. Persist command status (must include `exit_code:`):
+   - `.cursor/handoffs/<handoff_id>/<task_id>/dor-failure/<stage>-<timestamp>.status`
+
+Never treat a rejection as complete until files in steps 1-4 exist.
+If telemetry send fails, keep the task in NOT_READY and surface a targeted
+unblock request.
+
 ## Progress + stall watchdog
 
 - If an implementer or QA run is launched in background, poll until completion.
 - If no progress or output for >10 minutes, mark as `STALLED`, send blocker
   escalation, and request targeted guidance before continuing.
 - Never silently stop after launching a background task.
+- Run `flow-audit` sampling on every task wave and include result in
+  `RELEASE_STATUS` notes.
 
 ## Memory capture discipline
 
