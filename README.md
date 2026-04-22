@@ -161,6 +161,7 @@ This:
    version as `CANON_SYSTEMS_VERSION`).
 4. Installs `<repo>/.cursor/hooks/memory-{preflight,capture}.sh` +
    merges `<repo>/.cursor/hooks.json`.
+   **Optional (not installed by setup):** to index the repo graph into axon-service on push, copy [`scripts/hooks/pre-push-graph-index.sh`](scripts/hooks/pre-push-graph-index.sh) to `.git/hooks/pre-push` (see comments in the script; requires `AXON_SERVICE_URL` and `AXON_SERVICE_TOKEN`).
 5. Installs `<repo>/.cursor/rules/memory-layer-defaults.mdc`.
 6. Installs `<repo>/.cursor/agents/{project-planner,scoper,cursor-pilot,implementer,qa-gate,release-orchestrator}.md`.
 
@@ -215,6 +216,8 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon flow-audit --handoff-id <id> --task-id <id> [--require-checkpoints]` | Audit process compliance artifacts (handoff files + plan/task tracking), with optional sampling; `--require-checkpoints` enforces checkpoint JSON per §B phase. |
 | `canon memory-health [--required <csv>] [--timeout-ms <int>] [--output <path>] [--verbose]` | Probe canonical + mempalace (+ optional state/graph) /healthz; JSON report; exit 0 iff all required backends OK within budget. The **graph** row probes `AXON_SERVICE_URL` (axon-service). |
 | `canon checkpoint <read\|write\|lease-acquire\|lease-renew\|lease-release> ...` | stdlib JSON client for state-api checkpoints and leases; exits 0 ok, 1 `state_version_conflict`, 2 lease denied, 3 not found, 4 usage/validation, 5 transport. |
+| `canon graph index` | Push a graph snapshot for a commit (stub payload in v1). |
+| `canon graph reindex-status` | Query axon-service for snapshot status. |
 | `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
 | `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |

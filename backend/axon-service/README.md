@@ -12,8 +12,13 @@ FastAPI service for the **graph retrieval plane** (canon “Axon”): ingest per
 | --- | --- | --- |
 | GET | `/healthz` | no |
 | POST | `/axon/{company_id}/{repository_id}/index` | Bearer |
+| GET | `/axon/{company_id}/{repository_id}/reindex-status` | Bearer |
 | GET | `/axon/{company_id}/{repository_id}/query` | Bearer |
 | GET | `/axon/{company_id}/{repository_id}/impact` | Bearer |
+
+### Indexing invariant
+
+Writes flow only through POST `/index` (invoked by `canon graph index` pre-push or CI). Query/impact endpoints are pure RPC reads and MUST NOT trigger indexing side-effects.
 
 ## Environment (pydantic-settings)
 

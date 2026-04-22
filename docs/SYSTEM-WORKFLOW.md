@@ -120,6 +120,7 @@ See rule §§9-10 for authoritative wording.
   - `canon flow-audit --handoff-id <id> --task-id <id> --plan-file <plan>`
 - Memory health probe: `canon memory-health [--required <csv>] [--timeout-ms <int>]`
 - Graph retrieval plane: [`backend/axon-service`](../backend/axon-service/README.md) exposes `/axon/{company_id}/{repository_id}/index`, `/query`, `/impact`, and `/healthz`. `canon memory-health` treats **graph** as optional by default; it probes the axon service at **`AXON_SERVICE_URL`** (append `/healthz`) when that env is set.
+- Graph indexer pipeline: `canon graph index` (pre-push hook or CI workflow_dispatch) is the ONLY write path to axon-service; `canon graph query` / `impact` (E3-T3) and `/axon/.../query`,`/impact` are pure RPC reads and never index at query time. `canon graph reindex-status --commit-sha=<sha>` surfaces the snapshot state (`ready`/`missing`/`error`).
 - State checkpoint/lease: `canon checkpoint ...` (read/write/lease) against a deployed `state-api` (JSON over HTTP; use `--base-url` or `CANON_STATE_API_URL`)
 - Phase-boundary hydration: agents run `canon checkpoint read` before their phase work and `canon checkpoint write` after, via `state-api`; when `CANON_STATE_API_URL` is unset, skip checkpoint HTTP gracefully (local dev, sandbox, or CI without a reachable state plane).
 - DoR telemetry sender (with queue fallback):
