@@ -178,6 +178,7 @@ and [`infra/terraform/README.md`](../infra/terraform/README.md)). **`infra/auth-
 remains a separate workstream (Cognito / public ingress), not wired from this root.
 
 - **DynamoDB `canon-state` (E2-T1):** [`infra/terraform/modules/dynamodb-canon-state/`](../infra/terraform/modules/dynamodb-canon-state/) defines the per-environment `canon-state` table (composite keys `pk`/`sk`, TTL on `lease_expires_at`, PITR, SSE); E2-T1 did not run `terraform apply` (operator follow-up; see [`infra/terraform/README.md`](../infra/terraform/README.md)).
+- **`state-api` (E2-T2):** the [`backend/state-api/`](../backend/state-api/README.md) FastAPI service is the **operational-state plane** endpoint for checkpoint reads/writes and lease acquire/renew/release against that table (REST §B shapes + canonical `checkpoint_write` events).
 
 **Consolidation smoke (Wave 0):** `bash scripts/smoke-test.sh` proves the monorepo still
 builds, passes the full Python test run, and passes `terraform` validate (local init

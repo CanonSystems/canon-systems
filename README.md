@@ -41,7 +41,8 @@ is `canon_systems`. Current major version: **3.x**. See
 Service packages and shared types for the Canon Memory Platform live under
 [`backend/`](backend/README.md). **`knowledge-api`**, **`knowledge-worker`**, and
 **`memory-adapter`** now carry the production FastAPI sources consolidated from
-`sibling` repo `canon-systems-v2`, with v2 libs **`knowledge-schema`**,
+`sibling` repo `canon-systems-v2`. **`state-api`** ([`backend/state-api/`](backend/state-api/README.md))
+hosts the operational-state REST plane (checkpoints + leases on DynamoDB). The layout also includes v2 libs **`knowledge-schema`**,
 **`knowledge-policy`**, and **`knowledge-client`** also under `backend/` for
 editable-install import closure (see
 [docs/E0-T3-MIGRATION-NOTES.md](docs/E0-T3-MIGRATION-NOTES.md)). Install the

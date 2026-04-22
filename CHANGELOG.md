@@ -9,6 +9,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- E2-T2: backend/state-api service — GET/PUT `/state/checkpoint` + POST `/state/lease/{acquire,renew,release}` with DynamoDB conditional writes, server-minted UUIDv4 lease tokens (numeric `lease_expires_at` for TTL), nested §B `lease` in REST responses, and `checkpoint_write` `CanonicalEvent` emission + `X-Canon-Event-Id`; moto-backed tests under `backend/state-api/tests/`.
 - E2-T1: DynamoDB canon-state table module (infra/terraform/modules/dynamodb-canon-state/) + root wiring + outputs (state_table_name, state_table_arn); PAY_PER_REQUEST, TTL on lease_expires_at, PITR, SSE; per-env isolation via ${project}-${environment}-canon-state; no cloud commands executed.
 - E1-T3: `canon flow-audit --require-memory-health` release-gate flag that verifies per-task .cursor/handoffs/<handoff_id>/<task_id>/memory-health.json evidence (schema_version='1', overall_status='ok'); release-orchestrator template now names memory-health as a required merge gate.
 - E1-T2: mempalace status classifier + retry queue for preflight and ask (new module `src/canon_systems/memory_queue.py`; `context_preload` and `ask_hybrid` now record `mempalace_status` and enqueue retries on degraded/unreachable to `.canon/memory/mempalace-retry-queue.jsonl`).
