@@ -124,6 +124,7 @@ See rule §§9-10 for authoritative wording.
 - DoR telemetry sender (with queue fallback):
   - `canon dor-log --event-file <event.json>`
   - **memory-health evidence (Wave 1+):** `canon memory-health --output .cursor/handoffs/<handoff_id>/<task_id>/memory-health.json` to persist; `canon flow-audit ... --require-memory-health` to enforce at merge (release-orchestrator contract).
+- On-disk per-phase checkpoint files: merge gates may run `canon flow-audit --require-checkpoints` and `canon qa-validate --require-checkpoints` (with handoff/task ids) to block integration when any of the five phase checkpoint artifacts is missing or invalid.
 
 ## 7) Automation and propagation
 

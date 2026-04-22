@@ -9,6 +9,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- E2-T5: flow-audit + qa-validate enforce per-phase checkpoint artifacts — new `--require-checkpoints` flag on both CLIs validates `.cursor/handoffs/<handoff_id>/<task_id>/checkpoints/<phase>.json` across all five §B phases (scoper/cursor-pilot/implementer/qa-gate/release-orchestrator).
 - E2-T4: agent templates + memory-layer-defaults hydrate canon checkpoint contract — scoper/cursor-pilot/implementer/qa-gate/release-orchestrator now document read-before/write-after via state-api with graceful CANON_STATE_API_URL skip.
 - E2-T3: canon checkpoint CLI — stdlib-only `canon checkpoint` with subcommands `read`, `write`, `lease-acquire`, `lease-renew`, `lease-release` over the state-api wire (flat write/acquire, nested `scope_ids` for renew/release); exit codes 0/1/2/3/4/5 (ok / `state_version_conflict` / lease denied / not found / usage / transport).
 - E2-T2: backend/state-api service — GET/PUT `/state/checkpoint` + POST `/state/lease/{acquire,renew,release}` with DynamoDB conditional writes, server-minted UUIDv4 lease tokens (numeric `lease_expires_at` for TTL), nested §B `lease` in REST responses, and `checkpoint_write` `CanonicalEvent` emission + `X-Canon-Event-Id`; moto-backed tests under `backend/state-api/tests/`.
