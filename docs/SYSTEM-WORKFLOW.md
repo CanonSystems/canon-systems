@@ -116,6 +116,7 @@ See rule §§9-10 for authoritative wording.
   - `canon qa-validate --file <qa-gate.md> --require-pass`
 - Process audit validator:
   - `canon flow-audit --handoff-id <id> --task-id <id> --plan-file <plan>`
+- Memory health probe: `canon memory-health [--required <csv>] [--timeout-ms <int>]`
 - DoR telemetry sender (with queue fallback):
   - `canon dor-log --event-file <event.json>`
 

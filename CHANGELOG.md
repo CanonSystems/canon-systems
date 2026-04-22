@@ -9,6 +9,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- E1-T1: `canon memory-health` CLI — stdlib-only subcommand probing canonical/mempalace/state/graph /healthz with `CANON_MEMORY_HEALTH_REQUIRED` + `CANON_MEMORY_HEALTH_TIMEOUT_MS` env knobs; exits 0 iff all required backends OK within budget.
 - E0-T5: consolidation smoke harness — `scripts/smoke-test.sh` (build → `pytest -q` →
   `terraform` validate), GitHub Actions **Canon Smoke Test** (`.github/workflows/ci.yml`),
   `requirements-dev.txt` (PyYAML for workflow assertions), `tests/test_consolidation_smoke.py`,
