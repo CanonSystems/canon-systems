@@ -42,6 +42,10 @@ def test_release_orchestrator_template_has_merge_and_deploy_gates() -> None:
     assert "canon qa-validate --file" in body
     assert "--require-dor-telemetry" in body
     assert "canon flow-audit --handoff-id" in body
+    assert "memory-health" in body
+    assert ".cursor/handoffs/<handoff_id>/<task_id>/memory-health.json" in body
+    assert "--require-memory-health" in body
+    assert "canon memory-health --output" in body
     assert "DoR rejection telemetry contract (required)" in body
     assert "handoff-not-ready/<stage>-<timestamp>.md" in body
     assert "dor-failure/<stage>-<timestamp>.json" in body

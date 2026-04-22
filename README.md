@@ -210,9 +210,14 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon dor-log --event-json '{...}'` | Push DoR failure telemetry to server; queue locally on send failure. |
 | `canon qa-validate --file <path> --require-pass [--handoff-id <id> --task-id <id> --require-dor-telemetry]` | Validate persisted QA gate packet fields/referenced tests; optionally require DoR rejection telemetry artifacts for the task. |
 | `canon flow-audit --handoff-id <id> --task-id <id>` | Audit process compliance artifacts (handoff files + plan/task tracking), with optional sampling. |
+| `canon memory-health [--required <csv>] [--timeout-ms <int>] [--output <path>] [--verbose]` | Probe canonical + mempalace (+ optional state/graph) /healthz; JSON report; exit 0 iff all required backends OK within budget. |
 | `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
 | `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |
+
+### Memory degraded-mode fallback
+
+Preflight (`canon preflight`) and hybrid ask (`canon ask`) classify each MemPalace `/memory/search` response into `mempalace_status` (`ok`, `degraded`, `unreachable`, or `not_configured`) with `latency_ms`, `last_error`, and `endpoint_ref`. That block is written into `.canon/memory/context-latest.md` / `context-latest.json` on preflight and into `canon ask --json` output. When the status is `degraded` or `unreachable`, the CLI appends a JSONL record to **`.canon/memory/mempalace-retry-queue.jsonl`** for a future drain (no automatic replay in v1). Exit codes stay **0**; a bad MemPalace outcome is advisory unless the command would have failed for other reasons.
 
 ## Version drift
 

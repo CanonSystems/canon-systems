@@ -15,6 +15,7 @@ from .ask_hybrid import run as run_ask
 from .capture_session import run as run_capture
 from .dor_log import run as run_dor_log
 from .flow_audit import run as run_flow_audit
+from .memory_health import run as run_memory_health
 from .context_preload import run as run_preflight
 from .install_wizard import detect_repo_root, run as run_setup
 from .repo_enable import enable_repo, install_user_scope
@@ -262,6 +263,31 @@ def main(argv: list[str] | None = None) -> int:
     fa.add_argument("--plan-file", default="")
     fa.add_argument("--sample-rate", type=float, default=1.0)
     fa.add_argument("--require-release-status", action="store_true")
+    fa.add_argument("--require-memory-health", action="store_true")
+
+    mh = sub.add_parser(
+        "memory-health",
+        help="Probe memory backend /healthz endpoints and emit a JSON health report.",
+    )
+    mh.add_argument(
+        "--required",
+        default=None,
+        metavar="CSV",
+        help="Comma-separated required backends (overrides CANON_MEMORY_HEALTH_REQUIRED).",
+    )
+    mh.add_argument(
+        "--timeout-ms",
+        type=int,
+        default=None,
+        help="Per-backend probe budget in ms (default 2000; max 60000).",
+    )
+    mh.add_argument(
+        "--json",
+        action="store_true",
+        help="JSON output (default; idempotent).",
+    )
+    mh.add_argument("--output", default="", metavar="PATH", help="Also write the JSON report to this path.")
+    mh.add_argument("--verbose", action="store_true", help="Log probe details to stderr.")
 
     sec = sub.add_parser(
         "secrets",
@@ -447,7 +473,23 @@ def main(argv: list[str] | None = None) -> int:
             fa_args += ["--plan-file", args.plan_file]
         if args.require_release_status:
             fa_args.append("--require-release-status")
+        if args.require_memory_health:
+            fa_args.append("--require-memory-health")
         return run_flow_audit(fa_args)
+
+    if args.command == "memory-health":
+        mh_args: list[str] = []
+        if args.required is not None:
+            mh_args += ["--required", args.required]
+        if args.timeout_ms is not None:
+            mh_args += ["--timeout-ms", str(args.timeout_ms)]
+        if args.json:
+            mh_args.append("--json")
+        if args.output:
+            mh_args += ["--output", args.output]
+        if args.verbose:
+            mh_args.append("--verbose")
+        return run_memory_health(mh_args)
 
     if args.command == "secrets":
         sec_cmd = args.secrets_command or "wizard"

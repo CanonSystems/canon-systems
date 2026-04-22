@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from canon_systems.flow_audit import run
@@ -12,6 +13,23 @@ def _write_task_artifacts(root: Path, *, handoff_id: str, task_id: str) -> None:
     (base / "cursor-pilot.md").write_text("CURSOR_PILOT_PROMPT\n", encoding="utf-8")
     (base / "qa-gate.md").write_text("GATE_RESULTS\nEND_GATE_RESULTS\n", encoding="utf-8")
     (base / "release-status.md").write_text("RELEASE_STATUS\nEND_RELEASE_STATUS\n", encoding="utf-8")
+
+
+def _write_memory_health_evidence(
+    root: Path,
+    *,
+    handoff_id: str,
+    task_id: str,
+    overall_status: str = "ok",
+    schema_version: str = "1",
+) -> None:
+    base = root / ".cursor" / "handoffs" / handoff_id / task_id
+    base.mkdir(parents=True, exist_ok=True)
+    body = {
+        "schema_version": schema_version,
+        "overall_status": overall_status,
+    }
+    (base / "memory-health.json").write_text(json.dumps(body) + "\n", encoding="utf-8")
 
 
 def _write_dor_rejection_with_telemetry(root: Path, *, handoff_id: str, task_id: str, stem: str) -> None:
@@ -79,3 +97,39 @@ def test_flow_audit_fails_when_rejection_missing_telemetry(tmp_path: Path, monke
     monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(tmp_path))
     code = run(["--handoff-id", "h1", "--task-id", "t1"])
     assert code == 1
+
+
+def test_flow_audit_passes_with_memory_health_evidence_ok(tmp_path: Path, monkeypatch) -> None:
+    _write_task_artifacts(tmp_path, handoff_id="h1", task_id="t1")
+    _write_memory_health_evidence(tmp_path, handoff_id="h1", task_id="t1")
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(tmp_path))
+    code = run(["--handoff-id", "h1", "--task-id", "t1", "--require-memory-health"])
+    assert code == 0
+
+
+def test_flow_audit_fails_when_memory_health_evidence_missing(tmp_path: Path, monkeypatch, capsys) -> None:
+    _write_task_artifacts(tmp_path, handoff_id="h1", task_id="t1")
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(tmp_path))
+    code = run(["--handoff-id", "h1", "--task-id", "t1", "--require-memory-health"])
+    assert code == 1
+    out = capsys.readouterr().out
+    assert "missing memory-health evidence" in out
+
+
+def test_flow_audit_fails_when_memory_health_overall_status_not_ok(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    _write_task_artifacts(tmp_path, handoff_id="h1", task_id="t1")
+    _write_memory_health_evidence(tmp_path, handoff_id="h1", task_id="t1", overall_status="unhealthy")
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(tmp_path))
+    code = run(["--handoff-id", "h1", "--task-id", "t1", "--require-memory-health"])
+    assert code == 1
+    out = capsys.readouterr().out
+    assert "overall_status='unhealthy' (expected 'ok')" in out
+
+
+def test_flow_audit_passes_without_flag_when_memory_health_missing(tmp_path: Path, monkeypatch) -> None:
+    _write_task_artifacts(tmp_path, handoff_id="h1", task_id="t1")
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(tmp_path))
+    code = run(["--handoff-id", "h1", "--task-id", "t1"])
+    assert code == 0

@@ -10,6 +10,25 @@ from pathlib import Path
 from .shared import repo_root
 
 
+def _collect_memory_health_errors(base: Path) -> list[str]:
+    path = base / "memory-health.json"
+    if not path.exists():
+        return [f"missing memory-health evidence: {path}"]
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return [f"invalid JSON in memory-health evidence: {path}"]
+    if not isinstance(payload, dict):
+        return [f"memory-health evidence payload must be object: {path}"]
+    if payload.get("schema_version") != "1":
+        v = payload.get("schema_version")
+        return [f"memory-health evidence schema_version mismatch (got {v!r}, expected '1'): {path}"]
+    if payload.get("overall_status") != "ok":
+        s = payload.get("overall_status")
+        return [f"memory-health evidence overall_status='{s}' (expected 'ok'): {path}"]
+    return []
+
+
 def _sample_selected(*, handoff_id: str, task_id: str, sample_rate: float) -> bool:
     if sample_rate <= 0:
         return False
@@ -28,6 +47,7 @@ def run(argv: list[str] | None = None) -> int:
     parser.add_argument("--plan-file", default="")
     parser.add_argument("--sample-rate", type=float, default=1.0)
     parser.add_argument("--require-release-status", action="store_true")
+    parser.add_argument("--require-memory-health", action="store_true")
     args = parser.parse_args(argv)
 
     sample_rate = max(0.0, min(1.0, float(args.sample_rate)))
@@ -94,6 +114,9 @@ def run(argv: list[str] | None = None) -> int:
         status_text = status_path.read_text(encoding="utf-8")
         if "exit_code:" not in status_text:
             errors.append(f"telemetry status missing exit_code marker: {status_path}")
+
+    if args.require_memory_health:
+        errors.extend(_collect_memory_health_errors(base))
 
     if args.plan_file:
         plan = Path(args.plan_file)

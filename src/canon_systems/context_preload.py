@@ -5,14 +5,21 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
+from .memory_queue import (
+    classify_mempalace_response,
+    enqueue_mempalace_retry,
+    is_degraded,
+)
 from .shared import (
     artifact_identity,
     first_text,
     load_identity_context,
     load_repo_context,
+    now_stamp,
     parse_hook_payload,
     request_json,
 )
@@ -35,6 +42,7 @@ def _write_markdown(
     current_truth_payload: list[dict[str, Any]] | str,
     company_id: str,
     repository_id: str,
+    mempalace_status: dict[str, Any],
 ) -> None:
     lines = [
         "# Session Memory Context",
@@ -43,8 +51,14 @@ def _write_markdown(
         f"- repository_id: `{repository_id}`",
         f"- query: `{query}`",
         "",
-        "## MemPalace Hits",
+        "## MemPalace Status",
     ]
+    lines.append(f"- status: `{mempalace_status.get('status', '')}`")
+    lines.append(f"- latency_ms: `{mempalace_status.get('latency_ms', '')}`")
+    le = str(mempalace_status.get("last_error", ""))
+    lines.append(f"- last_error: `{le}`")
+    lines.append(f"- endpoint_ref: `{mempalace_status.get('endpoint_ref', '')}`")
+    lines.extend(["", "## MemPalace Hits"])
     if isinstance(memory_payload, dict):
         results = memory_payload.get("results") or []
         if results:
@@ -91,14 +105,43 @@ def run(argv: list[str] | None = None) -> int:
     palace_path = _os.environ.get("MEMPALACE_PATH", "").strip()
     if palace_path:
         memory_body["palace_path"] = palace_path
-    memory_status, memory_payload = request_json(
-        url=f"{repo_ctx.memory_adapter_url}/memory/search",
-        method="POST",
-        body=memory_body,
-        actor_id=identity.actor_id,
-        company_id=repo_ctx.company_id,
-        auth_profile="memory_adapter",
+    configured = bool((repo_ctx.memory_adapter_url or "").strip())
+    endpoint_ref = f"{repo_ctx.memory_adapter_url}/memory/search" if configured else ""
+    if configured:
+        t0 = time.perf_counter()
+        memory_status, memory_payload = request_json(
+            url=endpoint_ref,
+            method="POST",
+            body=memory_body,
+            actor_id=identity.actor_id,
+            company_id=repo_ctx.company_id,
+            auth_profile="memory_adapter",
+        )
+        latency_ms = int((time.perf_counter() - t0) * 1000)
+    else:
+        memory_status, memory_payload = 0, ""
+        latency_ms = 0
+    mempalace_status = classify_mempalace_response(
+        status=int(memory_status),
+        payload=memory_payload,
+        endpoint_ref=endpoint_ref,
+        latency_ms=latency_ms,
+        configured=configured,
     )
+    if is_degraded(mempalace_status):
+        enqueue_mempalace_retry(
+            {
+                "queued_at": now_stamp(),
+                "call_site": "context_preload",
+                "endpoint_ref": mempalace_status["endpoint_ref"],
+                "request_body": memory_body,
+                "last_status": int(memory_status),
+                "last_error": mempalace_status["last_error"],
+                "actor_id": identity.actor_id,
+                "company_id": repo_ctx.company_id,
+                "repository_id": repo_ctx.repository_id,
+            }
+        )
     current_truth_status, current_truth_payload = request_json(
         url=f"{repo_ctx.knowledge_api_url}/api/v1/artifacts?repo_id={repo_ctx.repository_id}",
         method="GET",
@@ -115,6 +158,7 @@ def run(argv: list[str] | None = None) -> int:
         current_truth_payload=current_truth_payload if isinstance(current_truth_payload, list) else [],
         company_id=repo_ctx.company_id,
         repository_id=repo_ctx.repository_id,
+        mempalace_status=mempalace_status,
     )
     artifact_id, version_id = artifact_identity(prefix="art_taskctx_preload", actor_id=identity.actor_id)
     output_json = Path(args.json_output) if args.json_output else (repo_ctx.context_dir / "context-latest.json")
@@ -127,6 +171,7 @@ def run(argv: list[str] | None = None) -> int:
                 "repository_id": repo_ctx.repository_id,
                 "query": query,
                 "memory_status_code": memory_status,
+                "mempalace_status": mempalace_status,
                 "current_truth_status_code": current_truth_status,
                 "context_markdown_path": str(context_md),
                 "task_context_artifact_id_hint": artifact_id,

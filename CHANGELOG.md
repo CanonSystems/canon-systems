@@ -9,6 +9,9 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- E1-T3: `canon flow-audit --require-memory-health` release-gate flag that verifies per-task .cursor/handoffs/<handoff_id>/<task_id>/memory-health.json evidence (schema_version='1', overall_status='ok'); release-orchestrator template now names memory-health as a required merge gate.
+- E1-T2: mempalace status classifier + retry queue for preflight and ask (new module `src/canon_systems/memory_queue.py`; `context_preload` and `ask_hybrid` now record `mempalace_status` and enqueue retries on degraded/unreachable to `.canon/memory/mempalace-retry-queue.jsonl`).
+- E1-T1: `canon memory-health` CLI — stdlib-only subcommand probing canonical/mempalace/state/graph /healthz with `CANON_MEMORY_HEALTH_REQUIRED` + `CANON_MEMORY_HEALTH_TIMEOUT_MS` env knobs; exits 0 iff all required backends OK within budget.
 - E0-T5: consolidation smoke harness — `scripts/smoke-test.sh` (build → `pytest -q` →
   `terraform` validate), GitHub Actions **Canon Smoke Test** (`.github/workflows/ci.yml`),
   `requirements-dev.txt` (PyYAML for workflow assertions), `tests/test_consolidation_smoke.py`,
