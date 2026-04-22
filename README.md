@@ -58,6 +58,19 @@ mirrored from sibling `canon-systems-v2` with provenance in
 [`docs/E0-T4-INFRA-IMPORT.md`](docs/E0-T4-INFRA-IMPORT.md). Cognito and public-ingress
 Terraform remain under [`infra/auth-ingress/`](infra/auth-ingress/) (separate root).
 
+### Smoke test (Wave 0)
+
+From the repo root, after a normal editable install, run
+`bash scripts/smoke-test.sh`. It runs `scripts/backend/build-services.sh`, the full
+`pytest -q` suite, then `terraform` init/validate under `infra/terraform` (no AWS
+credentials, no `apply`). If `VIRTUAL_ENV` is unset, the script creates
+`.venv-smoke/`, installs `pip install -e . pytest` plus `requirements-dev.txt`, then
+runs the stages. CI runs the same script in **Canon Smoke Test**
+(`.github/workflows/ci.yml`) on `pull_request` and pushes to `main` and `wave/**`.
+To skip the terraform stage when the binary is missing locally, set
+`SMOKE_SKIP_TERRAFORM=1` (default is to require `terraform` on `PATH`). Closeout
+notes and operator follow-ups: [`docs/WAVE-0-CLOSEOUT.md`](docs/WAVE-0-CLOSEOUT.md).
+
 ## Distribution
 
 This is **proprietary software**, not published to PyPI or npm. It is

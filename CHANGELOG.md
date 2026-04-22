@@ -9,6 +9,11 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- E0-T5: consolidation smoke harness — `scripts/smoke-test.sh` (build → `pytest -q` →
+  `terraform` validate), GitHub Actions **Canon Smoke Test** (`.github/workflows/ci.yml`),
+  `requirements-dev.txt` (PyYAML for workflow assertions), `tests/test_consolidation_smoke.py`,
+  and closeout doc [`docs/WAVE-0-CLOSEOUT.md`](docs/WAVE-0-CLOSEOUT.md). No AWS or live URL
+  calls; `SMOKE_SKIP_TERRAFORM=1` optional local escape hatch.
 - E0-T4: `infra/terraform/` Terraform root (byte-faithful mirror of
   `canon-systems-v2/infra/terraform/` @ `ebecb91`, excluding state/lock/cache/plan
   artifacts) plus import manifest in `infra/terraform/README.md`; migration note

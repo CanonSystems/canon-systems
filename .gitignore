@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 .venv/
+.venv-smoke/
 src/*.egg-info/
 *.egg-info/
 build/

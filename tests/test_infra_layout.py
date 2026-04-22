@@ -2,9 +2,21 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _infra_tracked_files() -> list[str]:
+    proc = subprocess.run(
+        ["git", "ls-files", "infra/"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return [line for line in proc.stdout.splitlines() if line.strip()]
 INFRA = REPO_ROOT / "infra"
 TERRAFORM_ROOT = INFRA / "terraform"
 AUTH_INGRESS = INFRA / "auth-ingress"
@@ -53,13 +65,15 @@ def test_no_tfstate_committed() -> None:
 
 
 def test_no_terraform_lock_committed() -> None:
-    matches = list(INFRA.glob("**/.terraform.lock.hcl"))
-    assert matches == [], f".terraform.lock.hcl must not be committed: {matches}"
+    tracked = _infra_tracked_files()
+    bad = [p for p in tracked if p.endswith(".terraform.lock.hcl")]
+    assert bad == [], f".terraform.lock.hcl must not be committed: {bad}"
 
 
 def test_no_terraform_cache_committed() -> None:
-    terraform_dirs = [p for p in INFRA.rglob(".terraform") if p.is_dir()]
-    assert terraform_dirs == [], f".terraform/ must not exist under infra/: {terraform_dirs}"
+    tracked = _infra_tracked_files()
+    bad = [p for p in tracked if "/.terraform/" in p or p.rstrip("/").endswith("/.terraform")]
+    assert bad == [], f".terraform/ contents must not be committed: {bad}"
 
 
 def test_auth_ingress_untouched() -> None:

@@ -172,3 +172,12 @@ artifacts, Secrets Manager placeholders for the `canon-systems-v2` / `dev` stack
 and run `terraform plan` until zero drift (see [`docs/E0-T4-INFRA-IMPORT.md`](E0-T4-INFRA-IMPORT.md)
 and [`infra/terraform/README.md`](../infra/terraform/README.md)). **`infra/auth-ingress/`**
 remains a separate workstream (Cognito / public ingress), not wired from this root.
+
+**Consolidation smoke (Wave 0):** `bash scripts/smoke-test.sh` proves the monorepo still
+builds, passes the full Python test run, and passes `terraform` validate (local init
+with `-backend=false`, no `apply`) from a dev or CI shell. The workflow
+**Canon Smoke Test** in `.github/workflows/ci.yml` runs the same script on
+`pull_request` and on `push` to `main` and `wave/**`. It does not invoke the `canon`
+CLI or call live service URLs; operator follow-up for end-to-end live checks is tracked
+in [`docs/WAVE-0-CLOSEOUT.md`](WAVE-0-CLOSEOUT.md) (including OQ-E0-T4-01 and
+OQ-E0-T5-01).
