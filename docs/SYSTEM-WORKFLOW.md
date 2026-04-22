@@ -147,3 +147,11 @@ The live architectural direction is tracked in:
   chain runs task-by-task)
 
 When changing the workflow, update this file and the backlog in the same PR.
+
+## 10) Backend monorepo layout
+
+Python backend services and the stdlib-only shared library (`canon_backend_shared`
+under `backend/shared/`) are colocated in `backend/` as setuptools packages, with
+`synthesis-web/` reserved for a future UI entrypoint (see E5-T4). Use
+`uv sync --all-packages` or `bash scripts/backend/install-workspace.sh` from the
+repo root to install the workspace. Details: `backend/README.md`.

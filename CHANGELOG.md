@@ -9,6 +9,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- E0-T2: backend/ skeleton + shared lib
 - `docs/SYSTEM-WORKFLOW.md` §5.1 "Auto-branching + per-task commits +
   PR-at-wave-close": mirrors `.cursor/rules/memory-platform-build-discipline.mdc`
   §§9-10 into the living workflow spec so the living-spec invariant

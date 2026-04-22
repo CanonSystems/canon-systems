@@ -36,6 +36,14 @@ is `canon_systems`. Current major version: **3.x**. See
 > agent-executable backlog in
 > [docs/MEMORY-PLATFORM-BACKLOG.md](docs/MEMORY-PLATFORM-BACKLOG.md).
 
+## Backend monorepo
+
+Service packages and shared types for the Canon Memory Platform live under
+[`backend/`](backend/README.md). Install the workspace with `uv sync
+--all-packages` or `bash scripts/backend/install-workspace.sh` from the repo
+root. The layout is described in
+[docs/SYSTEM-WORKFLOW.md](docs/SYSTEM-WORKFLOW.md) §10.
+
 ## Distribution
 
 This is **proprietary software**, not published to PyPI or npm. It is

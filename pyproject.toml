@@ -28,3 +28,6 @@ where = ["src"]
 "canon_systems.templates.hooks" = ["*"]
 "canon_systems.templates.rules" = ["*"]
 "canon_systems.templates.agents" = ["*"]
+
+[tool.uv.workspace]
+members = ["backend/*"]
