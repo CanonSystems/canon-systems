@@ -215,6 +215,10 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
 | `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |
 
+### Memory degraded-mode fallback
+
+Preflight (`canon preflight`) and hybrid ask (`canon ask`) classify each MemPalace `/memory/search` response into `mempalace_status` (`ok`, `degraded`, `unreachable`, or `not_configured`) with `latency_ms`, `last_error`, and `endpoint_ref`. That block is written into `.canon/memory/context-latest.md` / `context-latest.json` on preflight and into `canon ask --json` output. When the status is `degraded` or `unreachable`, the CLI appends a JSONL record to **`.canon/memory/mempalace-retry-queue.jsonl`** for a future drain (no automatic replay in v1). Exit codes stay **0**; a bad MemPalace outcome is advisory unless the command would have failed for other reasons.
+
 ## Version drift
 
 When you run `setup` or `enable-repo`, the CLI writes

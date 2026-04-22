@@ -12,6 +12,7 @@ contract, hook behavior, memory behavior, or rollout policy).
 - Cursor hooks run per turn:
   - preflight context hydration
   - post-response memory capture
+- Failed or unreachable MemPalace `/memory/search` calls are classified (`mempalace_status` in preflight + `canon ask --json`); non-ok outcomes are logged to a local JSONL queue (`.canon/memory/mempalace-retry-queue.jsonl`) for later replay — exit codes stay healthy unless another failure applies.
 
 ## 2) Core execution chain
 

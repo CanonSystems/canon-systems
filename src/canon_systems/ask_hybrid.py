@@ -12,10 +12,17 @@ import argparse
 import json
 import os
 import re
+import sys
+import time
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from .shared import load_identity_context, load_repo_context, request_json
+from .memory_queue import (
+    classify_mempalace_response,
+    enqueue_mempalace_retry,
+    is_degraded,
+)
+from .shared import load_identity_context, load_repo_context, now_stamp, request_json
 
 
 @dataclass(slots=True)
@@ -131,24 +138,44 @@ def _mempalace_hits(
     repo_ctx: Any,
     identity: Any,
     max_hits: int = 6,
-) -> list[RetrievedHit]:
+) -> tuple[list[RetrievedHit], dict[str, Any], int, dict[str, Any]]:
     body: dict[str, Any] = {"query": question, "limit": max_hits}
     palace_path = os.environ.get("MEMPALACE_PATH", "").strip()
     if palace_path:
         body["palace_path"] = palace_path
+    configured = bool((repo_ctx.memory_adapter_url or "").strip())
+    endpoint_ref = f"{repo_ctx.memory_adapter_url}/memory/search" if configured else ""
+    if not configured:
+        block = classify_mempalace_response(
+            status=0,
+            payload="",
+            endpoint_ref=endpoint_ref,
+            latency_ms=0,
+            configured=False,
+        )
+        return [], block, 0, body
+    t0 = time.perf_counter()
     status, payload = request_json(
-        url=f"{repo_ctx.memory_adapter_url}/memory/search",
+        url=endpoint_ref,
         method="POST",
         body=body,
         actor_id=identity.actor_id,
         company_id=repo_ctx.company_id,
         auth_profile="memory_adapter",
     )
-    if status != 200 or not isinstance(payload, dict):
-        return []
+    latency_ms = int((time.perf_counter() - t0) * 1000)
+    block = classify_mempalace_response(
+        status=int(status),
+        payload=payload,
+        endpoint_ref=endpoint_ref,
+        latency_ms=latency_ms,
+        configured=True,
+    )
+    if int(status) != 200 or not isinstance(payload, dict):
+        return [], block, int(status), body
     results = payload.get("results")
     if not isinstance(results, list):
-        return []
+        return [], block, int(status), body
     hits: list[RetrievedHit] = []
     for item in results[:max_hits]:
         if not isinstance(item, dict):
@@ -172,7 +199,7 @@ def _mempalace_hits(
             )
         )
     hits.sort(key=lambda h: h.score, reverse=True)
-    return hits
+    return hits, block, int(status), body
 
 
 def run(argv: list[str] | None = None) -> int:
@@ -185,7 +212,23 @@ def run(argv: list[str] | None = None) -> int:
     repo_ctx = load_repo_context(identity)
 
     canonical = _canonical_hits(question=args.question, repo_ctx=repo_ctx, identity=identity)
-    mempalace = _mempalace_hits(question=args.question, repo_ctx=repo_ctx, identity=identity)
+    mempalace, mempalace_status, mem_http, mem_body = _mempalace_hits(
+        question=args.question, repo_ctx=repo_ctx, identity=identity
+    )
+    if is_degraded(mempalace_status):
+        enqueue_mempalace_retry(
+            {
+                "queued_at": now_stamp(),
+                "call_site": "ask_hybrid",
+                "endpoint_ref": mempalace_status["endpoint_ref"],
+                "request_body": mem_body,
+                "last_status": int(mem_http),
+                "last_error": mempalace_status["last_error"],
+                "actor_id": identity.actor_id,
+                "company_id": repo_ctx.company_id,
+                "repository_id": repo_ctx.repository_id,
+            }
+        )
     merged = sorted(
         [*canonical, *mempalace],
         key=lambda hit: (1 if hit.source == "canonical" else 0, hit.score),
@@ -196,6 +239,7 @@ def run(argv: list[str] | None = None) -> int:
         "actor_id": identity.actor_id,
         "company_id": repo_ctx.company_id,
         "repository_id": repo_ctx.repository_id,
+        "mempalace_status": mempalace_status,
         "canonical_hits": [asdict(item) for item in canonical],
         "mempalace_hits": [asdict(item) for item in mempalace],
         "top_hits": [asdict(item) for item in merged],
@@ -204,6 +248,8 @@ def run(argv: list[str] | None = None) -> int:
         print(json.dumps(payload, indent=2))
         return 0
 
+    if is_degraded(mempalace_status):
+        print(f"mempalace: {mempalace_status['status']}", file=sys.stderr)
     print(f"Memory answer for: {args.question}")
     print(f"(scope: {repo_ctx.company_id} / {repo_ctx.repository_id})")
     if not merged:
