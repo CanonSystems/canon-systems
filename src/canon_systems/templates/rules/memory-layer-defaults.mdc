@@ -203,3 +203,48 @@ The operational-state plane (`state-api`, `canon checkpoint` CLI) enforces a rea
 Writes require a live lease token obtained via `canon checkpoint lease-acquire` and kept fresh via `canon checkpoint lease-renew`; tokens are returned via `canon checkpoint lease-release`. All lease traffic runs through `state-api`.
 
 Writes enforce optimistic concurrency: every `canon checkpoint write` invocation passes `--expected-version <state_version>`. CLI exit code `1` (`EXIT_VERSION_CONFLICT`, `state_version_conflict`) signals a concurrent writer — re-read and retry. Exit code `2` (`EXIT_LEASE_DENIED`) signals a lost/expired lease — re-acquire. In dev/sandbox where `CANON_STATE_API_URL` is unset, skip checkpoint HTTP gracefully.
+
+## Retrieval policy (required)
+
+For coding work (multi-file changes, refactors, new endpoints, test authoring),
+consult memory sources in this fixed order before making assumptions or reading
+arbitrary files:
+
+**graph → state → canonical → file**
+
+1. **Graph (axon-service)** — structural retrieval. Run
+   `canon graph query --company-id <company_id> --repository-id <repository_id> --commit-sha <sha> --q "<scoped question>"`
+   and, when investigating blast radius, `canon graph impact --symbol <fqname>`.
+   Cite `results[].source_spans` as evidence in downstream packets.
+2. **State (state-api)** — operational context. Run
+   `canon checkpoint read --company-id <company_id> --repository-id <repository_id> --plan-id <plan_id> --task-id <task_id> --workstream-id <workstream_id>`
+   to load the latest phase checkpoint before beginning work.
+3. **Canonical layer** — decision history. Read
+   `.canon/memory/context-latest.md` for the preflight summary, and/or run
+   `canon ask "<question>"` for targeted lookups across canonical events and
+   MemPalace, scoped to this repo.
+4. **File reads** — last resort. Only open files that were cited by steps 1-3,
+   or whose existence was explicitly required by the user prompt. Broad
+   repo-wide greps or speculative `ls -R` are discouraged when steps 1-3
+   return usable evidence.
+
+### Fail-open fallback
+
+If `AXON_SERVICE_URL` or `AXON_SERVICE_TOKEN` are unset, or if
+`canon graph query` exits with code 2/3/4/5 (usage, 4xx, 5xx, transport), fall
+back to `state → canonical → file`. No retrieval step is a hard blocker; record
+the degradation in the HANDOFF_TO_QA `notes:` field so reviewers can see which
+sources were consulted.
+
+## Retrieval-source telemetry (required)
+
+At the end of each phase, emit one `retrieval_breakdown` canonical event with
+`payload.sources` keyed by the four canonical buckets — **graph**, **state**,
+**canonical**, **file** — each recording `tokens_in` and `tokens_out`. Use
+`src/canon_systems/retrieval_telemetry.py::build_retrieval_breakdown_event`
+as the canonical constructor. Zero counts are acceptable when a source was
+unused or degraded (e.g., axon unreachable); the event must still be emitted
+so `canon report` can render the phase. Skip-on-degraded when axon is unreachable
+is expressed as zero counts, not as omitting the event.
+
+This sequence is the single canonical phrasing; do not paraphrase it elsewhere.

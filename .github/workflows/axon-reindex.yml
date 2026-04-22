@@ -1,0 +1,30 @@
+name: axon-reindex
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Commit SHA to reindex (defaults to github.sha)"
+        required: false
+  push:
+    branches: [main]
+    paths-ignore: ["**/*.md", ".github/**"]
+
+jobs:
+  reindex:
+    runs-on: ubuntu-latest
+    if: ${{ vars.AXON_REINDEX_ENABLED == 'true' }}
+    env:
+      AXON_SERVICE_URL: ${{ secrets.AXON_SERVICE_URL }}
+      AXON_SERVICE_TOKEN: ${{ secrets.AXON_SERVICE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: Reindex
+        run: |
+          canon graph index --full \
+            --company-id "${{ vars.CANON_COMPANY_ID }}" \
+            --repository-id "${{ vars.CANON_REPOSITORY_ID }}" \
+            --commit-sha "${{ github.event.inputs.commit_sha || github.sha }}"

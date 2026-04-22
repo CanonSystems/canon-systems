@@ -114,11 +114,16 @@ See rule §§9-10 for authoritative wording.
 
 ## 6) Validation commands
 
+- **Retrieval policy (graph-first)**: Coder-facing templates (scoper/cursor-pilot/implementer) consult memory sources in a fixed order — `graph → state → canonical → file`. Graph reads via `canon graph query`/`canon graph impact`, state via `canon checkpoint read`, canonical via `.canon/memory/context-latest.md` + `canon ask`. Fail-open when axon is unset or returns 2/3/4/5; degradation is recorded in the HANDOFF_TO_QA `notes:` field.
+- **Retrieval-source telemetry**: Each agent phase emits one `retrieval_breakdown` canonical event with `payload.sources` keyed by the fixed `graph/state/canonical/file` 4-bucket contract (see `src/canon_systems/retrieval_telemetry.py`). `canon report --events <ndjson>` provides a stub rollup grouped by `phase`, `agent`, or `source` (Wave-6 polish). Zero counts are valid when a source is unused or degraded; the event is still emitted.
 - QA packet validator:
   - `canon qa-validate --file <qa-gate.md> --require-pass`
 - Process audit validator:
   - `canon flow-audit --handoff-id <id> --task-id <id> --plan-file <plan>`
 - Memory health probe: `canon memory-health [--required <csv>] [--timeout-ms <int>]`
+- Graph retrieval plane: [`backend/axon-service`](../backend/axon-service/README.md) exposes `/axon/{company_id}/{repository_id}/index`, `/query`, `/impact`, and `/healthz`. `canon memory-health` treats **graph** as optional by default; it probes the axon service at **`AXON_SERVICE_URL`** (append `/healthz`) when that env is set.
+- Graph indexer pipeline: `canon graph index` (pre-push hook or CI workflow_dispatch) is the ONLY write path to axon-service; `canon graph query` / `impact` (E3-T3) and `/axon/.../query`,`/impact` are pure RPC reads and never index at query time. `canon graph reindex-status --commit-sha=<sha>` surfaces the snapshot state (`ready`/`missing`/`error`).
+- **Graph reads**: `canon graph query` and `canon graph impact` are pure-RPC clients over `backend/axon-service` `GET /query` and `GET /impact`. They inherit `AXON_SERVICE_URL`/`AXON_SERVICE_TOKEN` env layering (flag > env > error-with-exit-2) and never touch the repo filesystem. `query` returns a body with `results[].source_spans` so agents can cite graph-backed evidence; `impact` returns `upstream`/`downstream` lists keyed by symbol. Writes remain sole-domain of `canon graph index` (E3-T2).
 - State checkpoint/lease: `canon checkpoint ...` (read/write/lease) against a deployed `state-api` (JSON over HTTP; use `--base-url` or `CANON_STATE_API_URL`)
 - Phase-boundary hydration: agents run `canon checkpoint read` before their phase work and `canon checkpoint write` after, via `state-api`; when `CANON_STATE_API_URL` is unset, skip checkpoint HTTP gracefully (local dev, sandbox, or CI without a reachable state plane).
 - DoR telemetry sender (with queue fallback):

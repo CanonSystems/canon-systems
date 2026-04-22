@@ -124,6 +124,16 @@ Include in the Slack message:
 If channel config or Slack tooling is unavailable, report that explicitly and
 ask one targeted setup question before continuing.
 
+## Retrieval-source telemetry (required)
+
+At the end of each phase, emit one `retrieval_breakdown` canonical event with
+`payload.sources` keyed by the four canonical buckets — **graph**, **state**,
+**canonical**, **file** — each recording `tokens_in` and `tokens_out`. Use
+`src/canon_systems/retrieval_telemetry.py::build_retrieval_breakdown_event`
+as the canonical constructor. Zero counts are acceptable when a source was
+unused or degraded (e.g., axon unreachable); the event must still be emitted
+so `canon report` can render the phase.
+
 ## Output format
 
 Emit exactly:

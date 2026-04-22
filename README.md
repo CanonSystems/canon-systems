@@ -15,6 +15,7 @@ What ships in one install:
 - **Subagent system**: `project-planner`, `scoper`, `cursor-pilot`,
   `implementer`, `qa-gate`, and `release-orchestrator` — backlog planning,
   DoR-driven execution, and gated release orchestration.
+- Graph-first retrieval is the default for all coder-facing agent templates (scoper/cursor-pilot/implementer). See `## Retrieval policy (required)` in `src/canon_systems/templates/rules/memory-layer-defaults.mdc`.
 - **Version-drift guard**: hooks hard-fail if the installed CLI is older
   than the version a repo was wired with; the agent is instructed to
   offer an upgrade.
@@ -42,7 +43,7 @@ Service packages and shared types for the Canon Memory Platform live under
 [`backend/`](backend/README.md). **`knowledge-api`**, **`knowledge-worker`**, and
 **`memory-adapter`** now carry the production FastAPI sources consolidated from
 `sibling` repo `canon-systems-v2`. **`state-api`** ([`backend/state-api/`](backend/state-api/README.md))
-hosts the operational-state REST plane (checkpoints + leases on DynamoDB). The layout also includes v2 libs **`knowledge-schema`**,
+hosts the operational-state REST plane (checkpoints + leases on DynamoDB). **`axon-service`** ([`backend/axon-service/`](backend/axon-service/README.md)) is the graph retrieval plane: `/axon/{company}/{repo}/index|query|impact` and `/healthz` with S3 + DynamoDB backing; set **`AXON_SERVICE_URL`** (base URL for `canon memory-health` graph), **`AXON_S3_BUCKET`**, **`AXON_META_TABLE_NAME`**, and **`AXON_SERVICE_TOKEN`**. The layout also includes v2 libs **`knowledge-schema`**,
 **`knowledge-policy`**, and **`knowledge-client`** also under `backend/` for
 editable-install import closure (see
 [docs/E0-T3-MIGRATION-NOTES.md](docs/E0-T3-MIGRATION-NOTES.md)). Install the
@@ -161,6 +162,7 @@ This:
    version as `CANON_SYSTEMS_VERSION`).
 4. Installs `<repo>/.cursor/hooks/memory-{preflight,capture}.sh` +
    merges `<repo>/.cursor/hooks.json`.
+   **Optional (not installed by setup):** to index the repo graph into axon-service on push, copy [`scripts/hooks/pre-push-graph-index.sh`](scripts/hooks/pre-push-graph-index.sh) to `.git/hooks/pre-push` (see comments in the script; requires `AXON_SERVICE_URL` and `AXON_SERVICE_TOKEN`).
 5. Installs `<repo>/.cursor/rules/memory-layer-defaults.mdc`.
 6. Installs `<repo>/.cursor/agents/{project-planner,scoper,cursor-pilot,implementer,qa-gate,release-orchestrator}.md`.
 
@@ -213,8 +215,13 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon dor-log --event-json '{...}'` | Push DoR failure telemetry to server; queue locally on send failure. |
 | `canon qa-validate --file <path> --require-pass [--handoff-id <id> --task-id <id> --require-dor-telemetry] [--require-checkpoints]` | Validate persisted QA gate packet fields/referenced tests; optionally require DoR rejection telemetry artifacts and/or (with ids) on-disk per-phase checkpoint JSON. |
 | `canon flow-audit --handoff-id <id> --task-id <id> [--require-checkpoints]` | Audit process compliance artifacts (handoff files + plan/task tracking), with optional sampling; `--require-checkpoints` enforces checkpoint JSON per §B phase. |
-| `canon memory-health [--required <csv>] [--timeout-ms <int>] [--output <path>] [--verbose]` | Probe canonical + mempalace (+ optional state/graph) /healthz; JSON report; exit 0 iff all required backends OK within budget. |
+| `canon memory-health [--required <csv>] [--timeout-ms <int>] [--output <path>] [--verbose]` | Probe canonical + mempalace (+ optional state/graph) /healthz; JSON report; exit 0 iff all required backends OK within budget. The **graph** row probes `AXON_SERVICE_URL` (axon-service). |
 | `canon checkpoint <read\|write\|lease-acquire\|lease-renew\|lease-release> ...` | stdlib JSON client for state-api checkpoints and leases; exits 0 ok, 1 `state_version_conflict`, 2 lease denied, 3 not found, 4 usage/validation, 5 transport. |
+| `canon graph index` | Push a graph snapshot for a commit (stub payload in v1). |
+| `canon graph reindex-status` | Query axon-service for snapshot status. |
+| `canon graph query --commit-sha <sha> --company-id <c> --repository-id <r> --q <str> [--limit N]` | Retrieve graph-backed snippets from axon-service (pure RPC). |
+| `canon graph impact --commit-sha <sha> --company-id <c> --repository-id <r> --symbol <sym> [--depth N]` | Return upstream/downstream blast radius from axon-service. |
+| `canon report --events <ndjson> [--by phase\|agent\|source] [--plan-id X] [--task-id Y]` | Aggregate retrieval_breakdown canonical events into a JSON rollup (Wave 6 will polish into CSV/table). |
 | `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
 | `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |

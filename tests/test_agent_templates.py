@@ -260,3 +260,100 @@ def test_project_planner_template_checkpoint_propagation() -> None:
     assert "implementer" in body
     assert "qa-gate" in body
     assert "release-orchestrator" in body
+
+
+def test_memory_layer_defaults_retrieval_policy() -> None:
+    body = resources.files("canon_systems.templates.rules").joinpath("memory-layer-defaults.mdc").read_text(
+        encoding="utf-8"
+    )
+    assert "## Retrieval policy (required)" in body
+    assert "graph → state → canonical → file" in body
+    assert "canon graph query" in body
+    assert "canon checkpoint read" in body
+    assert "canon ask" in body
+    assert "AXON_SERVICE_URL" in body
+    assert "Fail-open fallback" in body
+
+
+def test_retrieval_policy_order_is_stable() -> None:
+    body = resources.files("canon_systems.templates.rules").joinpath("memory-layer-defaults.mdc").read_text(
+        encoding="utf-8"
+    )
+    assert body.count("graph → state → canonical → file") == 1
+
+
+def test_scoper_template_graph_first_retrieval() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("scoper.md").read_text(encoding="utf-8")
+    assert "## Graph-first retrieval (required)" in body
+    assert "canon graph query" in body
+    assert "source_spans" in body
+
+
+def test_cursor_pilot_template_graph_first_retrieval() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("cursor-pilot.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Graph-first retrieval (required)" in body
+    assert "canon graph query" in body
+    assert "canon graph impact" in body
+
+
+def test_implementer_template_graph_first_retrieval() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("implementer.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Graph-first retrieval (required)" in body
+    assert "canon graph query" in body
+    assert "before broad repo exploration" in body.lower() or "broad repo exploration" in body.lower()
+
+
+def test_memory_layer_defaults_retrieval_telemetry() -> None:
+    body = resources.files("canon_systems.templates.rules").joinpath("memory-layer-defaults.mdc").read_text(
+        encoding="utf-8"
+    )
+    assert "## Retrieval-source telemetry (required)" in body
+    assert "retrieval_breakdown" in body
+    for src in ("graph", "state", "canonical", "file"):
+        assert src in body
+    assert "build_retrieval_breakdown_event" in body
+
+
+def test_scoper_template_retrieval_telemetry() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("scoper.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Retrieval-source telemetry (required)" in body
+    assert "retrieval_breakdown" in body
+    assert "build_retrieval_breakdown_event" in body
+
+
+def test_cursor_pilot_template_retrieval_telemetry() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("cursor-pilot.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Retrieval-source telemetry (required)" in body
+    assert "retrieval_breakdown" in body
+
+
+def test_implementer_template_retrieval_telemetry() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("implementer.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Retrieval-source telemetry (required)" in body
+    assert "retrieval_breakdown" in body
+
+
+def test_qa_gate_template_retrieval_telemetry() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("qa-gate.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Retrieval-source telemetry (required)" in body
+    assert "retrieval_breakdown" in body
+
+
+def test_release_orchestrator_template_retrieval_telemetry() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("release-orchestrator.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Retrieval-source telemetry (required)" in body
+    assert "retrieval_breakdown" in body
