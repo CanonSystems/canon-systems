@@ -129,3 +129,29 @@ import.
   `temporal-runtime` while live (OQ-E0-T4-04).
 - **`.terraform.lock.hcl`** — regenerate with `terraform init` locally
   (OQ-E0-T4-06).
+
+## E2-T1 — DynamoDB canon-state table
+
+**E2-T1 executed zero cloud commands** (no `terraform apply`, `terraform import`, `terraform plan`, or AWS API/CLI calls in-task).
+
+The module [`modules/dynamodb-canon-state/`](modules/dynamodb-canon-state/) declares one DynamoDB table per Terraform configuration, named `"${var.project_name}-${var.environment}-canon-state"`. For `project_name = canon-systems-v2`, that is `canon-systems-v2-dev-canon-state`, `canon-systems-v2-staging-canon-state`, and `canon-systems-v2-prod-canon-state` when `environment` is `dev`, `staging`, and `prod` respectively.
+
+**Operator apply (post-merge / when credentials and backend are configured):** from `infra/terraform/`:
+
+```bash
+terraform apply
+```
+
+**Import (if a table already exists and should be adopted into state):** from `infra/terraform/`, after selecting the correct workspace or `-var-file` for the target environment:
+
+```bash
+terraform import 'module.state_table.aws_dynamodb_table.this' 'canon-systems-v2-dev-canon-state'
+terraform import 'module.state_table.aws_dynamodb_table.this' 'canon-systems-v2-staging-canon-state'
+terraform import 'module.state_table.aws_dynamodb_table.this' 'canon-systems-v2-prod-canon-state'
+```
+
+Equivalent form using variable interpolation (resolve `project_name` and `environment` for the target stack; one import per environment/state):
+
+```text
+terraform import 'module.state_table.aws_dynamodb_table.this' "${var.project_name}-${var.environment}-canon-state"
+```

@@ -110,3 +110,71 @@ def test_import_manifest_exists() -> None:
         fragment = f'terraform import \'module.ecr.aws_ecr_repository.this["{key}"]\''
         assert fragment in text, f"Missing terraform import line for ECR repo {key}"
     assert text.count("terraform import") >= len(ecr_keys)
+
+
+DYNAMODB_CANON_STATE_MODULE = TERRAFORM_ROOT / "modules" / "dynamodb-canon-state"
+DYNAMODB_MODULE_FILES = (
+    "main.tf",
+    "variables.tf",
+    "outputs.tf",
+    "README.md",
+)
+
+
+def test_dynamodb_canon_state_module_files_exist() -> None:
+    for name in DYNAMODB_MODULE_FILES:
+        path = DYNAMODB_CANON_STATE_MODULE / name
+        assert path.is_file(), f"Missing module file: {path}"
+        assert path.stat().st_size > 0, f"Module file is empty: {path}"
+
+
+def test_dynamodb_module_has_only_name_prefix_var() -> None:
+    text = (DYNAMODB_CANON_STATE_MODULE / "variables.tf").read_text(encoding="utf-8")
+    assert 'variable "name_prefix"' in text
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("variable "):
+            assert stripped.startswith('variable "name_prefix"'), (
+                f"Unexpected variable in dynamodb-canon-state: {line!r}"
+            )
+
+
+def test_dynamodb_module_outputs() -> None:
+    text = (DYNAMODB_CANON_STATE_MODULE / "outputs.tf").read_text(encoding="utf-8")
+    assert 'output "table_name"' in text
+    assert 'output "table_arn"' in text
+
+
+def test_dynamodb_module_readme_mentions_keys_ttl_ppr() -> None:
+    text = (DYNAMODB_CANON_STATE_MODULE / "README.md").read_text(encoding="utf-8")
+    for need in ("pk", "sk", "lease_expires_at", "PAY_PER_REQUEST"):
+        assert need in text, f"Module README should mention {need!r}"
+
+
+def test_root_wires_state_table_module() -> None:
+    main_tf = (TERRAFORM_ROOT / "main.tf").read_text(encoding="utf-8")
+    assert 'module "state_table"' in main_tf
+    assert "./modules/dynamodb-canon-state" in main_tf
+
+
+def test_root_exposes_state_table_outputs() -> None:
+    out = (TERRAFORM_ROOT / "outputs.tf").read_text(encoding="utf-8")
+    assert "state_table_name" in out
+    assert "state_table_arn" in out
+
+
+def test_dynamodb_main_tf_key_attrs_present() -> None:
+    main_tf = (DYNAMODB_CANON_STATE_MODULE / "main.tf").read_text(encoding="utf-8")
+    assert 'billing_mode = "PAY_PER_REQUEST"' in main_tf
+    assert 'hash_key     = "pk"' in main_tf or 'hash_key = "pk"' in main_tf
+    assert 'range_key    = "sk"' in main_tf or 'range_key = "sk"' in main_tf
+    assert "lease_expires_at" in main_tf
+    assert "point_in_time_recovery" in main_tf
+    assert "server_side_encryption" in main_tf
+    assert "deletion_protection_enabled = true" in main_tf
+
+
+def test_infra_terraform_readme_e2t1_section() -> None:
+    text = (TERRAFORM_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "## E2-T1" in text
+    assert "terraform import 'module.state_table.aws_dynamodb_table.this'" in text

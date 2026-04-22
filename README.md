@@ -55,7 +55,9 @@ in [docs/SYSTEM-WORKFLOW.md](docs/SYSTEM-WORKFLOW.md) §10.
 Declarative AWS for the **knowledge-api / knowledge-worker dev plane** (VPC, ECR,
 RDS, S3, Secrets, baseline ECS) lives under [`infra/terraform/`](infra/terraform/README.md),
 mirrored from sibling `canon-systems-v2` with provenance in
-[`docs/E0-T4-INFRA-IMPORT.md`](docs/E0-T4-INFRA-IMPORT.md). Cognito and public-ingress
+[`docs/E0-T4-INFRA-IMPORT.md`](docs/E0-T4-INFRA-IMPORT.md). Wave 2 adds the
+[`dynamodb-canon-state`](infra/terraform/modules/dynamodb-canon-state/) module for operational
+checkpoint/lease state (`state_table_name` / `state_table_arn` outputs). Cognito and public-ingress
 Terraform remain under [`infra/auth-ingress/`](infra/auth-ingress/) (separate root).
 
 ### Smoke test (Wave 0)

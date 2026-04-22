@@ -87,3 +87,8 @@ module "rds" {
   engine_version       = var.db_engine_version
   skip_final_snapshot  = var.rds_skip_final_snapshot
 }
+
+module "state_table" {
+  source      = "./modules/dynamodb-canon-state"
+  name_prefix = "${var.project_name}-${var.environment}"
+}
