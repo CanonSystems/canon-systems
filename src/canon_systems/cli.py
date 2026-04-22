@@ -17,6 +17,7 @@ from .dor_log import run as run_dor_log
 from .context_preload import run as run_preflight
 from .install_wizard import detect_repo_root, run as run_setup
 from .repo_enable import enable_repo, install_user_scope
+from .qa_validate import run as run_qa_validate
 from .secrets_submit import run as run_secrets_submit
 from .store_pending_user import run as run_store_pending_user
 from .version_check import _version_tuple
@@ -241,6 +242,13 @@ def main(argv: list[str] | None = None) -> int:
     dl.add_argument("--strict", action="store_true")
     dl.add_argument("--quiet", action="store_true")
 
+    qv = sub.add_parser(
+        "qa-validate",
+        help="Validate persisted qa-gate packet artifacts for merge gating.",
+    )
+    qv.add_argument("--file", required=True)
+    qv.add_argument("--require-pass", action="store_true")
+
     sec = sub.add_parser(
         "secrets",
         help="Structured AWS Secrets Manager workflows for Canon runtime credentials.",
@@ -399,6 +407,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.quiet:
             dl_args.append("--quiet")
         return run_dor_log(dl_args)
+
+    if args.command == "qa-validate":
+        qv_args: list[str] = ["--file", args.file]
+        if args.require_pass:
+            qv_args.append("--require-pass")
+        return run_qa_validate(qv_args)
 
     if args.command == "secrets":
         sec_cmd = args.secrets_command or "wizard"

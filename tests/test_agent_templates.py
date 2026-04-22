@@ -39,6 +39,7 @@ def test_release_orchestrator_template_has_merge_and_deploy_gates() -> None:
     assert "Task-unit execution (no slicing drift)" in body
     assert "If no progress or output for >10 minutes" in body
     assert "Memory capture discipline" in body
+    assert "canon qa-validate --file" in body
 
 
 def test_cursor_pilot_requires_parallelization_plan() -> None:
@@ -73,6 +74,7 @@ def test_default_rule_requires_parallel_implementer_fanout() -> None:
     assert "Task granularity + packet persistence (required)" in body
     assert ".cursor/handoffs/<handoff_id>/<task_id>/" in body
     assert "stalls (>10 minutes without progress)" in body
+    assert "canon qa-validate --require-pass" in body
 
 
 def test_scoper_and_qa_gate_include_no_guessing_policy() -> None:

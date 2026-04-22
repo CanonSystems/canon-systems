@@ -164,6 +164,7 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon version-check` | Hard-fail if installed < pinned. |
 | `canon auth-migration <status\|prepare\|canary\|enforce\|rollback>` | Manage phased domain/auth migration state in repo env. |
 | `canon dor-log --event-json '{...}'` | Push DoR failure telemetry to server; queue locally on send failure. |
+| `canon qa-validate --file <path> --require-pass` | Validate persisted QA gate packet fields and referenced test files. |
 | `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
 | `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |

@@ -17,6 +17,22 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.3.3] - 2026-04-24
+
+### Added
+
+- New `canon qa-validate` command to enforce structured QA packet compliance:
+  validates `GATE_RESULTS` required fields and verifies referenced test files
+  exist before merge gating.
+- Regression tests for qa packet validation (`tests/test_qa_validate.py`).
+
+### Changed
+
+- Release governance now requires `canon qa-validate --require-pass` on the
+  persisted QA artifact before merge, in addition to qa-gate verdict + CI.
+
+---
+
 ## [3.3.2] - 2026-04-24
 
 ### Changed

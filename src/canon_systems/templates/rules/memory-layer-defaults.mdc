@@ -130,7 +130,8 @@ with dependency-driven waves until complete.
 
 - Use branch-per-task or branch-per-wave strategy from `release-orchestrator`.
 - No direct merge to protected branches without passing gates.
-- Before merge: require `qa-gate` PASS + required CI PASS.
+- Before merge: require `qa-gate` PASS + `canon qa-validate --require-pass`
+  on the persisted QA packet + required CI PASS.
 - Before promotion: require deploy smoke checks per environment.
 - If policy requires external approver, do not self-approve; stop and request
   reviewer action with exact PR URL and reason.

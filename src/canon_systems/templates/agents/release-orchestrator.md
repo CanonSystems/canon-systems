@@ -24,6 +24,7 @@ You manage release operations; you do not author feature code.
    - Open one PR per branch with task_id, AC coverage, and QA evidence.
 3. Merge gates (all required)
    - `qa-gate` verdict PASS for that task.
+   - `canon qa-validate --file .cursor/handoffs/<handoff_id>/<task_id>/qa-gate.md --require-pass` returns PASS.
    - Required CI checks PASS.
    - No unresolved blocking comments.
 4. Deploy gates
