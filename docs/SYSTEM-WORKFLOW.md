@@ -71,6 +71,45 @@ Before deploy promotion:
 - environment smoke checks PASS
 - promotion order respected (`dev -> staging -> production/TestFlight`)
 
+### 5.1) Auto-branching + per-task commits + PR-at-wave-close
+
+For multi-wave initiatives (e.g. the Canon Memory Platform v1 build), the
+parent orchestrator operates an auto-branching commit/PR protocol on top of
+the merge/release gates above. The authoritative contract lives in
+`.cursor/rules/memory-platform-build-discipline.mdc` §§9-10; the summary below
+exists solely to keep this living spec honest per §G of the backlog.
+
+- **Wave branch:** one long-lived branch per wave, named
+  `wave/<N>/<handoff_id>` (e.g. `wave/0/canon-memory-v1`), cut from `main` at
+  wave start, before any pre-flight chore commit.
+- **Pre-flight chore commit:** orchestration artifacts needed before the first
+  task (rule install, backlog rewrites, plan copies, living-spec mirrors like
+  this subsection) land on the wave branch as a single
+  `chore(memory-platform-v1): <brief>` commit.
+- **Per-task commit:** on `verdict: READY_TO_MERGE` in a task's
+  `release-status.md`, the parent MUST stage the task's artifacts plus its
+  packet quartet (`scoper.md`, `cursor-pilot.md`, `qa-gate.md`,
+  `release-status.md`) and commit with a Conventional Commit message carrying
+  `handoff_id`, `plan_id`, and `workstream_id` trailers. One commit per task,
+  no squashing, no amending once pushed.
+- **PR at wave close:** after the last task in the wave lands, parent pushes
+  the wave branch and opens a PR with a per-task summary table, base `main`,
+  title `wave/<N>: <epic title>`.
+- **Auto-merge:** permitted only if every task commit has qa-gate PASS,
+  qa-validate PASS, and flow-audit PASS packets on disk; required CI is green;
+  and either `CANON_AUTO_MERGE=1` is set or a required-reviewer approval is
+  present. From Wave 1 onward, `canon memory-health` must also exit 0. If any
+  gate is missing, the PR stays open for human review and the parent proceeds
+  to the next wave branch rather than blocking.
+- **Cross-wave sequencing:** the next wave's branch is cut from `main` after
+  the prior wave's PR merges (not from the prior wave branch). If the parent
+  speculatively cuts the next wave while the prior PR is still open, it MUST
+  rebase onto `main` once the prior merges.
+- **Never automatic:** force-push, rewriting pushed commits, merging to `main`
+  without CI+approval or `CANON_AUTO_MERGE=1`, or deleting non-wave branches.
+
+See rule §§9-10 for authoritative wording.
+
 ## 6) Validation commands
 
 - QA packet validator:

@@ -9,6 +9,11 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `docs/SYSTEM-WORKFLOW.md` §5.1 "Auto-branching + per-task commits +
+  PR-at-wave-close": mirrors `.cursor/rules/memory-platform-build-discipline.mdc`
+  §§9-10 into the living workflow spec so the living-spec invariant
+  (`docs/MEMORY-PLATFORM-BACKLOG.md` §G) stays satisfied for multi-wave
+  initiatives. The rule file remains authoritative; §5.1 is the summary.
 - `docs/MEMORY-PLATFORM-BACKLOG.md`: agent-executable `PROJECT_EXECUTION_PLAN`
   for the Canon Memory Platform v1 build, now in 7-wave shape
   (E0 consolidation -> E1 stabilize -> E2 state-api + DynamoDB ->
