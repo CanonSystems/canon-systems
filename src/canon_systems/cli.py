@@ -263,6 +263,7 @@ def main(argv: list[str] | None = None) -> int:
     fa.add_argument("--plan-file", default="")
     fa.add_argument("--sample-rate", type=float, default=1.0)
     fa.add_argument("--require-release-status", action="store_true")
+    fa.add_argument("--require-memory-health", action="store_true")
 
     mh = sub.add_parser(
         "memory-health",
@@ -472,6 +473,8 @@ def main(argv: list[str] | None = None) -> int:
             fa_args += ["--plan-file", args.plan_file]
         if args.require_release_status:
             fa_args.append("--require-release-status")
+        if args.require_memory_health:
+            fa_args.append("--require-memory-health")
         return run_flow_audit(fa_args)
 
     if args.command == "memory-health":

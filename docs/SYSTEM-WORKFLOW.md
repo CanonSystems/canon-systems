@@ -66,6 +66,7 @@ Before merge, require all:
 - `canon qa-validate ... --handoff-id <id> --task-id <id> --require-dor-telemetry`
 - sampled `canon flow-audit --handoff-id <id> --task-id <id> --sample-rate 0.2`
 - required CI checks PASS
+  - `canon flow-audit --handoff-id <id> --task-id <id> --require-memory-health` (optional in Wave 0; required by release-orchestrator from Wave 1+) verifies on-disk per-task `memory-health.json` evidence (schema v1, overall_status ok) before merge
 
 Before deploy promotion:
 
@@ -120,6 +121,7 @@ See rule §§9-10 for authoritative wording.
 - Memory health probe: `canon memory-health [--required <csv>] [--timeout-ms <int>]`
 - DoR telemetry sender (with queue fallback):
   - `canon dor-log --event-file <event.json>`
+  - **memory-health evidence (Wave 1+):** `canon memory-health --output .cursor/handoffs/<handoff_id>/<task_id>/memory-health.json` to persist; `canon flow-audit ... --require-memory-health` to enforce at merge (release-orchestrator contract).
 
 ## 7) Automation and propagation
 

@@ -26,6 +26,7 @@ You manage release operations; you do not author feature code.
    - `qa-gate` verdict PASS for that task.
    - `canon qa-validate --file .cursor/handoffs/<handoff_id>/<task_id>/qa-gate.md --require-pass --handoff-id <handoff_id> --task-id <task_id> --require-dor-telemetry` returns PASS.
    - `canon flow-audit --handoff-id <handoff_id> --task-id <task_id> --plan-file .cursor/plans/<plan-id>.plan.md --sample-rate 0.2` passes when selected.
+   - **memory-health:** per-task evidence at `.cursor/handoffs/<handoff_id>/<task_id>/memory-health.json` (produce with `canon memory-health --output <path>`). Verify with `canon flow-audit --handoff-id <handoff_id> --task-id <task_id> --require-memory-health` in addition to the sampled flow-audit run above.
    - Required CI checks PASS.
    - No unresolved blocking comments.
 4. Deploy gates
