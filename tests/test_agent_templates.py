@@ -117,3 +117,146 @@ def test_hooks_include_credential_recovery_flow() -> None:
     assert "run_capture_with_recovery()" in capture
     assert "credential-recovery-needed.txt" in capture
     assert "\"${CANON_BIN}\" --repo-root \"${ROOT_DIR}\" secrets wizard" in capture
+
+
+def test_scoper_template_checkpoint_contract() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("scoper.md").read_text(encoding="utf-8")
+    assert "## Checkpoint (read-before / write-after) contract" in body
+    assert (
+        "canon checkpoint read --company-id <company_id> --repository-id <repository_id> --plan-id <plan_id> --task-id <task_id> --workstream-id <workstream_id>"
+        in body
+    )
+    assert "canon checkpoint lease-acquire" in body
+    assert "--owner-agent-run-id" in body
+    assert "--owner-actor-id" in body
+    assert (
+        "canon checkpoint write --lease-token <lease_token> --expected-version <state_version> --body-file <path>"
+        in body
+    )
+    assert "--phase scoper" in body
+    assert "state-api" in body
+    assert "GET /state/checkpoint" in body
+    assert "PUT /state/checkpoint" in body
+    assert "CANON_STATE_API_URL" in body
+    assert "skip checkpoint HTTP gracefully" in body
+
+
+def test_cursor_pilot_template_checkpoint_contract() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("cursor-pilot.md").read_text(encoding="utf-8")
+    assert "## Checkpoint (read-before / write-after) contract" in body
+    assert (
+        "canon checkpoint read --company-id <company_id> --repository-id <repository_id> --plan-id <plan_id> --task-id <task_id> --workstream-id <workstream_id>"
+        in body
+    )
+    assert "canon checkpoint lease-acquire" in body
+    assert "--owner-agent-run-id" in body
+    assert "--owner-actor-id" in body
+    assert (
+        "canon checkpoint write --lease-token <lease_token> --expected-version <state_version> --body-file <path>"
+        in body
+    )
+    assert "--phase cursor-pilot" in body
+    assert "state-api" in body
+    assert "GET /state/checkpoint" in body
+    assert "PUT /state/checkpoint" in body
+    assert "CANON_STATE_API_URL" in body
+    assert "skip checkpoint HTTP gracefully" in body
+
+
+def test_implementer_template_checkpoint_contract() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("implementer.md").read_text(encoding="utf-8")
+    assert "## Checkpoint (read-before / write-after) contract" in body
+    assert (
+        "canon checkpoint read --company-id <company_id> --repository-id <repository_id> --plan-id <plan_id> --task-id <task_id> --workstream-id <workstream_id>"
+        in body
+    )
+    assert "canon checkpoint lease-acquire" in body
+    assert "--owner-agent-run-id" in body
+    assert "--owner-actor-id" in body
+    assert (
+        "canon checkpoint write --lease-token <lease_token> --expected-version <state_version> --body-file <path>"
+        in body
+    )
+    assert "--phase implementer" in body
+    assert "state-api" in body
+    assert "GET /state/checkpoint" in body
+    assert "PUT /state/checkpoint" in body
+    assert "CANON_STATE_API_URL" in body
+    assert "skip checkpoint HTTP gracefully" in body
+
+
+def test_qa_gate_template_checkpoint_contract() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("qa-gate.md").read_text(encoding="utf-8")
+    assert "## Checkpoint (read-before / write-after) contract" in body
+    assert (
+        "canon checkpoint read --company-id <company_id> --repository-id <repository_id> --plan-id <plan_id> --task-id <task_id> --workstream-id <workstream_id>"
+        in body
+    )
+    assert "canon checkpoint lease-acquire" in body
+    assert "--owner-agent-run-id" in body
+    assert "--owner-actor-id" in body
+    assert (
+        "canon checkpoint write --lease-token <lease_token> --expected-version <state_version> --body-file <path>"
+        in body
+    )
+    assert "--phase qa-gate" in body
+    assert "state-api" in body
+    assert "GET /state/checkpoint" in body
+    assert "PUT /state/checkpoint" in body
+    assert "CANON_STATE_API_URL" in body
+    assert "skip checkpoint HTTP gracefully" in body
+
+
+def test_release_orchestrator_template_checkpoint_contract() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("release-orchestrator.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Checkpoint (read-before / write-after) contract" in body
+    assert (
+        "canon checkpoint read --company-id <company_id> --repository-id <repository_id> --plan-id <plan_id> --task-id <task_id> --workstream-id <workstream_id>"
+        in body
+    )
+    assert "canon checkpoint lease-acquire" in body
+    assert "--owner-agent-run-id" in body
+    assert "--owner-actor-id" in body
+    assert (
+        "canon checkpoint write --lease-token <lease_token> --expected-version <state_version> --body-file <path>"
+        in body
+    )
+    assert "--phase release-orchestrator" in body
+    assert "state-api" in body
+    assert "GET /state/checkpoint" in body
+    assert "PUT /state/checkpoint" in body
+    assert "CANON_STATE_API_URL" in body
+    assert "skip checkpoint HTTP gracefully" in body
+
+
+def test_memory_layer_defaults_checkpoint_contract() -> None:
+    body = resources.files("canon_systems.templates.rules").joinpath("memory-layer-defaults.mdc").read_text(
+        encoding="utf-8"
+    )
+    assert "## Checkpoint contract (required)" in body
+    assert "`scoper`, `cursor-pilot`, `implementer`, `qa-gate`, `release-orchestrator`" in body
+    assert "canon checkpoint lease-acquire" in body
+    assert "canon checkpoint lease-renew" in body
+    assert "canon checkpoint lease-release" in body
+    assert "state-api" in body
+    assert "state_version" in body
+    assert "EXIT_VERSION_CONFLICT" in body
+    assert "state_version_conflict" in body
+    assert "EXIT_LEASE_DENIED" in body
+    assert "CANON_STATE_API_URL" in body
+    assert "--expected-version" in body
+    assert "Each agent role writes its own phase label" in body
+
+
+def test_project_planner_template_checkpoint_propagation() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("project-planner.md").read_text(
+        encoding="utf-8"
+    )
+    assert "checkpoint read-before/write-after contract" in body
+    assert "scoper" in body
+    assert "cursor-pilot" in body
+    assert "implementer" in body
+    assert "qa-gate" in body
+    assert "release-orchestrator" in body

@@ -140,7 +140,7 @@ pipx install --force git+ssh://git@github.com/CanonSystems/canon-systems.git
   unwired repo.
 - `~/.cursor/rules/memory-layer-defaults.mdc` — memory usage defaults.
 - `~/.cursor/agents/{project-planner,scoper,cursor-pilot,implementer,qa-gate,release-orchestrator}.md` — the subagent
-  chain, available globally.
+  chain, available globally (templates embed the checkpoint phase-boundary contract: `canon checkpoint read` / `canon checkpoint write` via `state-api`).
 
 ## Per-repo setup
 

@@ -195,3 +195,11 @@ If you see "installed version X is older than pinned Y" in hook output,
 offer to run `pipx upgrade canon-systems` for the user before proceeding.
 (The package is installed from a private GitHub repo, not PyPI;
 `pipx upgrade` pulls the latest from that repo.)
+
+## Checkpoint contract (required)
+
+The operational-state plane (`state-api`, `canon checkpoint` CLI) enforces a read-before / write-after contract at every phase boundary. The `phase` field on the checkpoint is one of the following agent-name values (backlog §B union): `scoper`, `cursor-pilot`, `implementer`, `qa-gate`, `release-orchestrator`. Each agent role writes its own phase label: `scoper`→`scoper`, `cursor-pilot`→`cursor-pilot`, `implementer`→`implementer`, `qa-gate`→`qa-gate`, `release-orchestrator`→`release-orchestrator`.
+
+Writes require a live lease token obtained via `canon checkpoint lease-acquire` and kept fresh via `canon checkpoint lease-renew`; tokens are returned via `canon checkpoint lease-release`. All lease traffic runs through `state-api`.
+
+Writes enforce optimistic concurrency: every `canon checkpoint write` invocation passes `--expected-version <state_version>`. CLI exit code `1` (`EXIT_VERSION_CONFLICT`, `state_version_conflict`) signals a concurrent writer — re-read and retry. Exit code `2` (`EXIT_LEASE_DENIED`) signals a lost/expired lease — re-acquire. In dev/sandbox where `CANON_STATE_API_URL` is unset, skip checkpoint HTTP gracefully.
