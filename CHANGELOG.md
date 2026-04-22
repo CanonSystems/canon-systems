@@ -9,6 +9,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- E0-T4: `infra/terraform/` Terraform root (byte-faithful mirror of
+  `canon-systems-v2/infra/terraform/` @ `ebecb91`, excluding state/lock/cache/plan
+  artifacts) plus import manifest in `infra/terraform/README.md`; migration note
+  [`docs/E0-T4-INFRA-IMPORT.md`](docs/E0-T4-INFRA-IMPORT.md); layout tests in
+  `tests/test_infra_layout.py`; `infra/README.md` index. No cloud commands executed
+  in-task.
 - E0-T3: consolidated `knowledge-api`, `knowledge-worker`, and `memory-adapter`
   from `canon-systems-v2` into `backend/` (copy + history waiver), plus v2 libs
   `knowledge-schema`, `knowledge-policy`, and `knowledge-client` under `backend/`

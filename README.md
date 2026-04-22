@@ -50,6 +50,14 @@ workspace with `uv sync --all-packages` or
 installs with `bash scripts/backend/build-services.sh`. The layout is described
 in [docs/SYSTEM-WORKFLOW.md](docs/SYSTEM-WORKFLOW.md) §10.
 
+## Infra
+
+Declarative AWS for the **knowledge-api / knowledge-worker dev plane** (VPC, ECR,
+RDS, S3, Secrets, baseline ECS) lives under [`infra/terraform/`](infra/terraform/README.md),
+mirrored from sibling `canon-systems-v2` with provenance in
+[`docs/E0-T4-INFRA-IMPORT.md`](docs/E0-T4-INFRA-IMPORT.md). Cognito and public-ingress
+Terraform remain under [`infra/auth-ingress/`](infra/auth-ingress/) (separate root).
+
 ## Distribution
 
 This is **proprietary software**, not published to PyPI or npm. It is

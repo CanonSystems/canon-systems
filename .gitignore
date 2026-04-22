@@ -8,3 +8,10 @@ build/
 dist/
 node_modules/
 .DS_Store
+
+# Terraform (E0-T4 — local artifacts only; never commit state or plugin cache)
+infra/terraform/.terraform/
+infra/terraform/*.tfstate*
+infra/terraform/.terraform.lock.hcl
+infra/terraform/*.tfplan
+infra/**/crash.log

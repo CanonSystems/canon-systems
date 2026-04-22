@@ -164,3 +164,11 @@ does not depend on a v2-style `libs/` checkout. For a quick CI-oriented check, r
 `bash scripts/backend/build-services.sh` after `pip`/`uv` resolves deps — it
 installs `backend/shared` and each leaf Python package, then import-smokes
 `*.main.app`. Details: `backend/README.md`.
+
+**AWS plane (declarative):** `infra/terraform/` is now the in-repo Terraform root
+mirrored from `canon-systems-v2` (VPC, ECR, baseline ECS Fargate, RDS, S3
+artifacts, Secrets Manager placeholders for the `canon-systems-v2` / `dev` stack in
+`us-east-1`). It is **import-prep only** in Wave 0: operators reconcile remote state
+and run `terraform plan` until zero drift (see [`docs/E0-T4-INFRA-IMPORT.md`](E0-T4-INFRA-IMPORT.md)
+and [`infra/terraform/README.md`](../infra/terraform/README.md)). **`infra/auth-ingress/`**
+remains a separate workstream (Cognito / public ingress), not wired from this root.

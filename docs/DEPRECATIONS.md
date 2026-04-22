@@ -19,6 +19,7 @@ One-line **keep** | **absorb** | **delete** recommendation per sibling for the C
 - **Label:** **keep**
 - **Justification:** Authoritative implementation and container definitions for knowledge-api, knowledge-worker, and memory-adapter source (`services/*`, `deploy/manifest.json`, `deploy/docker/*`).
 - **Recommended wave:** E0–E2 (continue as primary backend repo).
+- **Infra note:** `infra/terraform/` absorbed into `canon-systems/infra/terraform/` @ E0-T4 (`ebecb91`).
 
 ---
 
