@@ -115,6 +115,7 @@ See rule §§9-10 for authoritative wording.
 ## 6) Validation commands
 
 - **Retrieval policy (graph-first)**: Coder-facing templates (scoper/cursor-pilot/implementer) consult memory sources in a fixed order — `graph → state → canonical → file`. Graph reads via `canon graph query`/`canon graph impact`, state via `canon checkpoint read`, canonical via `.canon/memory/context-latest.md` + `canon ask`. Fail-open when axon is unset or returns 2/3/4/5; degradation is recorded in the HANDOFF_TO_QA `notes:` field.
+- **Retrieval-source telemetry**: Each agent phase emits one `retrieval_breakdown` canonical event with `payload.sources` keyed by the fixed `graph/state/canonical/file` 4-bucket contract (see `src/canon_systems/retrieval_telemetry.py`). `canon report --events <ndjson>` provides a stub rollup grouped by `phase`, `agent`, or `source` (Wave-6 polish). Zero counts are valid when a source is unused or degraded; the event is still emitted.
 - QA packet validator:
   - `canon qa-validate --file <qa-gate.md> --require-pass`
 - Process audit validator:

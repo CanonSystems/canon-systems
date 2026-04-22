@@ -221,6 +221,7 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon graph reindex-status` | Query axon-service for snapshot status. |
 | `canon graph query --commit-sha <sha> --company-id <c> --repository-id <r> --q <str> [--limit N]` | Retrieve graph-backed snippets from axon-service (pure RPC). |
 | `canon graph impact --commit-sha <sha> --company-id <c> --repository-id <r> --symbol <sym> [--depth N]` | Return upstream/downstream blast radius from axon-service. |
+| `canon report --events <ndjson> [--by phase\|agent\|source] [--plan-id X] [--task-id Y]` | Aggregate retrieval_breakdown canonical events into a JSON rollup (Wave 6 will polish into CSV/table). |
 | `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
 | `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |

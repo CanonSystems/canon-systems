@@ -236,4 +236,15 @@ back to `state → canonical → file`. No retrieval step is a hard blocker; rec
 the degradation in the HANDOFF_TO_QA `notes:` field so reviewers can see which
 sources were consulted.
 
+## Retrieval-source telemetry (required)
+
+At the end of each phase, emit one `retrieval_breakdown` canonical event with
+`payload.sources` keyed by the four canonical buckets — **graph**, **state**,
+**canonical**, **file** — each recording `tokens_in` and `tokens_out`. Use
+`src/canon_systems/retrieval_telemetry.py::build_retrieval_breakdown_event`
+as the canonical constructor. Zero counts are acceptable when a source was
+unused or degraded (e.g., axon unreachable); the event must still be emitted
+so `canon report` can render the phase. Skip-on-degraded when axon is unreachable
+is expressed as zero counts, not as omitting the event.
+
 This sequence is the single canonical phrasing; do not paraphrase it elsewhere.

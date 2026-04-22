@@ -222,6 +222,16 @@ Fail-open: if axon is unreachable or returns 2/3/4/5, fall through to
 See also: `## Retrieval policy (required)` in
 `src/canon_systems/templates/rules/memory-layer-defaults.mdc`.
 
+## Retrieval-source telemetry (required)
+
+At the end of each phase, emit one `retrieval_breakdown` canonical event with
+`payload.sources` keyed by the four canonical buckets — **graph**, **state**,
+**canonical**, **file** — each recording `tokens_in` and `tokens_out`. Use
+`src/canon_systems/retrieval_telemetry.py::build_retrieval_breakdown_event`
+as the canonical constructor. Zero counts are acceptable when a source was
+unused or degraded (e.g., axon unreachable); the event must still be emitted
+so `canon report` can render the phase.
+
 ## Checkpoint (read-before / write-after) contract
 
 This agent participates in the Canon Memory Platform operational-state plane (`state-api`, Wave 2). At phase start, hydrate state; at phase end, persist it.

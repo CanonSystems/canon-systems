@@ -15,6 +15,7 @@ from .ask_hybrid import run as run_ask
 from .capture_session import run as run_capture
 from .checkpoint_cli import run as run_checkpoint_cli
 from .graph_indexer import run as run_graph_cli
+from .report_cli import run as run_report_cli
 from .dor_log import run as run_dor_log
 from .flow_audit import run as run_flow_audit
 from .memory_health import run as run_memory_health
@@ -309,6 +310,9 @@ def main(argv: list[str] | None = None) -> int:
     graph_parser = sub.add_parser("graph", help="Graph retrieval plane CLI")
     graph_parser.add_argument("args", nargs=argparse.REMAINDER)
 
+    report_parser = sub.add_parser("report", help="Retrieval-telemetry rollups (stub; Wave 6 polishes)")
+    report_parser.add_argument("args", nargs=argparse.REMAINDER)
+
     sec = sub.add_parser(
         "secrets",
         help="Structured AWS Secrets Manager workflows for Canon runtime credentials.",
@@ -516,6 +520,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "graph":
         return run_graph_cli(list(getattr(args, "args", [])))
+
+    if args.command == "report":
+        return run_report_cli(list(getattr(args, "args", [])))
 
     if args.command == "secrets":
         sec_cmd = args.secrets_command or "wizard"
