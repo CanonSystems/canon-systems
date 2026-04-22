@@ -7,6 +7,7 @@ import json
 import re
 from pathlib import Path
 
+from .checkpoints import _collect_checkpoint_errors
 from .shared import repo_root
 
 
@@ -96,6 +97,11 @@ def run(argv: list[str] | None = None) -> int:
         action="store_true",
         help="If HANDOFF_NOT_READY packets exist for this task, require matching DoR telemetry artifacts.",
     )
+    parser.add_argument(
+        "--require-checkpoints",
+        action="store_true",
+        help="Require valid per-phase checkpoint artifacts.",
+    )
     args = parser.parse_args(argv)
 
     root = repo_root()
@@ -117,6 +123,17 @@ def run(argv: list[str] | None = None) -> int:
             return 2
         errors.extend(
             _collect_rejection_telemetry_errors(
+                root=root,
+                handoff_id=args.handoff_id.strip(),
+                task_id=args.task_id.strip(),
+            )
+        )
+    if args.require_checkpoints:
+        if not args.handoff_id or not args.task_id:
+            print("qa-validate: --require-checkpoints requires --handoff-id and --task-id")
+            return 2
+        errors.extend(
+            _collect_checkpoint_errors(
                 root=root,
                 handoff_id=args.handoff_id.strip(),
                 task_id=args.task_id.strip(),

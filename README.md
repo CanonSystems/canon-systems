@@ -41,7 +41,8 @@ is `canon_systems`. Current major version: **3.x**. See
 Service packages and shared types for the Canon Memory Platform live under
 [`backend/`](backend/README.md). **`knowledge-api`**, **`knowledge-worker`**, and
 **`memory-adapter`** now carry the production FastAPI sources consolidated from
-`sibling` repo `canon-systems-v2`, with v2 libs **`knowledge-schema`**,
+`sibling` repo `canon-systems-v2`. **`state-api`** ([`backend/state-api/`](backend/state-api/README.md))
+hosts the operational-state REST plane (checkpoints + leases on DynamoDB). The layout also includes v2 libs **`knowledge-schema`**,
 **`knowledge-policy`**, and **`knowledge-client`** also under `backend/` for
 editable-install import closure (see
 [docs/E0-T3-MIGRATION-NOTES.md](docs/E0-T3-MIGRATION-NOTES.md)). Install the
@@ -55,7 +56,9 @@ in [docs/SYSTEM-WORKFLOW.md](docs/SYSTEM-WORKFLOW.md) §10.
 Declarative AWS for the **knowledge-api / knowledge-worker dev plane** (VPC, ECR,
 RDS, S3, Secrets, baseline ECS) lives under [`infra/terraform/`](infra/terraform/README.md),
 mirrored from sibling `canon-systems-v2` with provenance in
-[`docs/E0-T4-INFRA-IMPORT.md`](docs/E0-T4-INFRA-IMPORT.md). Cognito and public-ingress
+[`docs/E0-T4-INFRA-IMPORT.md`](docs/E0-T4-INFRA-IMPORT.md). Wave 2 adds the
+[`dynamodb-canon-state`](infra/terraform/modules/dynamodb-canon-state/) module for operational
+checkpoint/lease state (`state_table_name` / `state_table_arn` outputs). Cognito and public-ingress
 Terraform remain under [`infra/auth-ingress/`](infra/auth-ingress/) (separate root).
 
 ### Smoke test (Wave 0)
@@ -137,7 +140,7 @@ pipx install --force git+ssh://git@github.com/CanonSystems/canon-systems.git
   unwired repo.
 - `~/.cursor/rules/memory-layer-defaults.mdc` — memory usage defaults.
 - `~/.cursor/agents/{project-planner,scoper,cursor-pilot,implementer,qa-gate,release-orchestrator}.md` — the subagent
-  chain, available globally.
+  chain, available globally (templates embed the checkpoint phase-boundary contract: `canon checkpoint read` / `canon checkpoint write` via `state-api`).
 
 ## Per-repo setup
 
@@ -208,9 +211,10 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon version-check` | Hard-fail if installed < pinned. |
 | `canon auth-migration <status\|prepare\|canary\|enforce\|rollback>` | Manage phased domain/auth migration state in repo env. |
 | `canon dor-log --event-json '{...}'` | Push DoR failure telemetry to server; queue locally on send failure. |
-| `canon qa-validate --file <path> --require-pass [--handoff-id <id> --task-id <id> --require-dor-telemetry]` | Validate persisted QA gate packet fields/referenced tests; optionally require DoR rejection telemetry artifacts for the task. |
-| `canon flow-audit --handoff-id <id> --task-id <id>` | Audit process compliance artifacts (handoff files + plan/task tracking), with optional sampling. |
+| `canon qa-validate --file <path> --require-pass [--handoff-id <id> --task-id <id> --require-dor-telemetry] [--require-checkpoints]` | Validate persisted QA gate packet fields/referenced tests; optionally require DoR rejection telemetry artifacts and/or (with ids) on-disk per-phase checkpoint JSON. |
+| `canon flow-audit --handoff-id <id> --task-id <id> [--require-checkpoints]` | Audit process compliance artifacts (handoff files + plan/task tracking), with optional sampling; `--require-checkpoints` enforces checkpoint JSON per §B phase. |
 | `canon memory-health [--required <csv>] [--timeout-ms <int>] [--output <path>] [--verbose]` | Probe canonical + mempalace (+ optional state/graph) /healthz; JSON report; exit 0 iff all required backends OK within budget. |
+| `canon checkpoint <read\|write\|lease-acquire\|lease-renew\|lease-release> ...` | stdlib JSON client for state-api checkpoints and leases; exits 0 ok, 1 `state_version_conflict`, 2 lease denied, 3 not found, 4 usage/validation, 5 transport. |
 | `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
 | `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |

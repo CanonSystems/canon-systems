@@ -73,3 +73,13 @@ output "db_master_password" {
   value       = var.db_password == null ? random_password.db[0].result : null
   sensitive   = true
 }
+
+output "state_table_name" {
+  description = "DynamoDB canon-state table name (operational checkpoints / lease state)."
+  value       = module.state_table.table_name
+}
+
+output "state_table_arn" {
+  description = "ARN of the DynamoDB canon-state table."
+  value       = module.state_table.table_arn
+}

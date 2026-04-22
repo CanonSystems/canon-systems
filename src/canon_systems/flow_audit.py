@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from .checkpoints import _collect_checkpoint_errors
 from .shared import repo_root
 
 
@@ -48,6 +49,7 @@ def run(argv: list[str] | None = None) -> int:
     parser.add_argument("--sample-rate", type=float, default=1.0)
     parser.add_argument("--require-release-status", action="store_true")
     parser.add_argument("--require-memory-health", action="store_true")
+    parser.add_argument("--require-checkpoints", action="store_true")
     args = parser.parse_args(argv)
 
     sample_rate = max(0.0, min(1.0, float(args.sample_rate)))
@@ -128,6 +130,15 @@ def run(argv: list[str] | None = None) -> int:
             content = plan.read_text(encoding="utf-8")
             if args.task_id not in content:
                 errors.append(f"task_id not referenced in plan file: {args.task_id}")
+
+    if args.require_checkpoints:
+        errors.extend(
+            _collect_checkpoint_errors(
+                root=root,
+                handoff_id=args.handoff_id,
+                task_id=args.task_id,
+            )
+        )
 
     if errors:
         print("flow-audit: FAILED")

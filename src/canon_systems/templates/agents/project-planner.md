@@ -72,3 +72,5 @@ END_PROJECT_EXECUTION_PLAN
 ```
 
 No prose before or after.
+
+Per-task packets **MUST** carry or reference the same **checkpoint read-before/write-after contract** for downstream **scoper**, **cursor-pilot**, **implementer**, **qa-gate**, and **release-orchestrator** playbooks (hydrate via `canon checkpoint read` before phase work; persist via lease-guarded `canon checkpoint write` after).

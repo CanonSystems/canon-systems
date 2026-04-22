@@ -65,3 +65,35 @@ END_IMPLEMENTATION_BLOCKED
 - Normal implementation progress text is allowed while you work.
 - Final completion output must include one `HANDOFF_TO_QA` block.
 - If blocked, emit `IMPLEMENTATION_BLOCKED` and stop.
+
+## Checkpoint (read-before / write-after) contract
+
+This agent participates in the Canon Memory Platform operational-state plane (`state-api`, Wave 2). At phase start, hydrate state; at phase end, persist it.
+
+**Wire protocol:** `state-api` exposes `GET /state/checkpoint` (read) and `PUT /state/checkpoint` (write); lease coordination runs over `POST /state/lease/{acquire,renew,release}`. The installed CLI `canon checkpoint` is the only supported client surface.
+
+**Phase label:** this agent writes checkpoints with `--phase implementer` (exact §B union value). Use `--phase implementer` verbatim.
+
+**Read before work** — hydrate the prior checkpoint before acting:
+
+```shell
+canon checkpoint read --company-id <company_id> --repository-id <repository_id> --plan-id <plan_id> --task-id <task_id> --workstream-id <workstream_id>
+```
+
+**Acquire lease** — required before any write:
+
+```shell
+canon checkpoint lease-acquire \
+  --company-id <company_id> --repository-id <repository_id> --plan-id <plan_id> --task-id <task_id> --workstream-id <workstream_id> \
+  --owner-agent-run-id <agent_run_id> --owner-actor-id <actor_id> --ttl-seconds 300
+```
+
+**Write after work** — persist the new checkpoint body at the end of the phase:
+
+```shell
+canon checkpoint write --lease-token <lease_token> --expected-version <state_version> --body-file <path>
+```
+
+CLI exit codes: `0` OK; `1` = `EXIT_VERSION_CONFLICT` (retry after re-read); `2` = `EXIT_LEASE_DENIED` (re-acquire lease); `3` not found; `4` usage; `5` transport.
+
+**Dev/sandbox skip:** when `CANON_STATE_API_URL` is unset (local development, sandbox, or CI without a reachable `state-api`), skip checkpoint HTTP gracefully — log the skip and continue. Do not fail the task solely because `CANON_STATE_API_URL` is unset.

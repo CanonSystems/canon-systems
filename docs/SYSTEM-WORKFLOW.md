@@ -119,9 +119,12 @@ See rule §§9-10 for authoritative wording.
 - Process audit validator:
   - `canon flow-audit --handoff-id <id> --task-id <id> --plan-file <plan>`
 - Memory health probe: `canon memory-health [--required <csv>] [--timeout-ms <int>]`
+- State checkpoint/lease: `canon checkpoint ...` (read/write/lease) against a deployed `state-api` (JSON over HTTP; use `--base-url` or `CANON_STATE_API_URL`)
+- Phase-boundary hydration: agents run `canon checkpoint read` before their phase work and `canon checkpoint write` after, via `state-api`; when `CANON_STATE_API_URL` is unset, skip checkpoint HTTP gracefully (local dev, sandbox, or CI without a reachable state plane).
 - DoR telemetry sender (with queue fallback):
   - `canon dor-log --event-file <event.json>`
   - **memory-health evidence (Wave 1+):** `canon memory-health --output .cursor/handoffs/<handoff_id>/<task_id>/memory-health.json` to persist; `canon flow-audit ... --require-memory-health` to enforce at merge (release-orchestrator contract).
+- On-disk per-phase checkpoint files: merge gates may run `canon flow-audit --require-checkpoints` and `canon qa-validate --require-checkpoints` (with handoff/task ids) to block integration when any of the five phase checkpoint artifacts is missing or invalid.
 
 ## 7) Automation and propagation
 
@@ -176,6 +179,9 @@ artifacts, Secrets Manager placeholders for the `canon-systems-v2` / `dev` stack
 and run `terraform plan` until zero drift (see [`docs/E0-T4-INFRA-IMPORT.md`](E0-T4-INFRA-IMPORT.md)
 and [`infra/terraform/README.md`](../infra/terraform/README.md)). **`infra/auth-ingress/`**
 remains a separate workstream (Cognito / public ingress), not wired from this root.
+
+- **DynamoDB `canon-state` (E2-T1):** [`infra/terraform/modules/dynamodb-canon-state/`](../infra/terraform/modules/dynamodb-canon-state/) defines the per-environment `canon-state` table (composite keys `pk`/`sk`, TTL on `lease_expires_at`, PITR, SSE); E2-T1 did not run `terraform apply` (operator follow-up; see [`infra/terraform/README.md`](../infra/terraform/README.md)).
+- **`state-api` (E2-T2):** the [`backend/state-api/`](../backend/state-api/README.md) FastAPI service is the **operational-state plane** endpoint for checkpoint reads/writes and lease acquire/renew/release against that table (REST §B shapes + canonical `checkpoint_write` events).
 
 **Consolidation smoke (Wave 0):** `bash scripts/smoke-test.sh` proves the monorepo still
 builds, passes the full Python test run, and passes `terraform` validate (local init

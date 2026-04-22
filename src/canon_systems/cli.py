@@ -13,6 +13,7 @@ from .actor_report import run as run_actor_report
 from .auth_migration import run as run_auth_migration
 from .ask_hybrid import run as run_ask
 from .capture_session import run as run_capture
+from .checkpoint_cli import run as run_checkpoint_cli
 from .dor_log import run as run_dor_log
 from .flow_audit import run as run_flow_audit
 from .memory_health import run as run_memory_health
@@ -289,6 +290,21 @@ def main(argv: list[str] | None = None) -> int:
     mh.add_argument("--output", default="", metavar="PATH", help="Also write the JSON report to this path.")
     mh.add_argument("--verbose", action="store_true", help="Log probe details to stderr.")
 
+    ck = sub.add_parser(
+        "checkpoint",
+        help="Checkpoint + lease CLI over the state-api wire protocol.",
+        description=(
+            "Subcommands: read, write, lease-acquire, lease-renew, lease-release. "
+            "Run `canon checkpoint <subcommand> --help` (arguments re-parsed in checkpoint_cli)."
+        ),
+    )
+    ck.add_argument(
+        "checkpoint_tail",
+        nargs=argparse.REMAINDER,
+        default=[],
+        help=argparse.SUPPRESS,
+    )
+
     sec = sub.add_parser(
         "secrets",
         help="Structured AWS Secrets Manager workflows for Canon runtime credentials.",
@@ -490,6 +506,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.verbose:
             mh_args.append("--verbose")
         return run_memory_health(mh_args)
+
+    if args.command == "checkpoint":
+        return run_checkpoint_cli(list(getattr(args, "checkpoint_tail", [])))
 
     if args.command == "secrets":
         sec_cmd = args.secrets_command or "wizard"
