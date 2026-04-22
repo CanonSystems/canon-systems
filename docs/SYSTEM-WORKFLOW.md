@@ -119,6 +119,7 @@ See rule §§9-10 for authoritative wording.
 - Process audit validator:
   - `canon flow-audit --handoff-id <id> --task-id <id> --plan-file <plan>`
 - Memory health probe: `canon memory-health [--required <csv>] [--timeout-ms <int>]`
+- State checkpoint/lease: `canon checkpoint ...` (read/write/lease) against a deployed `state-api` (JSON over HTTP; use `--base-url` or `CANON_STATE_API_URL`)
 - DoR telemetry sender (with queue fallback):
   - `canon dor-log --event-file <event.json>`
   - **memory-health evidence (Wave 1+):** `canon memory-health --output .cursor/handoffs/<handoff_id>/<task_id>/memory-health.json` to persist; `canon flow-audit ... --require-memory-health` to enforce at merge (release-orchestrator contract).

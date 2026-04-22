@@ -214,6 +214,7 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon qa-validate --file <path> --require-pass [--handoff-id <id> --task-id <id> --require-dor-telemetry]` | Validate persisted QA gate packet fields/referenced tests; optionally require DoR rejection telemetry artifacts for the task. |
 | `canon flow-audit --handoff-id <id> --task-id <id>` | Audit process compliance artifacts (handoff files + plan/task tracking), with optional sampling. |
 | `canon memory-health [--required <csv>] [--timeout-ms <int>] [--output <path>] [--verbose]` | Probe canonical + mempalace (+ optional state/graph) /healthz; JSON report; exit 0 iff all required backends OK within budget. |
+| `canon checkpoint <read\|write\|lease-acquire\|lease-renew\|lease-release> ...` | stdlib JSON client for state-api checkpoints and leases; exits 0 ok, 1 `state_version_conflict`, 2 lease denied, 3 not found, 4 usage/validation, 5 transport. |
 | `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
 | `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |
