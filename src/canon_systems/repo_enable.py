@@ -107,8 +107,15 @@ def enable_repo(repo_root: Path) -> None:
     # Install repo-level Cursor rule.
     _copy_template("rules/memory-layer-defaults.mdc", rules_dir / "memory-layer-defaults.mdc")
 
-    # Install repo-level subagents (project-planner, scoper, cursor-pilot, implementer, qa-gate).
-    for name in ("project-planner.md", "scoper.md", "cursor-pilot.md", "implementer.md", "qa-gate.md"):
+    # Install repo-level subagents (project-planner, scoper, cursor-pilot, implementer, qa-gate, release-orchestrator).
+    for name in (
+        "project-planner.md",
+        "scoper.md",
+        "cursor-pilot.md",
+        "implementer.md",
+        "qa-gate.md",
+        "release-orchestrator.md",
+    ):
         _copy_template(f"agents/{name}", agents_dir / name)
 
     # Pin installed version for drift detection.
@@ -127,7 +134,14 @@ def install_user_scope() -> None:
     (home / "agents").mkdir(parents=True, exist_ok=True)
     _copy_template("rules/canon-autosetup.mdc", home / "rules" / "canon-autosetup.mdc")
     _copy_template("rules/memory-layer-defaults.mdc", home / "rules" / "memory-layer-defaults.mdc")
-    for name in ("project-planner.md", "scoper.md", "cursor-pilot.md", "implementer.md", "qa-gate.md"):
+    for name in (
+        "project-planner.md",
+        "scoper.md",
+        "cursor-pilot.md",
+        "implementer.md",
+        "qa-gate.md",
+        "release-orchestrator.md",
+    ):
         _copy_template(f"agents/{name}", home / "agents" / name)
 
 

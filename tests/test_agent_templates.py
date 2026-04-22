@@ -23,6 +23,17 @@ def test_project_planner_template_emits_backlog_packet() -> None:
     assert "per_task_workflow" in body
 
 
+def test_release_orchestrator_template_has_merge_and_deploy_gates() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("release-orchestrator.md").read_text(
+        encoding="utf-8"
+    )
+    assert "Branch strategy" in body
+    assert "Merge gates (all required)" in body
+    assert "dev -> staging -> production/TestFlight" in body
+    assert "Never bypass branch protection." in body
+    assert "RELEASE_STATUS" in body
+
+
 def test_cursor_pilot_requires_parallelization_plan() -> None:
     body = resources.files("canon_systems.templates.agents").joinpath("cursor-pilot.md").read_text(
         encoding="utf-8"
@@ -48,6 +59,8 @@ def test_default_rule_requires_parallel_implementer_fanout() -> None:
     assert "Run this loop automatically:" in body
     assert "switch to **Plan mode** and run" in body
     assert "`project-planner` first" in body
+    assert "`release-orchestrator` governs branch/PR/merge/deploy" in body
+    assert "Release governance (required)" in body
 
 
 def test_scoper_and_qa_gate_include_no_guessing_policy() -> None:

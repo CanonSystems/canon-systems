@@ -13,7 +13,8 @@ What ships in one install:
 - **Agent-callable Q&A**: `canon ask "..."` surfaces repo-scoped prior
   work from canonical artifacts + MemPalace.
 - **Subagent system**: `project-planner`, `scoper`, `cursor-pilot`,
-  `implementer`, and `qa-gate` — backlog planning plus DoR-driven execution.
+  `implementer`, `qa-gate`, and `release-orchestrator` — backlog planning,
+  DoR-driven execution, and gated release orchestration.
 - **Version-drift guard**: hooks hard-fail if the installed CLI is older
   than the version a repo was wired with; the agent is instructed to
   offer an upgrade.
@@ -91,7 +92,7 @@ pipx install --force git+ssh://git@github.com/CanonSystems/canon-systems.git
 - `~/.cursor/rules/canon-autosetup.mdc` — offers setup when you open an
   unwired repo.
 - `~/.cursor/rules/memory-layer-defaults.mdc` — memory usage defaults.
-- `~/.cursor/agents/{project-planner,scoper,cursor-pilot,implementer,qa-gate}.md` — the subagent
+- `~/.cursor/agents/{project-planner,scoper,cursor-pilot,implementer,qa-gate,release-orchestrator}.md` — the subagent
   chain, available globally.
 
 ## Per-repo setup
@@ -114,7 +115,7 @@ This:
 4. Installs `<repo>/.cursor/hooks/memory-{preflight,capture}.sh` +
    merges `<repo>/.cursor/hooks.json`.
 5. Installs `<repo>/.cursor/rules/memory-layer-defaults.mdc`.
-6. Installs `<repo>/.cursor/agents/{project-planner,scoper,cursor-pilot,implementer,qa-gate}.md`.
+6. Installs `<repo>/.cursor/agents/{project-planner,scoper,cursor-pilot,implementer,qa-gate,release-orchestrator}.md`.
 
 From this point, every user prompt hydrates context and every assistant
 turn gets captured to AWS-backed memory — tenant-scoped to this repo.
@@ -292,6 +293,8 @@ Installed globally by `install.sh` and into each wired repo by
   `HANDOFF_TO_QA_SHARD`, then parent aggregates to `HANDOFF_TO_QA`.
 - **`qa-gate`** — full access. Writes or augments tests, runs them,
   iterates fixes up to 3 times, emits `GATE_RESULTS`.
+- **`release-orchestrator`** — full access. Manages branch/PR/merge/deploy
+  lifecycle and enforces QA + CI + environment gates before promotion.
 
 Use `/spq` or invoke them explicitly in your parent agent's plan.
 

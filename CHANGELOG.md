@@ -17,6 +17,23 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.3.0] - 2026-04-24
+
+### Added
+
+- New `release-orchestrator` subagent template to govern branch/PR/merge/deploy
+  lifecycle with explicit QA/CI/environment gates and rollback readiness.
+
+### Changed
+
+- Non-trivial execution flow now includes release governance after task-level QA:
+  `project-planner -> scoper -> cursor-pilot -> implementer -> qa-gate -> release-orchestrator`.
+- Repo + user-scope installs now include `release-orchestrator.md`.
+- Rules/docs now enforce branch protection, CI+QA merge gates, environment
+  promotion gates, and explicit external-approver handoff when policy requires it.
+
+---
+
 ## [3.2.2] - 2026-04-24
 
 ### Fixed

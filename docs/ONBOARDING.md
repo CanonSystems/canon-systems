@@ -224,7 +224,7 @@ after secrets exist, or set `MEMORY_LAYER_AWS_SECRET_ID` in
 5. Installs user-level Cursor rules and subagents (`~/.cursor/rules/`,
    `~/.cursor/agents/`) so every repo gets the auto-setup prompt on
    first use and has `project-planner`, `scoper`, `cursor-pilot`,
-   `implementer`, `qa-gate`
+   `implementer`, `qa-gate`, `release-orchestrator`
    available.
 6. Installs per-repo Cursor hooks + rule + subagents into `.cursor/`
    in this repo and pins the canon-systems version for drift detection.
@@ -312,9 +312,11 @@ Open the repo in Cursor. From this point:
   `canon ask "..."` itself on the fly — it's baked into the rule.
 - **For non-trivial tasks**, you (or the agent) can invoke the
   `project-planner` → `scoper` → `cursor-pilot` → `implementer` → `qa-gate`
-  subagent chain via explicit parent-agent orchestration. Use `project-planner`
+  → `release-orchestrator` subagent chain via explicit parent-agent
+  orchestration. Use `project-planner`
   first for large initiatives to produce the full dependency backlog; then run
-  task-by-task SPQ execution with parallel implementers where allowed.
+  task-by-task SPQ execution with parallel implementers where allowed, and
+  enforce PR/merge/deploy gates with `release-orchestrator`.
 
 You don't need to do anything further for this to work. It's passive
 after setup.
