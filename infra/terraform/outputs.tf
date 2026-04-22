@@ -83,3 +83,23 @@ output "state_table_arn" {
   description = "ARN of the DynamoDB canon-state table."
   value       = module.state_table.table_arn
 }
+
+output "snapshots_bucket_name" {
+  description = "S3 bucket for Axon per-commit graph snapshots (gzip JSON)."
+  value       = module.axon_snapshots.snapshots_bucket_name
+}
+
+output "snapshots_bucket_arn" {
+  description = "ARN of the Axon snapshots bucket."
+  value       = module.axon_snapshots.snapshots_bucket_arn
+}
+
+output "meta_table_name" {
+  description = "DynamoDB table for Axon snapshot metadata (pk/sk per tenant + commit)."
+  value       = module.axon_snapshots.meta_table_name
+}
+
+output "meta_table_arn" {
+  description = "ARN of the Axon metadata table."
+  value       = module.axon_snapshots.meta_table_arn
+}

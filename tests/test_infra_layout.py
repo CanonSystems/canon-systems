@@ -178,3 +178,57 @@ def test_infra_terraform_readme_e2t1_section() -> None:
     text = (TERRAFORM_ROOT / "README.md").read_text(encoding="utf-8")
     assert "## E2-T1" in text
     assert "terraform import 'module.state_table.aws_dynamodb_table.this'" in text
+
+
+AXON_SNAPSHOTS_MODULE = TERRAFORM_ROOT / "modules" / "axon-snapshots"
+AXON_MODULE_FILES = ("main.tf", "variables.tf", "outputs.tf", "README.md")
+
+
+def test_axon_snapshots_module_files_exist() -> None:
+    for name in AXON_MODULE_FILES:
+        path = AXON_SNAPSHOTS_MODULE / name
+        assert path.is_file(), f"Missing module file: {path}"
+        assert path.stat().st_size > 0, f"Module file is empty: {path}"
+
+
+def test_axon_snapshots_module_declares_s3_and_dynamodb() -> None:
+    main_tf = (AXON_SNAPSHOTS_MODULE / "main.tf").read_text(encoding="utf-8")
+    assert "aws_s3_bucket" in main_tf
+    assert "aws_dynamodb_table" in main_tf
+    assert "PAY_PER_REQUEST" in main_tf
+    assert "point_in_time_recovery" in main_tf
+    assert "deletion_protection_enabled" in main_tf
+
+
+def test_axon_snapshots_module_exposes_expected_outputs() -> None:
+    text = (AXON_SNAPSHOTS_MODULE / "outputs.tf").read_text(encoding="utf-8")
+    for key in (
+        "snapshots_bucket_name",
+        "snapshots_bucket_arn",
+        "meta_table_name",
+        "meta_table_arn",
+    ):
+        assert f'output "{key}"' in text, f"Missing output {key}"
+
+
+def test_root_wires_axon_snapshots_module() -> None:
+    main_tf = (TERRAFORM_ROOT / "main.tf").read_text(encoding="utf-8")
+    assert 'module "axon_snapshots"' in main_tf
+    assert "./modules/axon-snapshots" in main_tf
+
+
+def test_root_outputs_expose_axon_snapshots() -> None:
+    out = (TERRAFORM_ROOT / "outputs.tf").read_text(encoding="utf-8")
+    for key in (
+        "snapshots_bucket_name",
+        "snapshots_bucket_arn",
+        "meta_table_name",
+        "meta_table_arn",
+    ):
+        assert key in out, f"Missing output {key}"
+
+
+def test_infra_readme_e3t1_section() -> None:
+    text = (TERRAFORM_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "E3-T1" in text
+    assert "axon-snapshots" in text

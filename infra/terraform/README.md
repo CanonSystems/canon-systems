@@ -155,3 +155,42 @@ Equivalent form using variable interpolation (resolve `project_name` and `enviro
 ```text
 terraform import 'module.state_table.aws_dynamodb_table.this' "${var.project_name}-${var.environment}-canon-state"
 ```
+
+## E3-T1 — axon-snapshots module (S3 + DynamoDB)
+
+**E3-T1 executed zero cloud commands** in-task (waiver: operator `terraform apply` / AWS calls only with credentials and backend outside CI).
+
+The module [`modules/axon-snapshots/`](modules/axon-snapshots/) adds one S3 bucket (`${var.project_name}-${var.environment}-axon-snapshots`) and one DynamoDB table (`...-axon-snapshots-meta`) for the graph retrieval plane (`backend/axon-service`). See the module [README](modules/axon-snapshots/README.md) for the key schema.
+
+### Local validate / plan
+
+From the repository root (requires Terraform >= 1.5 on `PATH`):
+
+```bash
+cd infra/terraform
+terraform init -backend=false
+terraform validate
+terraform plan
+```
+
+**Apply** (operator; not run in this repo’s smoke by default without credentials):
+
+```bash
+cd infra/terraform
+terraform apply
+```
+
+**Import** (adopt pre-existing resources; replace names with the real bucket and table for the target environment):
+
+```bash
+cd infra/terraform
+terraform import 'module.axon_snapshots.aws_s3_bucket.snapshots' 'canon-systems-v2-dev-axon-snapshots'
+terraform import 'module.axon_snapshots.aws_dynamodb_table.meta' 'canon-systems-v2-dev-axon-snapshots-meta'
+```
+
+Equivalent with variables:
+
+```text
+terraform import 'module.axon_snapshots.aws_s3_bucket.snapshots' "${var.project_name}-${var.environment}-axon-snapshots"
+terraform import 'module.axon_snapshots.aws_dynamodb_table.meta' "${var.project_name}-${var.environment}-axon-snapshots-meta"
+```

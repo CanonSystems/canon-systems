@@ -42,7 +42,7 @@ Service packages and shared types for the Canon Memory Platform live under
 [`backend/`](backend/README.md). **`knowledge-api`**, **`knowledge-worker`**, and
 **`memory-adapter`** now carry the production FastAPI sources consolidated from
 `sibling` repo `canon-systems-v2`. **`state-api`** ([`backend/state-api/`](backend/state-api/README.md))
-hosts the operational-state REST plane (checkpoints + leases on DynamoDB). The layout also includes v2 libs **`knowledge-schema`**,
+hosts the operational-state REST plane (checkpoints + leases on DynamoDB). **`axon-service`** ([`backend/axon-service/`](backend/axon-service/README.md)) is the graph retrieval plane: `/axon/{company}/{repo}/index|query|impact` and `/healthz` with S3 + DynamoDB backing; set **`AXON_SERVICE_URL`** (base URL for `canon memory-health` graph), **`AXON_S3_BUCKET`**, **`AXON_META_TABLE_NAME`**, and **`AXON_SERVICE_TOKEN`**. The layout also includes v2 libs **`knowledge-schema`**,
 **`knowledge-policy`**, and **`knowledge-client`** also under `backend/` for
 editable-install import closure (see
 [docs/E0-T3-MIGRATION-NOTES.md](docs/E0-T3-MIGRATION-NOTES.md)). Install the
@@ -213,7 +213,7 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon dor-log --event-json '{...}'` | Push DoR failure telemetry to server; queue locally on send failure. |
 | `canon qa-validate --file <path> --require-pass [--handoff-id <id> --task-id <id> --require-dor-telemetry] [--require-checkpoints]` | Validate persisted QA gate packet fields/referenced tests; optionally require DoR rejection telemetry artifacts and/or (with ids) on-disk per-phase checkpoint JSON. |
 | `canon flow-audit --handoff-id <id> --task-id <id> [--require-checkpoints]` | Audit process compliance artifacts (handoff files + plan/task tracking), with optional sampling; `--require-checkpoints` enforces checkpoint JSON per §B phase. |
-| `canon memory-health [--required <csv>] [--timeout-ms <int>] [--output <path>] [--verbose]` | Probe canonical + mempalace (+ optional state/graph) /healthz; JSON report; exit 0 iff all required backends OK within budget. |
+| `canon memory-health [--required <csv>] [--timeout-ms <int>] [--output <path>] [--verbose]` | Probe canonical + mempalace (+ optional state/graph) /healthz; JSON report; exit 0 iff all required backends OK within budget. The **graph** row probes `AXON_SERVICE_URL` (axon-service). |
 | `canon checkpoint <read\|write\|lease-acquire\|lease-renew\|lease-release> ...` | stdlib JSON client for state-api checkpoints and leases; exits 0 ok, 1 `state_version_conflict`, 2 lease denied, 3 not found, 4 usage/validation, 5 transport. |
 | `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |

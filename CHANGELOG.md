@@ -9,6 +9,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- E3-T1: backend/axon-service (FastAPI) — multi-tenant graph-index service (POST /index, GET /query, GET /impact, GET /healthz) with S3 snapshot + DynamoDB metadata persistence, Bearer auth shim, canonical `retrieval.graph.*` events; `infra/terraform/modules/axon-snapshots` module; memory-health graph probe backed by `AXON_SERVICE_URL`; moto tests under `backend/axon-service/axon_service_tests/`.
 - E2-T5: flow-audit + qa-validate enforce per-phase checkpoint artifacts — new `--require-checkpoints` flag on both CLIs validates `.cursor/handoffs/<handoff_id>/<task_id>/checkpoints/<phase>.json` across all five §B phases (scoper/cursor-pilot/implementer/qa-gate/release-orchestrator).
 - E2-T4: agent templates + memory-layer-defaults hydrate canon checkpoint contract — scoper/cursor-pilot/implementer/qa-gate/release-orchestrator now document read-before/write-after via state-api with graceful CANON_STATE_API_URL skip.
 - E2-T3: canon checkpoint CLI — stdlib-only `canon checkpoint` with subcommands `read`, `write`, `lease-acquire`, `lease-renew`, `lease-release` over the state-api wire (flat write/acquire, nested `scope_ids` for renew/release); exit codes 0/1/2/3/4/5 (ok / `state_version_conflict` / lease denied / not found / usage / transport).

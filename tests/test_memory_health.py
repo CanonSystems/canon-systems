@@ -400,6 +400,62 @@ def test_system_workflow_section_6_bullet() -> None:
     assert "canon memory-health" in text
 
 
+def test_graph_optional_not_configured_exit_ok(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Default required set: graph row may be not_configured without failing the run (exit 0, degraded)."""
+    root = _write_repo(
+        tmp_path,
+        KNOWLEDGE_API_URL="http://k.test",
+        MEMORY_ADAPTER_URL="http://m.test",
+    )
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(root))
+    for v in (
+        "KNOWLEDGE_API_URL",
+        "MEMORY_ADAPTER_URL",
+        "STATE_API_URL",
+        "AXON_SERVICE_URL",
+        "CANON_MEMORY_HEALTH_REQUIRED",
+    ):
+        monkeypatch.delenv(v, raising=False)
+    monkeypatch.setattr(mh, "_probe", lambda _u, _t: _ok_200())
+    c, s = _run_captured(argv=[], monkeypatch=monkeypatch)
+    o = json.loads(s)
+    assert c == 0
+    assert o["overall_status"] == "degraded"
+    graph = next(b for b in o["backends"] if b["name"] == "graph")
+    assert graph["status"] == "not_configured"
+    assert graph["required"] is False
+
+
+def test_graph_required_unhealthy_when_unset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _write_repo(
+        tmp_path,
+        KNOWLEDGE_API_URL="http://k.test",
+        MEMORY_ADAPTER_URL="http://m.test",
+    )
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(root))
+    monkeypatch.setenv("CANON_MEMORY_HEALTH_REQUIRED", "canonical,mempalace,graph")
+    for v in (
+        "KNOWLEDGE_API_URL",
+        "MEMORY_ADAPTER_URL",
+        "STATE_API_URL",
+        "AXON_SERVICE_URL",
+    ):
+        monkeypatch.delenv(v, raising=False)
+    monkeypatch.setattr(mh, "_probe", lambda _u, _t: _ok_200())
+    c, s = _run_captured(argv=[], monkeypatch=monkeypatch)
+    o = json.loads(s)
+    assert c == 1
+    assert o["overall_status"] == "unhealthy"
+    graph = next(b for b in o["backends"] if b["name"] == "graph")
+    assert graph["name"] == "graph"
+    assert graph["status"] == "not_configured"
+    assert graph.get("last_error") == "URL not set"
+
+
 def test_no_live_http_in_suite(
     four_urls_repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
