@@ -108,9 +108,10 @@ notes and operator follow-ups: [`docs/WAVE-0-CLOSEOUT.md`](docs/WAVE-0-CLOSEOUT.
 
 ## Distribution
 
-This is **proprietary software**, not published to PyPI or npm. It is
-installed directly from its private GitHub repo. Only people with read
-access to the repo can install it.
+This is **proprietary software**, not published to public PyPI or npm. It is
+installed from the private GitHub repo and from **GitHub Releases** (wheel +
+sdist attached to version tags, e.g. **v3.4.1**). Only people with access to
+the org/repo can install it.
 
 Do **not** publish to public registries. When this is productized, the
 intended customer-facing distribution is **AWS CodeArtifact** (same AWS
@@ -119,9 +120,19 @@ install tokens.
 
 ## Install
 
+**There is no `canon upgrade` subcommand.** Upgrades use **`pipx upgrade
+canon-systems`** (or `pipx install --force git+…` to re-pull). When your
+`canon` binary is **pipx-managed**, `canon setup` and `canon enable-repo`
+can also run **`pipx upgrade canon-systems`** for you (see **Self-update**
+below). Plain `pip install …` is for one-off installs, CI, or pinning a
+**release wheel** — it does not replace pipx for day-to-day use.
+
 ```bash
-# From the private GitHub repo (primary path for you + Romi):
+# From the private GitHub repo (primary path — tracks default branch):
 pipx install git+ssh://git@github.com/CanonSystems/canon-systems.git
+
+# Pin an exact release (optional — e.g. packaging-verified v3.4.1 wheel):
+pipx install --force "https://github.com/CanonSystems/canon-systems/releases/download/v3.4.1/canon_systems-3.4.1-py3-none-any.whl"
 
 # Or from a local checkout during development:
 pipx install /path/to/canon-systems

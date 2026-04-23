@@ -54,19 +54,37 @@ Verify:
 
 ```bash
 canon --version
-# canon-systems 3.0.0  (or later)
+# e.g. canon-systems 3.4.1  (see CHANGELOG.md / git describe for current)
 ```
 
 If pipx installs but `canon` isn't found, see [§1c](#1c-after-pipx-canon-not-on-path)
 below.
 
-To upgrade later when Ed pushes a new commit:
+**Upgrades:** there is no `canon upgrade` command. Use pipx:
 
 ```bash
 pipx upgrade canon-systems
 # or to force a fresh pull from the git repo:
 pipx install --force git+ssh://git@github.com/CanonSystems/canon-systems.git
 ```
+
+When you run **`canon setup`** or **`canon enable-repo`**, a pipx-installed
+`canon` may run **`pipx upgrade canon-systems`** first (then restart itself)
+unless you set `CANON_SYSTEMS_SKIP_SELF_UPDATE=1` or `CI=true`. See
+`src/canon_systems/self_update.py`.
+
+### 1d. Optional: install a pinned release wheel
+
+To match a **tagged** build (e.g. the same artifact CI attached to a GitHub
+Release) instead of `main`:
+
+```bash
+pipx install --force "https://github.com/CanonSystems/canon-systems/releases/download/v3.4.1/canon_systems-3.4.1-py3-none-any.whl"
+```
+
+Replace `v3.4.1` with the tag you want. The wheel includes **`boto3`** and
+**`canon_backend_shared`** as of 3.4.1 so a clean install passes
+`canon --version`.
 
 ### 1b. Alternative: pip or pip3 (user install)
 
