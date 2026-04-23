@@ -9,6 +9,17 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [3.4.0] - 2026-04-23
+
+Canon Memory Platform **v1** — complete. Ships operator CLI (`canon report` full rollup, hard-lock rule via `canon wire`, vault sync, synth publish/show, release publish-on-pass), in-repo backends (`state-api`, `axon-service`, `synthesis`, `synthesis-web`), Terraform modules (apply separately for cloud). Test suite: **440** passing at release tag.
+
+
+### Added
+
 - **E7-T3** Final five-file living-spec refresh + Canon Memory Platform v1
   sign-off: `README.md` gains a dated "Canon Memory Platform v1 — shipped"
   summary enumerating Waves 0–7 deliverables.
@@ -182,7 +193,6 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
----
 
 ## [3.3.5] - 2026-04-24
 
