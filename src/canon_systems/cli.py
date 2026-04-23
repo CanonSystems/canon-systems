@@ -18,6 +18,7 @@ from .graph_indexer import run as run_graph_cli
 from .report_cli import run as run_report_cli
 from .resume_engine import run as run_resume_engine
 from .stall_watchdog import run as run_stall_watchdog
+from .synth_cli import run as run_synth_cli
 from .dor_log import run as run_dor_log
 from .flow_audit import run as run_flow_audit
 from .memory_health import run as run_memory_health
@@ -324,6 +325,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     stall_watchdog_parser.add_argument("args", nargs=argparse.REMAINDER)
 
+    synth_parser = sub.add_parser(
+        "synth",
+        help="Synthesis vault publishing driver (internal; subcommands: publish).",
+    )
+    synth_parser.add_argument("args", nargs=argparse.REMAINDER)
+
     sec = sub.add_parser(
         "secrets",
         help="Structured AWS Secrets Manager workflows for Canon runtime credentials.",
@@ -540,6 +547,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "stall-watchdog":
         return run_stall_watchdog(list(getattr(args, "args", [])))
+
+    if args.command == "synth":
+        return run_synth_cli(list(getattr(args, "args", [])))
 
     if args.command == "secrets":
         sec_cmd = args.secrets_command or "wizard"
