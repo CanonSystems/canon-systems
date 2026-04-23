@@ -130,3 +130,17 @@ canon checkpoint write --lease-token <lease_token> --expected-version <state_ver
 CLI exit codes: `0` OK; `1` = `EXIT_VERSION_CONFLICT` (retry after re-read); `2` = `EXIT_LEASE_DENIED` (re-acquire lease); `3` not found; `4` usage; `5` transport.
 
 **Dev/sandbox skip:** when `CANON_STATE_API_URL` is unset (local development, sandbox, or CI without a reachable `state-api`), skip checkpoint HTTP gracefully — log the skip and continue. Do not fail the task solely because `CANON_STATE_API_URL` is unset.
+
+### Conflict recovery (E4-T2)
+
+When `canon checkpoint` returns exit `1` or `2`, the stderr JSON now includes a `resolution` object with a concrete recovery command. Handle each kind as follows:
+
+- **Exit 1 — `state_version_conflict`** (stale `--expected-version`):
+  1. Re-read the current checkpoint: `canon checkpoint read --company-id <c> --repository-id <r> --plan-id <p> --task-id <t> --workstream-id <w>`.
+  2. Read the returned `state_version`; retry the `write` with `--expected-version <new_value>`.
+
+- **Exit 2 — `lease_held`** (another agent owns the lease): wait until the returned `expires_at`, or coordinate with `owner_agent_run_id`, then re-run `canon checkpoint lease-acquire`.
+
+- **Exit 2 — `lease_denied` / `lease_expired`** (your `--lease-token` is missing/stale/rotated): re-run `canon checkpoint lease-acquire` to obtain a fresh token, then retry the mutating call with the new `--lease-token`.
+
+Renewal (`lease-renew`) of an expired token is not supported — always fall back to `lease-acquire`. The `resolution.command` field in the stderr envelope is copy-pasteable with `<placeholder>` substitutions for scope IDs.

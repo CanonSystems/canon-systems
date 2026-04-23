@@ -187,3 +187,5 @@ canon checkpoint write --lease-token <lease_token> --expected-version <state_ver
 CLI exit codes: `0` OK; `1` = `EXIT_VERSION_CONFLICT` (retry after re-read); `2` = `EXIT_LEASE_DENIED` (re-acquire lease); `3` not found; `4` usage; `5` transport.
 
 **Dev/sandbox skip:** when `CANON_STATE_API_URL` is unset (local development, sandbox, or CI without a reachable `state-api`), skip checkpoint HTTP gracefully — log the skip and continue. Do not fail the task solely because `CANON_STATE_API_URL` is unset.
+
+- **Conflict recovery:** when any `canon checkpoint` mutating call returns exit `1` or `2`, consult the `### Conflict recovery (E4-T2)` section of `src/canon_systems/templates/agents/implementer.md` for the canonical recovery flow. The stderr `resolution` object contains the exact `canon checkpoint ...` command to re-run.
