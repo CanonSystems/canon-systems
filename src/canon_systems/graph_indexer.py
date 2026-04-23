@@ -299,6 +299,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run(argv: list[str] | None = None) -> int:
+    # Match memory-health / hooks: AXON_* may live only in ~/.canon or Secrets Manager.
+    from .shared import ensure_layered_memory_env
+
+    ensure_layered_memory_env()
     p = build_parser()
     av = list(sys.argv[1:] if argv is None else argv)
     try:

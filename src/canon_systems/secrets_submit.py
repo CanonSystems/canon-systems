@@ -177,6 +177,8 @@ def _build_template_payload(*, company_id: str, repository_id: str, prefix: str,
         "KNOWLEDGE_WORKER_URL": base,
         "MEMORY_ADAPTER_URL": base,
         "CANON_STATE_API_URL": base,
+        "AXON_SERVICE_URL": "",
+        "AXON_SERVICE_TOKEN": "",
         "SCOPE_ARTIFACT_BUCKET": "<artifact-bucket>",
         "CANON_HTTP_BEARER_TOKEN": "<token>",
     }

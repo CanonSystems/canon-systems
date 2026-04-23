@@ -58,6 +58,8 @@ def test_template_outputs_structured_payload(capsys) -> None:
     assert '"COMPANY_ID": "IMC"' in out
     assert '"REPOSITORY_ID": "innermost"' in out
     assert '"CANON_STATE_API_URL": "https://memory.canon-systems.com"' in out
+    assert '"AXON_SERVICE_URL": ""' in out
+    assert '"AXON_SERVICE_TOKEN": ""' in out
     assert '"CANON_HTTP_BEARER_TOKEN": "<token>"' in out
 
 

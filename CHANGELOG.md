@@ -13,6 +13,16 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.4.5] - 2026-04-23
+
+### Changed
+
+- **`canon graph`:** loads the same layered env + Secrets Manager hydration as
+  hooks before resolving **`AXON_SERVICE_URL`** / **`AXON_SERVICE_TOKEN`**, so
+  graph clients work when those keys exist only in AWS (not only in local `.env`).
+- **`canon secrets template`:** includes optional **`AXON_SERVICE_URL`** and
+  **`AXON_SERVICE_TOKEN`** placeholders for operators provisioning the graph plane.
+
 ## [3.4.4] - 2026-04-23
 
 ### Changed
