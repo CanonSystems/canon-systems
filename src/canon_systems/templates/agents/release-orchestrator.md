@@ -187,3 +187,23 @@ canon checkpoint write --lease-token <lease_token> --expected-version <state_ver
 CLI exit codes: `0` OK; `1` = `EXIT_VERSION_CONFLICT` (retry after re-read); `2` = `EXIT_LEASE_DENIED` (re-acquire lease); `3` not found; `4` usage; `5` transport.
 
 **Dev/sandbox skip:** when `CANON_STATE_API_URL` is unset (local development, sandbox, or CI without a reachable `state-api`), skip checkpoint HTTP gracefully — log the skip and continue. Do not fail the task solely because `CANON_STATE_API_URL` is unset.
+
+- **Conflict recovery:** when any `canon checkpoint` mutating call returns exit `1` or `2`, consult the `### Conflict recovery (E4-T2)` section of `src/canon_systems/templates/agents/implementer.md` for the canonical recovery flow. The stderr `resolution` object contains the exact `canon checkpoint ...` command to re-run.
+
+## Resume check (E4-T4)
+
+Before advancing the merge gate, run `canon resume` to verify every task in the plan has reached `release-orchestrator` / `completed`:
+
+```shell
+canon resume \
+  --plan-id <plan_id> --company-id <company_id> --repository-id <repository_id> \
+  --handoffs-dir .cursor/handoffs/<handoff_id>
+```
+
+Interpret the stdout envelope:
+
+- `resume_target == null` AND `resume_available == false` AND empty `degraded_tasks` → wave is complete; merge gate MAY advance.
+- `resume_target != null` → at least one task has an incomplete phase. Do NOT advance the merge gate. Re-invoke the indicated agent phase for the indicated `task_id`.
+- `degraded_tasks` non-empty → state-api transport issue; resolve before advancing.
+
+This check is required **before advancing the merge gate**; operators consult `docs/runbooks/RESUME.md` for the full operator workflow (including stall-watchdog cross-reference and troubleshooting).

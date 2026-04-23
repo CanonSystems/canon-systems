@@ -31,6 +31,63 @@ EXIT_NOT_FOUND = 3
 EXIT_USAGE = 4
 EXIT_TRANSPORT = 5
 
+_RESOLUTION_HINTS: dict[str, dict[str, str]] = {
+    "state_version_conflict": {
+        "message": (
+            "Your expected state_version is stale. Re-read the current checkpoint "
+            "to get the latest state_version, then retry the write with "
+            "--expected-version <new_value>."
+        ),
+        "command": (
+            "canon checkpoint read --company-id <c> --repository-id <r> "
+            "--plan-id <p> --task-id <t> --workstream-id <w>"
+        ),
+    },
+    "lease_held": {
+        "message": (
+            "Another agent currently holds the lease. Wait until expires_at, "
+            "or coordinate with owner_agent_run_id, then re-run lease-acquire."
+        ),
+        "command": (
+            "canon checkpoint lease-acquire --company-id <c> --repository-id <r> "
+            "--plan-id <p> --task-id <t> --workstream-id <w> "
+            "--owner-agent-run-id <run_id> --owner-actor-id <actor_id> --ttl-seconds 300"
+        ),
+    },
+    "lease_denied": {
+        "message": (
+            "Your lease_token is missing, stale, or unauthorized for this scope. "
+            "Acquire a fresh lease, then retry the mutating call with the new lease_token."
+        ),
+        "command": (
+            "canon checkpoint lease-acquire --company-id <c> --repository-id <r> "
+            "--plan-id <p> --task-id <t> --workstream-id <w> "
+            "--owner-agent-run-id <run_id> --owner-actor-id <actor_id> --ttl-seconds 300"
+        ),
+    },
+    "lease_expired": {
+        "message": (
+            "The lease_token has expired or been rotated. Re-acquire the lease "
+            "(renewal of a dead token is not supported) and retry."
+        ),
+        "command": (
+            "canon checkpoint lease-acquire --company-id <c> --repository-id <r> "
+            "--plan-id <p> --task-id <t> --workstream-id <w> "
+            "--owner-agent-run-id <run_id> --owner-actor-id <actor_id> --ttl-seconds 300"
+        ),
+    },
+}
+
+
+def _resolution_hint(kind: str) -> dict[str, str]:
+    """Return the {message, command} recovery hint for a known conflict kind.
+
+    Unknown kinds return the conservative `lease_denied` hint (re-acquire lease).
+    """
+    if kind in _RESOLUTION_HINTS:
+        return dict(_RESOLUTION_HINTS[kind])
+    return dict(_RESOLUTION_HINTS["lease_denied"])
+
 
 def _clamp_timeout(ms: int) -> int:
     return max(100, min(60000, ms))
@@ -293,14 +350,22 @@ def _cmd_write(args: argparse.Namespace) -> int:
         d = _unwrap_detail(raw)
         if isinstance(d, dict) and d.get("error") == "state_version_conflict":
             o = {k: d[k] for k in ("error", "expected", "actual") if k in d}
+            o["resolution"] = _resolution_hint("state_version_conflict")
             _emit_stderr_json(o)
             return EXIT_VERSION_CONFLICT
         if isinstance(d, dict):
             # Un-enumerated 409 → exit 2; omit lease_token if server ever echoed it
             o = {k: v for k, v in d.items() if k != "lease_token"}
+            o["resolution"] = _resolution_hint("lease_denied")
             _emit_stderr_json(o)
             return EXIT_LEASE_DENIED
-        _emit_stderr_json({"error": "conflict", "detail": d})
+        _emit_stderr_json(
+            {
+                "error": "conflict",
+                "detail": d,
+                "resolution": _resolution_hint("lease_denied"),
+            }
+        )
         return EXIT_LEASE_DENIED
     if st == 404:
         raw = j if isinstance(j, dict) else {}
@@ -364,14 +429,22 @@ def _cmd_lease_acquire(args: argparse.Namespace) -> int:
                     "error": "lease_held",
                     "owner_agent_run_id": d.get("owner_agent_run_id"),
                     "expires_at": d.get("expires_at"),
+                    "resolution": _resolution_hint("lease_held"),
                 }
             )
             return EXIT_LEASE_DENIED
         if isinstance(d, dict):
             o = {k: v for k, v in d.items() if k != "lease_token"}
+            o["resolution"] = _resolution_hint("lease_denied")
             _emit_stderr_json(o)
             return EXIT_LEASE_DENIED
-        _emit_stderr_json({"error": "lease_denied", "detail": d})
+        _emit_stderr_json(
+            {
+                "error": "lease_denied",
+                "detail": d,
+                "resolution": _resolution_hint("lease_denied"),
+            }
+        )
         return EXIT_LEASE_DENIED
     if st == 422:
         d = _unwrap_detail(j) if isinstance(j, dict) else j
@@ -421,7 +494,10 @@ def _cmd_lease_renew(args: argparse.Namespace) -> int:
     if st == 409:
         raw = j if isinstance(j, dict) else {}
         d = _unwrap_detail(raw)
-        _emit_stderr_json(d if isinstance(d, dict) else {"detail": d})
+        out = d if isinstance(d, dict) else {"detail": d}
+        out = dict(out)
+        out["resolution"] = _resolution_hint("lease_expired")
+        _emit_stderr_json(out)
         return EXIT_LEASE_DENIED
     if st == 422:
         d2 = _unwrap_detail(j) if isinstance(j, dict) else j
@@ -456,7 +532,10 @@ def _cmd_lease_release(args: argparse.Namespace) -> int:
     if st == 409:
         raw = j if isinstance(j, dict) else {}
         d = _unwrap_detail(raw)
-        _emit_stderr_json(d if isinstance(d, dict) else {"detail": d})
+        out = d if isinstance(d, dict) else {"detail": d}
+        out = dict(out)
+        out["resolution"] = _resolution_hint("lease_expired")
+        _emit_stderr_json(out)
         return EXIT_LEASE_DENIED
     if st == 422:
         d2 = _unwrap_detail(j) if isinstance(j, dict) else j

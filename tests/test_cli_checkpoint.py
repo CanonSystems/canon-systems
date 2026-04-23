@@ -397,7 +397,12 @@ def test_write_409_state_version_conflict_unwraps_detail_exit_1(
     )
     assert code == 1
     j = json.loads(err.getvalue())
-    assert j == {"error": "state_version_conflict", "expected": 7, "actual": 8}
+    assert j["error"] == "state_version_conflict"
+    assert j["expected"] == 7
+    assert j["actual"] == 8
+    assert "resolution" in j
+    assert j["resolution"]["message"]
+    assert j["resolution"]["command"]
 
 
 @pytest.mark.parametrize(

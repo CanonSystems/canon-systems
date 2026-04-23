@@ -222,6 +222,8 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon graph query --commit-sha <sha> --company-id <c> --repository-id <r> --q <str> [--limit N]` | Retrieve graph-backed snippets from axon-service (pure RPC). |
 | `canon graph impact --commit-sha <sha> --company-id <c> --repository-id <r> --symbol <sym> [--depth N]` | Return upstream/downstream blast radius from axon-service. |
 | `canon report --events <ndjson> [--by phase\|agent\|source] [--plan-id X] [--task-id Y]` | Aggregate retrieval_breakdown canonical events into a JSON rollup (Wave 6 will polish into CSV/table). |
+| `canon resume --plan-id <id> --company-id <c> --repository-id <r> (--tasks-file <path> \| --handoffs-dir <path>)` | Print the first incomplete (task_id, phase) pair for a plan as structured JSON (read-only; idempotent). |
+| `canon stall-watchdog scan --plan-id <p> --company-id <c> --repository-id <r> (--tasks-file <path> \| --handoffs-dir <path>) [--event-log <path>] [--dry-run]` | Detect stalled leases via GET probes and emit `lease_stall_detected` canonical events (read-only; idempotent). Exit 5 on any degraded probe. |
 | `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
 | `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |

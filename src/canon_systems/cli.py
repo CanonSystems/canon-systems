@@ -16,6 +16,8 @@ from .capture_session import run as run_capture
 from .checkpoint_cli import run as run_checkpoint_cli
 from .graph_indexer import run as run_graph_cli
 from .report_cli import run as run_report_cli
+from .resume_engine import run as run_resume_engine
+from .stall_watchdog import run as run_stall_watchdog
 from .dor_log import run as run_dor_log
 from .flow_audit import run as run_flow_audit
 from .memory_health import run as run_memory_health
@@ -313,6 +315,15 @@ def main(argv: list[str] | None = None) -> int:
     report_parser = sub.add_parser("report", help="Retrieval-telemetry rollups (stub; Wave 6 polishes)")
     report_parser.add_argument("args", nargs=argparse.REMAINDER)
 
+    resume_parser = sub.add_parser("resume", help="Orchestrator resume engine (read-only)")
+    resume_parser.add_argument("args", nargs=argparse.REMAINDER)
+
+    stall_watchdog_parser = sub.add_parser(
+        "stall-watchdog",
+        help="Scan for stalled leases and emit lease_stall_detected events (read-only).",
+    )
+    stall_watchdog_parser.add_argument("args", nargs=argparse.REMAINDER)
+
     sec = sub.add_parser(
         "secrets",
         help="Structured AWS Secrets Manager workflows for Canon runtime credentials.",
@@ -523,6 +534,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "report":
         return run_report_cli(list(getattr(args, "args", [])))
+
+    if args.command == "resume":
+        return run_resume_engine(list(getattr(args, "args", [])))
+
+    if args.command == "stall-watchdog":
+        return run_stall_watchdog(list(getattr(args, "args", [])))
 
     if args.command == "secrets":
         sec_cmd = args.secrets_command or "wizard"
