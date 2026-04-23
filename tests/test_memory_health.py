@@ -59,6 +59,34 @@ def four_urls_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
+def test_resolve_state_accepts_canon_state_api_url(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _write_repo(
+        tmp_path,
+        KNOWLEDGE_API_URL="http://k.test",
+        MEMORY_ADAPTER_URL="http://m.test",
+        CANON_STATE_API_URL="http://s.canon.test",
+    )
+    monkeypatch.delenv("STATE_API_URL", raising=False)
+    monkeypatch.delenv("CANON_STATE_API_URL", raising=False)
+    urls = mh._resolve_env_urls(root)
+    assert urls["state"] == "http://s.canon.test"
+
+
+def test_resolve_state_prefers_state_api_url_over_canon(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _write_repo(
+        tmp_path,
+        STATE_API_URL="http://s.primary",
+        CANON_STATE_API_URL="http://s.fallback",
+    )
+    monkeypatch.delenv("STATE_API_URL", raising=False)
+    monkeypatch.delenv("CANON_STATE_API_URL", raising=False)
+    assert mh._resolve_env_urls(root)["state"] == "http://s.primary"
+
+
 def test_healthy(four_urls_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mh, "_probe", lambda _u, _t: _ok_200())
     c, s = _run_captured(argv=[], monkeypatch=monkeypatch)
@@ -103,12 +131,18 @@ def test_all_required_unreachable(four_urls_repo: Path, monkeypatch: pytest.Monk
 
 
 def test_not_configured(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    isolated_home = tmp_path / "isolated_home"
+    isolated_home.mkdir(parents=True)
+    (isolated_home / ".canon").mkdir(parents=True)
+    monkeypatch.setattr("canon_systems.shared.Path.home", lambda: isolated_home)
+
     root = _write_repo(tmp_path)
     monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(root))
     for v in (
         "KNOWLEDGE_API_URL",
         "MEMORY_ADAPTER_URL",
         "STATE_API_URL",
+        "CANON_STATE_API_URL",
         "AXON_SERVICE_URL",
         "CANON_MEMORY_HEALTH_REQUIRED",
     ):

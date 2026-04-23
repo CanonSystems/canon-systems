@@ -167,17 +167,28 @@ def _read_existing_payload(client: Any, secret_id: str) -> dict[str, str]:
 
 
 def _build_template_payload(*, company_id: str, repository_id: str, prefix: str, aws_region: str) -> dict[str, str]:
+    base = "https://memory.canon-systems.com"
     return {
         "COMPANY_ID": company_id or "<COMPANY_ID>",
         "REPOSITORY_ID": repository_id or "<REPOSITORY_ID>",
         "MEMORY_LAYER_AWS_SECRET_NAME_PREFIX": prefix or DEFAULT_MEMORY_LAYER_AWS_SECRET_NAME_PREFIX,
         "AWS_REGION": aws_region or "us-east-1",
-        "KNOWLEDGE_API_URL": "https://memory.canon-systems.com",
-        "KNOWLEDGE_WORKER_URL": "https://memory.canon-systems.com",
-        "MEMORY_ADAPTER_URL": "https://memory.canon-systems.com",
+        "KNOWLEDGE_API_URL": base,
+        "KNOWLEDGE_WORKER_URL": base,
+        "MEMORY_ADAPTER_URL": base,
+        "CANON_STATE_API_URL": base,
         "SCOPE_ARTIFACT_BUCKET": "<artifact-bucket>",
         "CANON_HTTP_BEARER_TOKEN": "<token>",
     }
+
+
+def _coerce_state_api_url(payload: dict[str, str]) -> None:
+    """Persist state plane URL: default to knowledge base when not set (shared gateway or legacy secrets)."""
+    if (payload.get("CANON_STATE_API_URL") or "").strip() or (payload.get("STATE_API_URL") or "").strip():
+        return
+    k = (payload.get("KNOWLEDGE_API_URL") or "").strip().rstrip("/")
+    if k:
+        payload["CANON_STATE_API_URL"] = k
 
 
 def _submit_payload(
@@ -193,6 +204,8 @@ def _submit_payload(
     allow_partial: bool,
     dry_run: bool,
 ) -> int:
+    _coerce_state_api_url(payload)
+
     required_keys = tuple() if allow_partial else _DEFAULT_REQUIRED_KEYS
     validation_errors = _validate_payload(
         payload,
@@ -417,6 +430,7 @@ def run(argv: list[str] | None = None) -> int:
         payload["KNOWLEDGE_API_URL"] = _prompt("KNOWLEDGE_API_URL", payload.get("KNOWLEDGE_API_URL", ""))
         payload["KNOWLEDGE_WORKER_URL"] = _prompt("KNOWLEDGE_WORKER_URL", payload.get("KNOWLEDGE_WORKER_URL", ""))
         payload["MEMORY_ADAPTER_URL"] = _prompt("MEMORY_ADAPTER_URL", payload.get("MEMORY_ADAPTER_URL", ""))
+        _coerce_state_api_url(payload)
         payload["SCOPE_ARTIFACT_BUCKET"] = _prompt("SCOPE_ARTIFACT_BUCKET", payload.get("SCOPE_ARTIFACT_BUCKET", ""))
         token_entered = _prompt_secret(
             "CANON_HTTP_BEARER_TOKEN",

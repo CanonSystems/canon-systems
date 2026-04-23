@@ -239,6 +239,22 @@ def _repository_id_from_remote() -> str:
     return ""
 
 
+def ensure_state_api_url_from_knowledge() -> None:
+    """If no state plane URL is set, default ``CANON_STATE_API_URL`` to ``KNOWLEDGE_API_URL``.
+
+    Checkpoint clients read ``CANON_STATE_API_URL``; ``memory-health`` accepts that or
+    ``STATE_API_URL``. A dedicated state-api can still override either variable explicitly.
+    """
+    canon = (os.environ.get("CANON_STATE_API_URL") or "").strip()
+    state = (os.environ.get("STATE_API_URL") or "").strip()
+    if canon or state:
+        return
+    knowledge = (os.environ.get("KNOWLEDGE_API_URL") or "").strip().rstrip("/")
+    if not knowledge:
+        return
+    os.environ["CANON_STATE_API_URL"] = knowledge
+
+
 def apply_layered_canon_env_for_repo(root: Path) -> None:
     """Merge Canon env files for ``root`` into ``os.environ`` (``setdefault``), then AWS secrets.
 
@@ -266,6 +282,7 @@ def apply_layered_canon_env_for_repo(root: Path) -> None:
     from .aws_secrets import apply_canon_systems_secrets_from_aws
 
     apply_canon_systems_secrets_from_aws()
+    ensure_state_api_url_from_knowledge()
 
 
 def ensure_layered_memory_env() -> None:

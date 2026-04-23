@@ -13,6 +13,22 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.4.4] - 2026-04-23
+
+### Changed
+
+- **State plane URL:** after layered env + AWS Secrets Manager hydration,
+  **`CANON_STATE_API_URL` defaults to `KNOWLEDGE_API_URL`** when no state URL
+  is set, so checkpoints and **`canon memory-health`** see the same AWS
+  base as canonical memory without extra client config.
+- **`canon secrets`:** template and submit/wizard **include / coerce
+  `CANON_STATE_API_URL`** from `KNOWLEDGE_API_URL` when omitted.
+
+### Fixed
+
+- **`canon memory-health`** treats **`CANON_STATE_API_URL`** as an alias of
+  **`STATE_API_URL`** when resolving the state backend (matches checkpoint CLI).
+
 ## [3.4.3] - 2026-04-23
 
 ### Added

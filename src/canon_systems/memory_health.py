@@ -32,6 +32,16 @@ _HARDCODED_BASE_URL: dict[str, str] = {
     "mempalace": "http://localhost:8090",
 }
 
+# Checkpoint / resume code uses CANON_STATE_API_URL; keep STATE_API_URL first for precedence.
+_STATE_URL_ENV_KEYS: tuple[str, ...] = ("STATE_API_URL", "CANON_STATE_API_URL")
+
+
+def _env_keys_for_backend(name: str, primary_var: str) -> tuple[str, ...]:
+    if name == "state":
+        return _STATE_URL_ENV_KEYS
+    return (primary_var,)
+
+
 _DEFAULT_TIMEOUT_MS = 2000
 _TIMEOUT_MIN_MS = 100
 _TIMEOUT_MAX_MS = 60000
@@ -114,15 +124,26 @@ def _resolve_env_urls(root: Path) -> dict[str, str | None]:
     scop = load_env_file(root / ".canon" / "scoper-chat.env")
     out: dict[str, str | None] = {}
     for name, var in BACKENDS.items():
-        v = os.environ.get(var, "").strip()
+        keys = _env_keys_for_backend(name, var)
+        v = ""
+        for k in keys:
+            v = os.environ.get(k, "").strip()
+            if v:
+                break
         if v:
             out[name] = v.rstrip("/")
             continue
-        v = (local.get(var) or "").strip()
+        for k in keys:
+            v = (local.get(k) or "").strip()
+            if v:
+                break
         if v:
             out[name] = v.rstrip("/")
             continue
-        v = (scop.get(var) or "").strip()
+        for k in keys:
+            v = (scop.get(k) or "").strip()
+            if v:
+                break
         if v:
             out[name] = v.rstrip("/")
             continue

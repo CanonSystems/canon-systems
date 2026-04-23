@@ -1,7 +1,13 @@
 import os
 from pathlib import Path
 
-from canon_systems.shared import ensure_layered_memory_env, merge_canon_systems_env_files, repo_root, resolve_auth_bearer
+from canon_systems.shared import (
+    apply_layered_canon_env_for_repo,
+    ensure_layered_memory_env,
+    merge_canon_systems_env_files,
+    repo_root,
+    resolve_auth_bearer,
+)
 
 
 def test_merge_canon_systems_env_files_order(tmp_path: Path) -> None:
@@ -55,3 +61,36 @@ def test_ensure_layered_memory_env_loads_canon_systems_machine_env(monkeypatch, 
     ensure_layered_memory_env()
     assert os.environ.get("AWS_PROFILE") == "canon-systems"
     assert os.environ.get("AWS_REGION") == "us-east-1"
+
+
+def test_apply_layered_env_sets_state_url_from_knowledge(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / ".canon").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".canon" / "memory-layer.local.env").write_text(
+        "KNOWLEDGE_API_URL=http://k.example:8080\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("canon_systems.shared.Path.home", lambda: tmp_path)
+    monkeypatch.delenv("CANON_STATE_API_URL", raising=False)
+    monkeypatch.delenv("STATE_API_URL", raising=False)
+    monkeypatch.delenv("KNOWLEDGE_API_URL", raising=False)
+    monkeypatch.setattr("canon_systems.aws_secrets.apply_canon_systems_secrets_from_aws", lambda: None)
+
+    apply_layered_canon_env_for_repo(tmp_path)
+    assert os.environ.get("CANON_STATE_API_URL") == "http://k.example:8080"
+
+
+def test_apply_layered_env_respects_explicit_state_url(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / ".canon").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".canon" / "memory-layer.local.env").write_text(
+        "KNOWLEDGE_API_URL=http://k.example:8080\n"
+        "CANON_STATE_API_URL=http://state.example:9000\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("canon_systems.shared.Path.home", lambda: tmp_path)
+    monkeypatch.delenv("CANON_STATE_API_URL", raising=False)
+    monkeypatch.delenv("STATE_API_URL", raising=False)
+    monkeypatch.delenv("KNOWLEDGE_API_URL", raising=False)
+    monkeypatch.setattr("canon_systems.aws_secrets.apply_canon_systems_secrets_from_aws", lambda: None)
+
+    apply_layered_canon_env_for_repo(tmp_path)
+    assert os.environ.get("CANON_STATE_API_URL") == "http://state.example:9000"

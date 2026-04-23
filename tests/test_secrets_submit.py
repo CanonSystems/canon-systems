@@ -57,6 +57,7 @@ def test_template_outputs_structured_payload(capsys) -> None:
     out = capsys.readouterr().out
     assert '"COMPANY_ID": "IMC"' in out
     assert '"REPOSITORY_ID": "innermost"' in out
+    assert '"CANON_STATE_API_URL": "https://memory.canon-systems.com"' in out
     assert '"CANON_HTTP_BEARER_TOKEN": "<token>"' in out
 
 
@@ -96,6 +97,10 @@ def test_submit_validates_and_writes_existing_secret(
     assert code == 0
     assert len(client.put_calls) == 1
     assert not client.create_calls
+    import json
+
+    stored = json.loads(client.put_calls[0]["SecretString"])
+    assert stored.get("CANON_STATE_API_URL") == "https://memory.canon-systems.com"
     out = capsys.readouterr().out
     assert "canon secrets submit: success via put_secret_value" in out
 
