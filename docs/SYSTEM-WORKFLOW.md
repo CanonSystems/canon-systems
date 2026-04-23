@@ -56,6 +56,17 @@ Plan state file:
   projection of the canonical S3 vault. The Cursor `beforeSubmitPrompt` hook
   `.cursor/hooks/vault-sync-preflight.sh` smoke-refreshes before agent work;
   `vault/` is added to `.gitignore` via a sentinel-framed idempotent block.
+- **Metrics aggregator (E6-T1).** `src/canon_systems/metrics_rollup.py`
+  exports `aggregate(events, *, scope=None, window=None)` — a stdlib-only
+  pure function that consumes any iterable of canonical events (NDJSON
+  rows loaded by callers) and produces a stable `schema_version=1`
+  JSON rollup describing lead/cycle time per task, per-phase retries,
+  DoR cause counts, stall counts, token cost split by phase/agent/source
+  (graph/state/canonical/file), and `synth_publish` health. Scope
+  filters (`company_id`, `repository_id`, `plan_id`) and ISO-Z window
+  filters (`since`/`until`) apply before aggregation. Deterministic
+  under `json.dumps(..., sort_keys=True)`. This is the data model the
+  E6-T2 operator CLI and downstream dashboards consume.
 - **Auto-publish on RELEASE PASS (E5-T7).** When the release-orchestrator
   emits a `RELEASE_STATUS` packet with all three gates (qa/ci/merge) equal
   to `PASS`, it calls `canon release publish-on-pass --release-status-file

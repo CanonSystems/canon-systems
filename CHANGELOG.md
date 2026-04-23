@@ -9,6 +9,24 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **E6-T1** Metrics aggregator over canonical events: new pure-Python
+  `src/canon_systems/metrics_rollup.py` (`SCHEMA_VERSION = 1`) consumes an
+  iterable of canonical events and returns a deterministic JSON rollup
+  covering `lead_time_by_task` (first→last event timestamps + seconds),
+  `cycle_time_by_phase` (task_count/total/avg across the five canonical
+  phases), `retries_by_task_phase` (distinct-`agent_run_id` counts minus
+  1 per (task, phase)), `dor_causes` (`dor_failure.payload.stage`
+  counts), `stalls` (total + per-task from `lease_stall_detected`),
+  `token_cost` (`retrieval_breakdown` split by phase/agent/source across
+  the graph/state/canonical/file buckets), and `synth_publish`
+  (ok/failed/notifier_ok counts from E5-T7 events). Scope filters on
+  `company_id`/`repository_id`/`plan_id`; `since`/`until` ISO-8601 Z
+  window filter; malformed timestamps silently skipped. Stdlib-only,
+  read-only (no boto3/pandas/numpy; no filesystem I/O; no canonical
+  events emitted — enforced by 16-test suite `tests/test_metrics_rollup.py`
+  incl. source-scan). Determinism verified via back-to-back
+  `json.dumps(..., sort_keys=True)` byte-identical assertion. Suite
+  406 → 422 passed. (E6-T1)
 - **E5-T7** Auto-publish hook on `RELEASE_STATUS` PASS: new `canon release
   publish-on-pass` subcommand (wired through `src/canon_systems/cli.py`) reads
   the release-orchestrator's `RELEASE_STATUS` packet (YAML or JSON), and when
