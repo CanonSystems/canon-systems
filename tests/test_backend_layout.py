@@ -32,6 +32,7 @@ PYTHON_SERVICES: dict[str, str] = {
     "state-api": "state_api/main.py",
     "axon-service": "axon_service/main.py",
     "synthesis": "synthesis/main.py",
+    "synthesis-web": "synthesis_web/main.py",
 }
 
 
@@ -64,15 +65,6 @@ def test_python_services_have_entrypoints(slug: str, main_rel: str) -> None:
                 if isinstance(t, ast.Name) and t.id == "app":
                     has_app = True
     assert has_app, f"{main_py} must assign module-level `app`"
-
-
-def test_synthesis_web_is_readme_only() -> None:
-    sw = BACKEND / "synthesis-web"
-    assert (sw / "README.md").is_file()
-    assert (sw / ".gitkeep").is_file()
-    assert not (sw / "pyproject.toml").exists()
-    pys = list(sw.rglob("*.py"))
-    assert pys == []
 
 
 def test_shared_modules_importable() -> None:

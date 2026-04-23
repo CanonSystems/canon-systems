@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Vault index — synthesis-web{% endblock %}
+{% block body %}
+<h1>Vaults</h1>
+<p class="crumbs">Select a tenant-scoped vault (company / repository shorthash).</p>
+<ul class="link-list">
+{% for c, r in vaults %}
+<li><a href="/v/{{ c }}/{{ r }}/">/v/{{ c }}/{{ r }}/</a></li>
+{% endfor %}
+</ul>
+{% endblock %}

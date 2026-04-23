@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Vault {{ company_shorthash }}/{{ repo_shorthash }} — synthesis-web{% endblock %}
+{% block body %}
+<nav class="crumbs"><a href="/">All vaults</a> / <span>{{ company_shorthash }}</span> / <span>{{ repo_shorthash }}</span></nav>
+<h1>Vault home</h1>
+<p>Shorthash scope: <code>{{ company_shorthash }}</code> / <code>{{ repo_shorthash }}</code></p>
+<h2>Plans</h2>
+<ul class="link-list">
+{% for p in plan_entries %}
+<li><a href="/v/{{ company_shorthash }}/{{ repo_shorthash }}/plans/{{ p }}/index.md">Plan {{ p }}</a></li>
+{% endfor %}
+</ul>
+<h2>Index pages</h2>
+<ul class="link-list">
+{% for p in index_entries %}
+<li><a href="/v/{{ company_shorthash }}/{{ repo_shorthash }}/{{ p }}">{{ p }}</a></li>
+{% endfor %}
+</ul>
+<h2>Tools</h2>
+<ul class="link-list">
+<li><a href="/v/{{ company_shorthash }}/{{ repo_shorthash }}/_graph">Graph (JSON)</a></li>
+<li><a href="/v/{{ company_shorthash }}/{{ repo_shorthash }}/_search?q=&limit=25">Search (JSON)</a></li>
+</ul>
+{% endblock %}

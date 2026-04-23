@@ -51,6 +51,7 @@ workspace with `uv sync --all-packages` or
 `bash scripts/backend/install-workspace.sh` from the repo root; verify editable
 installs with `bash scripts/backend/build-services.sh`. The layout is described
 in [docs/SYSTEM-WORKFLOW.md](docs/SYSTEM-WORKFLOW.md) §10.
+**`synthesis-web`** ([`backend/synthesis-web/`](backend/synthesis-web/README.md)) is the SSR read path over the E5-T2 vault published to S3.
 
 ## Infra
 

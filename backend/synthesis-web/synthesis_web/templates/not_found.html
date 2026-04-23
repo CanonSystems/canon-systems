@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Not found — synthesis-web{% endblock %}
+{% block body %}
+<div class="not-found">
+<nav class="crumbs">
+<a href="/">All vaults</a> /
+<a href="/v/{{ company_shorthash }}/{{ repo_shorthash }}/">{{ company_shorthash }}/{{ repo_shorthash }}</a>
+{% if requested_path %} / <span>{{ requested_path }}</span>{% endif %}
+</nav>
+<h1>Page not found</h1>
+<p>The path <code>{{ requested_path or "(vault empty or missing)" }}</code> is not present in vault
+<code>{{ company_shorthash }}/{{ repo_shorthash }}</code>.</p>
+<p><a href="/v/{{ company_shorthash }}/{{ repo_shorthash }}/">Return to vault home</a></p>
+</div>
+{% endblock %}
