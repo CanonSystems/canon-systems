@@ -24,6 +24,36 @@ The CLI is `canon`. The pipx package name is `canon-systems`. The module
 is `canon_systems`. Current major version: **3.x**. See
 [CHANGELOG.md](CHANGELOG.md) for release history and how we bump versions.
 
+### Canon Memory Platform v1 — shipped
+
+Waves 0–7 of the Canon Memory Platform v1 plan are complete:
+
+- **Wave 0 (E0)** — inventory + consolidation; backend monorepo established.
+- **Wave 1 (E1)** — `canon memory-health`, MemPalace retry queue,
+  memory-health release gate.
+- **Wave 2 (E2)** — `backend/state-api` + DynamoDB canon-state table;
+  `canon checkpoint` lease + versioning CLI; per-phase checkpoint
+  enforcement in `canon flow-audit` / `canon qa-validate`.
+- **Wave 3 (E3)** — `backend/axon-service` graph retrieval plane;
+  `canon graph index|query|impact` CLI; graph-first retrieval policy
+  codified across coder-facing agent templates; retrieval-source
+  telemetry via `retrieval_breakdown` canonical events.
+- **Wave 4 (E4)** — `canon resume` orchestrator resume engine;
+  `canon stall-watchdog scan` with `lease_stall_detected` events;
+  resume runbook + release-gate integration.
+- **Wave 5 (E5)** — `docs/VAULT-LAYOUT.md` v1; deterministic
+  `backend/synthesis` vault generator + publisher; `backend/synthesis-web`
+  read-only SSR browser; `canon synth show` streamer; `canon vault sync`
+  + background mirror daemon; `canon release publish-on-pass`
+  auto-publish hook.
+- **Wave 6 (E6)** — `metrics_rollup.aggregate` pure-Python aggregator;
+  `canon report` CLI with JSON/CSV output and scope/window filters.
+- **Wave 7 (E7)** — hard-lock rule distributed via `canon wire` to
+  every enabled repo; sibling-repo disposition finalized in
+  `docs/DEPRECATIONS.md`.
+
+Full `tests/` suite: **440 passing** at v1 sign-off.
+
 > **New team member?** Start with [docs/ONBOARDING.md](docs/ONBOARDING.md).
 > It walks you through installing the CLI, wiring up AWS credentials with
 > an IAM key pair, and enabling your first repo in about ten minutes.
@@ -141,6 +171,9 @@ pipx install --force git+ssh://git@github.com/CanonSystems/canon-systems.git
 - `~/.cursor/rules/canon-autosetup.mdc` — offers setup when you open an
   unwired repo.
 - `~/.cursor/rules/memory-layer-defaults.mdc` — memory usage defaults.
+- `~/.cursor/rules/memory-platform-build-discipline.mdc` — hard-locked Canon
+  Memory Platform v1 execution discipline (scoper→…→release chain, wave
+  gates, DoR telemetry).
 - `~/.cursor/agents/{project-planner,scoper,cursor-pilot,implementer,qa-gate,release-orchestrator}.md` — the subagent
   chain, available globally (templates embed the checkpoint phase-boundary contract: `canon checkpoint read` / `canon checkpoint write` via `state-api`).
 
@@ -164,7 +197,9 @@ This:
 4. Installs `<repo>/.cursor/hooks/memory-{preflight,capture}.sh` +
    merges `<repo>/.cursor/hooks.json`.
    **Optional (not installed by setup):** to index the repo graph into axon-service on push, copy [`scripts/hooks/pre-push-graph-index.sh`](scripts/hooks/pre-push-graph-index.sh) to `.git/hooks/pre-push` (see comments in the script; requires `AXON_SERVICE_URL` and `AXON_SERVICE_TOKEN`).
-5. Installs `<repo>/.cursor/rules/memory-layer-defaults.mdc`.
+5. Installs `<repo>/.cursor/rules/memory-layer-defaults.mdc` and
+   `<repo>/.cursor/rules/memory-platform-build-discipline.mdc` (the latter
+   is the hard-lock rule distributed via `canon wire` to every enabled repo).
 6. Installs `<repo>/.cursor/agents/{project-planner,scoper,cursor-pilot,implementer,qa-gate,release-orchestrator}.md`.
 
 From this point, every user prompt hydrates context and every assistant
@@ -222,7 +257,7 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon graph reindex-status` | Query axon-service for snapshot status. |
 | `canon graph query --commit-sha <sha> --company-id <c> --repository-id <r> --q <str> [--limit N]` | Retrieve graph-backed snippets from axon-service (pure RPC). |
 | `canon graph impact --commit-sha <sha> --company-id <c> --repository-id <r> --symbol <sym> [--depth N]` | Return upstream/downstream blast radius from axon-service. |
-| `canon report --events <ndjson> [--by phase\|agent\|source] [--plan-id X] [--task-id Y]` | Aggregate retrieval_breakdown canonical events into a JSON rollup (Wave 6 will polish into CSV/table). |
+| `canon report --events <ndjson> [--by phase\|agent\|source] [--plan-id X] [--task-id Y] [--company-id X] [--repository-id R] [--since ISO] [--until ISO] [--full] [--format json\|csv]` | Aggregate canonical events into a deterministic rollup. Default `{by, groups}` envelope for back-compat; `--full` emits the complete E6-T1 `metrics_rollup` schema (lead/cycle time, retries, DoR causes, stalls, token cost, synth_publish). |
 | `canon resume --plan-id <id> --company-id <c> --repository-id <r> (--tasks-file <path> \| --handoffs-dir <path>)` | Print the first incomplete (task_id, phase) pair for a plan as structured JSON (read-only; idempotent). |
 | `canon stall-watchdog scan --plan-id <p> --company-id <c> --repository-id <r> (--tasks-file <path> \| --handoffs-dir <path>) [--event-log <path>] [--dry-run]` | Detect stalled leases via GET probes and emit `lease_stall_detected` canonical events (read-only; idempotent). Exit 5 on any degraded probe. |
 | `canon synth publish` | Publish a deterministic Obsidian vault bundle to S3 (idempotent, diff-only). Internal driver for backend/synthesis. |

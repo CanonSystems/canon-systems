@@ -148,8 +148,12 @@ def enable_repo(  # noqa: PLR0912
 
     _apply_vault_sync_gitignore_block(repo_root)
 
-    # Install repo-level Cursor rule.
+    # Install repo-level Cursor rules.
     _copy_template("rules/memory-layer-defaults.mdc", rules_dir / "memory-layer-defaults.mdc")
+    _copy_template(
+        "rules/memory-platform-build-discipline.mdc",
+        rules_dir / "memory-platform-build-discipline.mdc",
+    )
 
     # Install repo-level subagents (project-planner, scoper, cursor-pilot, implementer, qa-gate, release-orchestrator).
     for name in (
@@ -209,6 +213,10 @@ def install_user_scope() -> None:
     (home / "agents").mkdir(parents=True, exist_ok=True)
     _copy_template("rules/canon-autosetup.mdc", home / "rules" / "canon-autosetup.mdc")
     _copy_template("rules/memory-layer-defaults.mdc", home / "rules" / "memory-layer-defaults.mdc")
+    _copy_template(
+        "rules/memory-platform-build-discipline.mdc",
+        home / "rules" / "memory-platform-build-discipline.mdc",
+    )
     for name in (
         "project-planner.md",
         "scoper.md",

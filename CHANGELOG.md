@@ -9,6 +9,53 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **E7-T3** Final five-file living-spec refresh + Canon Memory Platform v1
+  sign-off: `README.md` gains a dated "Canon Memory Platform v1 — shipped"
+  summary enumerating Waves 0–7 deliverables.
+  `docs/MEMORY-PLATFORM-PLAN.md §9` rewritten so each wave lists SHIPPED
+  status with outcomes. `docs/MEMORY-PLATFORM-BACKLOG.md` and
+  `docs/SYSTEM-WORKFLOW.md` each get a top-of-document v1 status callout.
+  `.cursor/handoffs/canon-memory-v1/E7-T3/release-status.md` records the
+  final release sign-off (`release_id: canon-memory-v1-final`,
+  `signed_off_at: 2026-04-23`, all three gates PASS, 440/440 suite). (E7-T3)
+- **E7-T2** Sibling repository disposition FINAL (moved-for-review
+  variant): `docs/DEPRECATIONS.md` marked FINAL with explicit
+  `Original path`, `Current path`, `Original label`, and `Final label`
+  per sibling. Zero deletions. Per operator direction, the three `absorb`
+  targets were physically moved from `/Users/edwardwalker/localwork/` to
+  `/Users/edwardwalker/localwork/_deprecated/` pending post-release
+  review: `mempalace`, `obsidian-mind`, and `total_recall`. `canon-platform`,
+  `canon-systems-v2`, and `temporal` left in place per their `keep` labels.
+  Canonical events appended to `.canon/memory/events.ndjson`: 6 ×
+  `sibling_disposition_finalized` + 3 × `sibling_moved_for_review`
+  (with `old_path`, `new_path`, `reason`, `deletion_executed: false`).
+  Wave-0 audit regex coverage preserved; `tests/` suite still 440/440
+  green. (E7-T2)
+- **E7-T1** Hard-lock rule distribution via `canon wire`: packaged
+  `src/canon_systems/templates/rules/memory-platform-build-discipline.mdc`
+  (byte-identical to the workspace rule) and extended
+  `repo_enable.enable_repo` and `repo_enable.install_user_scope` to install
+  it alongside `memory-layer-defaults.mdc`. Every repo wired by `canon
+  setup` / `canon enable-repo` now carries the hard-lock rule in
+  `.cursor/rules/` so the Canon Memory Platform build discipline stays
+  enforced across the fleet. New 5-test suite
+  `tests/test_wire_distribution.py` asserts the packaging, byte-identity
+  with the workspace rule, installation via `enable_repo` and
+  `install_user_scope`, and idempotence of repeat installs. Full `tests/`
+  suite 435 → 440 passed. (E7-T1)
+- **E6-T2** `canon report` CLI over canonical events: `src/canon_systems/report_cli.py`
+  reworked from the E3-T5 stub into the first-class `canon report` surface.
+  Ingests NDJSON canonical event streams and supports scope filters
+  (`--company-id / --repository-id / --plan-id / --task-id`) and time-window
+  filters (`--since / --until` ISO-8601 Z inclusive). Two output modes: default
+  `--by {source,phase,agent}` preserves the legacy `{by, groups}` envelope
+  consumed by `tests/test_retrieval_telemetry.py`, and `--full` delegates to
+  `metrics_rollup.aggregate` (E6-T1) emitting the complete rollup schema.
+  `--format {json,csv}` supported; CSV for `--full` emits
+  `section,key,tokens_in,tokens_out,count` rows. Exit codes: `0` OK, `2`
+  usage, `3` events-file not found, `4` malformed NDJSON. Byte-identical
+  determinism verified. 13-test suite in `tests/test_cli_report.py`; full
+  `tests/` suite 422 → 435 passed. (E6-T2)
 - **E6-T1** Metrics aggregator over canonical events: new pure-Python
   `src/canon_systems/metrics_rollup.py` (`SCHEMA_VERSION = 1`) consumes an
   iterable of canonical events and returns a deterministic JSON rollup

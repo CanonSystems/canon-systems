@@ -4,6 +4,12 @@ This document is the current source of truth for how Canon works end-to-end.
 Update it on every meaningful Canon iteration (new command, gate, agent
 contract, hook behavior, memory behavior, or rollout policy).
 
+> **Canon Memory Platform v1 — SHIPPED (2026-04-23).** Waves 0–7 are
+> complete. See `docs/MEMORY-PLATFORM-PLAN.md §9` for wave-level
+> outcomes, `docs/MEMORY-PLATFORM-BACKLOG.md` for the per-task record,
+> and `CHANGELOG.md` for the detailed per-epic entries. Everything
+> described below reflects the v1 final state.
+
 ## 1) Runtime model
 
 - Canon ships as one CLI package: `canon-systems` (binary: `canon`).
@@ -64,9 +70,19 @@ Plan state file:
   DoR cause counts, stall counts, token cost split by phase/agent/source
   (graph/state/canonical/file), and `synth_publish` health. Scope
   filters (`company_id`, `repository_id`, `plan_id`) and ISO-Z window
-  filters (`since`/`until`) apply before aggregation. Deterministic
+  filters (`since`/`until`) apply before aggregation.   Deterministic
   under `json.dumps(..., sort_keys=True)`. This is the data model the
   E6-T2 operator CLI and downstream dashboards consume.
+- **Operator rollups (E6-T2).** `canon report --events <ndjson>` is the
+  first-class surface over `metrics_rollup.aggregate`. Default mode
+  preserves the legacy `{by, groups}` envelope (`--by
+  {source,phase,agent}`) for back-compat with E3-T5 callers; `--full`
+  emits the complete E6-T1 schema. Scope (`--company-id /
+  --repository-id / --plan-id / --task-id`) and window (`--since /
+  --until`) filters narrow the event stream before aggregation.
+  `--format {json,csv}` controls output shape; CSV under `--full` emits
+  `section,key,tokens_in,tokens_out,count` rows for direct spreadsheet
+  import. Byte-identical deterministic output.
 - **Auto-publish on RELEASE PASS (E5-T7).** When the release-orchestrator
   emits a `RELEASE_STATUS` packet with all three gates (qa/ci/merge) equal
   to `PASS`, it calls `canon release publish-on-pass --release-status-file
@@ -81,6 +97,14 @@ Plan state file:
   notifier failures never fail the release. Emits one `synth_publish`
   canonical event per attempt outcome, plus an optional
   `vault_sync_notified` event on successful POST.
+- **Hard-lock rule distribution (E7-T1).** The Canon Memory Platform v1 build
+  discipline rule lives at `.cursor/rules/memory-platform-build-discipline.mdc`
+  and is packaged byte-identically at
+  `src/canon_systems/templates/rules/memory-platform-build-discipline.mdc`.
+  Every repo wired by `canon setup` / `canon enable-repo` (and the
+  user-scope `~/.cursor/rules/` tree) gets the rule installed automatically;
+  `tests/test_wire_distribution.py` regression-locks byte-identity and
+  idempotence so the rule cannot drift between wire and workspace.
 - **E4-T4 resume runbook + release-gate integration:** new `docs/runbooks/RESUME.md` gives operators a one-page path for `canon resume`. The `release-orchestrator` template now requires a `canon resume` check before advancing the merge gate (`resume_target == null` AND empty `degraded_tasks`). Cross-references the E4-T3 stall watchdog for the combined "scan-then-resume" operator workflow.
 
 ## 4) DoR rejection telemetry contract
@@ -156,7 +180,7 @@ See rule §§9-10 for authoritative wording.
 ## 6) Validation commands
 
 - **Retrieval policy (graph-first)**: Coder-facing templates (scoper/cursor-pilot/implementer) consult memory sources in a fixed order — `graph → state → canonical → file`. Graph reads via `canon graph query`/`canon graph impact`, state via `canon checkpoint read`, canonical via `.canon/memory/context-latest.md` + `canon ask`. Fail-open when axon is unset or returns 2/3/4/5; degradation is recorded in the HANDOFF_TO_QA `notes:` field.
-- **Retrieval-source telemetry**: Each agent phase emits one `retrieval_breakdown` canonical event with `payload.sources` keyed by the fixed `graph/state/canonical/file` 4-bucket contract (see `src/canon_systems/retrieval_telemetry.py`). `canon report --events <ndjson>` provides a stub rollup grouped by `phase`, `agent`, or `source` (Wave-6 polish). Zero counts are valid when a source is unused or degraded; the event is still emitted.
+- **Retrieval-source telemetry**: Each agent phase emits one `retrieval_breakdown` canonical event with `payload.sources` keyed by the fixed `graph/state/canonical/file` 4-bucket contract (see `src/canon_systems/retrieval_telemetry.py`). `canon report --events <ndjson>` provides a rollup grouped by `phase`, `agent`, or `source` by default, or the full E6-T1 schema via `--full` (see *Operator rollups* above). Zero counts are valid when a source is unused or degraded; the event is still emitted.
 - QA packet validator:
   - `canon qa-validate --file <qa-gate.md> --require-pass`
 - Process audit validator:
