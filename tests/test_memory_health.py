@@ -456,6 +456,50 @@ def test_graph_required_unhealthy_when_unset(
     assert graph.get("last_error") == "URL not set"
 
 
+def test_urls_from_home_canon_env_when_local_env_omits_urls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """memory-health hydrates ~/.canon/*.env like hooks; do not fall back to localhost only."""
+    home = tmp_path / "home"
+    (home / ".canon").mkdir(parents=True)
+    (home / ".canon" / "canon-systems.env").write_text(
+        "KNOWLEDGE_API_URL=http://from.home.k\nMEMORY_ADAPTER_URL=http://from.home.m\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(home))
+    root = tmp_path / "repo"
+    (root / ".canon").mkdir(parents=True)
+    (root / ".canon" / "memory-layer.local.env").write_text(
+        "COMPANY_ID=testco\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(root))
+    for v in (
+        "KNOWLEDGE_API_URL",
+        "MEMORY_ADAPTER_URL",
+        "STATE_API_URL",
+        "AXON_SERVICE_URL",
+    ):
+        monkeypatch.delenv(v, raising=False)
+
+    seen: list[str] = []
+
+    def probe(url: str, t: int) -> dict:  # noqa: ANN001
+        seen.append(url)
+        return _ok_200()
+
+    monkeypatch.setattr(mh, "_probe", probe)
+    c, s = _run_captured(argv=[], monkeypatch=monkeypatch)
+    assert c == 0
+    o = json.loads(s)
+    # Required pair ok; state/graph unset → optional rows not ok → overall degraded (still exit 0).
+    assert o["overall_status"] == "degraded"
+    assert any("from.home.k" in u for u in seen)
+    assert any("from.home.m" in u for u in seen)
+    assert not any("localhost:8080" in u for u in seen)
+    assert not any("localhost:8090" in u for u in seen)
+
+
 def test_no_live_http_in_suite(
     four_urls_repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

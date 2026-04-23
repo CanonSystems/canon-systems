@@ -12,7 +12,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from .shared import load_env_file, repo_root
+from .shared import apply_layered_canon_env_for_repo, load_env_file, repo_root
 
 SCHEMA_VERSION = "1"
 
@@ -346,6 +346,8 @@ def run(argv: list[str] | None = None) -> int:
     root_p = Path(root).expanduser().resolve() if root else repo_root()
     if root:
         os.environ["CANON_SYSTEMS_REPO_ROOT"] = str(root_p)
+    # Match hooks / ask: URLs may live only in ~/.canon/*.env or AWS secrets.
+    apply_layered_canon_env_for_repo(root_p)
 
     required_known, unknown_required = _resolve_required(args.required)
     # Required membership for known backends: explicit list or default pair.

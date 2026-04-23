@@ -13,6 +13,19 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.4.2] - 2026-04-23
+
+### Fixed
+
+- **`canon memory-health`** now calls the same layered env hydration as hooks
+  (`~/.canon/canon-systems.env`, `~/.canon/canon-memory-layer.env`, team +
+  secrets files, **AWS Secrets Manager** via `apply_canon_systems_secrets_from_aws`)
+  before resolving `KNOWLEDGE_API_URL` / `MEMORY_ADAPTER_URL`. Previously it
+  only read `memory-layer.local.env` + `scoper-chat.env`, so installs that
+  kept URLs exclusively in home or Secrets Manager saw **localhost** probes
+  while **`canon ask` / preflight still worked** — a consistency bug, not a
+  missing deployment.
+
 ## [3.4.1] - 2026-04-23
 
 ### Fixed

@@ -239,11 +239,16 @@ def _repository_id_from_remote() -> str:
     return ""
 
 
-def ensure_layered_memory_env() -> None:
-    global _LAYERED_MEMORY_ENV_APPLIED
-    if _LAYERED_MEMORY_ENV_APPLIED:
-        return
-    root = repo_root()
+def apply_layered_canon_env_for_repo(root: Path) -> None:
+    """Merge Canon env files for ``root`` into ``os.environ`` (``setdefault``), then AWS secrets.
+
+    Used by ``canon memory-health`` on every run so probe URLs match hooks /
+    ``load_repo_context``, which may take ``KNOWLEDGE_API_URL`` / ``MEMORY_ADAPTER_URL``
+    from ``~/.canon/*.env`` or Secrets Manager—not only ``memory-layer.local.env``.
+
+    Hooks still use :func:`ensure_layered_memory_env` (one-shot per process) for
+    performance; this function has no global guard.
+    """
     merged = merge_canon_systems_env_files(
         [
             Path.home() / ".canon" / "canon-systems.env",
@@ -261,6 +266,13 @@ def ensure_layered_memory_env() -> None:
     from .aws_secrets import apply_canon_systems_secrets_from_aws
 
     apply_canon_systems_secrets_from_aws()
+
+
+def ensure_layered_memory_env() -> None:
+    global _LAYERED_MEMORY_ENV_APPLIED
+    if _LAYERED_MEMORY_ENV_APPLIED:
+        return
+    apply_layered_canon_env_for_repo(repo_root())
     _LAYERED_MEMORY_ENV_APPLIED = True
 
 
