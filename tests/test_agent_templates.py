@@ -357,3 +357,28 @@ def test_release_orchestrator_template_retrieval_telemetry() -> None:
     )
     assert "## Retrieval-source telemetry (required)" in body
     assert "retrieval_breakdown" in body
+
+
+def test_release_orchestrator_template_resume_aware() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("release-orchestrator.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Resume check (E4-T4)" in body
+    assert "canon resume" in body
+    assert "docs/runbooks/RESUME.md" in body
+    assert "resume_target" in body
+    assert "before advancing the merge gate" in body
+
+
+def test_resume_runbook_exists_and_covers_workflow() -> None:
+    from pathlib import Path
+    # Resolve relative to repo root: this test file lives at tests/test_agent_templates.py
+    repo_root = Path(__file__).resolve().parent.parent
+    runbook = repo_root / "docs" / "runbooks" / "RESUME.md"
+    assert runbook.is_file(), f"Resume runbook missing at {runbook}"
+    body = runbook.read_text(encoding="utf-8")
+    assert "# Resume Runbook — canon resume" in body
+    assert "canon resume --plan-id" in body
+    assert "resume_target" in body
+    assert "canon stall-watchdog" in body
+    assert "Release-gate integration" in body
