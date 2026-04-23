@@ -9,6 +9,25 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **E5-T7** Auto-publish hook on `RELEASE_STATUS` PASS: new `canon release
+  publish-on-pass` subcommand (wired through `src/canon_systems/cli.py`) reads
+  the release-orchestrator's `RELEASE_STATUS` packet (YAML or JSON), and when
+  `qa_gate`, `ci_gate`, and `merge_gate` all equal `PASS` invokes
+  `canon synth publish` exactly once via a subprocess seam with bounded
+  exponential-backoff retries (`min(base*2**(k-1), 60s)`, default 3 attempts
+  via `CANON_PUBLISH_RETRIES`). Fires once per release (not per task):
+  idempotent via `.canon/release-publish/<plan_id>/<release_id>.json` sentinel;
+  second invocation is a byte-identical no-op. Optional notifier via
+  `CANON_PUBLISH_NOTIFIER_URL` (best-effort POST with 5s timeout; failure
+  never fails the release, never interrupts the exit code). Emits one
+  `synth_publish` canonical event per attempt outcome plus an optional
+  `vault_sync_notified` event on 2xx POSTs. All S3 writes still flow through
+  the already-audited `canon synth publish` binary — the new module carries
+  a 24-method boto3 forbidden-write source scan. `release-orchestrator.md`
+  template gains the `## Auto-publish hook on RELEASE_STATUS PASS` section
+  documenting both knobs (+1 template assertion test). Tests: 18 new in
+  `tests/test_release_publish.py` (AC1..AC11 + inline-JSON body path +
+  usage/config error paths). Suite 388 → 406 passed.
 - `canon vault sync` read-only S3→<repo>/vault/ mirror (one-shot + loop) with
   exponential backoff, content-hash diff, deletion propagation, and
   `canon enable-repo` integration installing the OS-appropriate background

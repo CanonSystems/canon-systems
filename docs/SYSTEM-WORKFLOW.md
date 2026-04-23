@@ -56,6 +56,20 @@ Plan state file:
   projection of the canonical S3 vault. The Cursor `beforeSubmitPrompt` hook
   `.cursor/hooks/vault-sync-preflight.sh` smoke-refreshes before agent work;
   `vault/` is added to `.gitignore` via a sentinel-framed idempotent block.
+- **Auto-publish on RELEASE PASS (E5-T7).** When the release-orchestrator
+  emits a `RELEASE_STATUS` packet with all three gates (qa/ci/merge) equal
+  to `PASS`, it calls `canon release publish-on-pass --release-status-file
+  .cursor/handoffs/<handoff_id>/release-status.md --release-id <release_id>`.
+  The hook fires exactly once per release (not per task) and invokes
+  `canon synth publish` with bounded exponential-backoff retries
+  (`min(base*2**(k-1), 60 s)`; default 3 attempts via
+  `CANON_PUBLISH_RETRIES`). Idempotent via the per-release sentinel at
+  `.canon/release-publish/<plan_id>/<release_id>.json`. Set
+  `CANON_PUBLISH_NOTIFIER_URL` to an HTTP endpoint to signal downstream
+  `canon vault sync` listeners within ~30 s — absence is a clean no-op and
+  notifier failures never fail the release. Emits one `synth_publish`
+  canonical event per attempt outcome, plus an optional
+  `vault_sync_notified` event on successful POST.
 - **E4-T4 resume runbook + release-gate integration:** new `docs/runbooks/RESUME.md` gives operators a one-page path for `canon resume`. The `release-orchestrator` template now requires a `canon resume` check before advancing the merge gate (`resume_target == null` AND empty `degraded_tasks`). Cross-references the E4-T3 stall watchdog for the combined "scan-then-resume" operator workflow.
 
 ## 4) DoR rejection telemetry contract

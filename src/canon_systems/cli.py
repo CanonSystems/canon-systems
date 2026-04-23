@@ -347,6 +347,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     synth_parser.add_argument("args", nargs=argparse.REMAINDER)
 
+    release_parser = sub.add_parser(
+        "release",
+        help="Release lifecycle helpers (auto-publish on RELEASE_STATUS PASS).",
+    )
+    release_parser.add_argument("args", nargs=argparse.REMAINDER)
+
     sec = sub.add_parser(
         "secrets",
         help="Structured AWS Secrets Manager workflows for Canon runtime credentials.",
@@ -580,6 +586,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "synth":
         return run_synth_cli(list(getattr(args, "args", [])))
+
+    if args.command == "release":
+        from . import release_publish
+
+        return release_publish.run(list(getattr(args, "args", [])))
 
     if args.command == "secrets":
         sec_cmd = args.secrets_command or "wizard"

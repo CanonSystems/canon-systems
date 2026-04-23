@@ -228,6 +228,7 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon synth publish` | Publish a deterministic Obsidian vault bundle to S3 (idempotent, diff-only). Internal driver for backend/synthesis. |
 | `canon synth show` | Stream Obsidian vault markdown for `(plan_id[, task_id])` from S3 (read-only; markdown or JSON). Honors `CANON_PLAN_ID` / `CANON_TASK_ID` / `CANON_VAULT_BUCKET` / `CANON_VAULT_PREFIX` / `CANON_SYNTH_CUTOFF_TS`. |
 | `canon vault sync` | Mirror S3 vault into `<repo>/vault/` (read-only, content-hash diff, offline-tolerant). `--once` for single pull; default loop interval 10s. `--install` registers a per-tenant launchd/systemd/schtasks daemon. |
+| `canon release publish-on-pass --release-status-file <path> [--release-id <id>]` | Called by the release-orchestrator when `RELEASE_STATUS` hits all-PASS; invokes `canon synth publish` exactly once with bounded exponential-backoff retries (`CANON_PUBLISH_RETRIES`, default 3), is idempotent per `(plan_id, release_id)`, and optionally POSTs to `CANON_PUBLISH_NOTIFIER_URL` so vault-sync clients refresh within 30 s. Emits `synth_publish` (+ optional `vault_sync_notified`) canonical events. |
 | `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
 | `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |

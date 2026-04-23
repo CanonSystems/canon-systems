@@ -359,6 +359,25 @@ def test_release_orchestrator_template_retrieval_telemetry() -> None:
     assert "retrieval_breakdown" in body
 
 
+def test_release_orchestrator_template_has_auto_publish_hook() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("release-orchestrator.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Auto-publish hook on RELEASE_STATUS PASS" in body
+    assert "**Fires once per release, not per task.**" in body
+    assert "canon release publish-on-pass" in body
+    assert "--release-status-file .cursor/handoffs/<handoff_id>/release-status.md" in body
+    assert "--release-id <release_id>" in body
+    assert "CANON_PUBLISH_RETRIES" in body
+    assert "min(base*2**(k-1), 60s)" in body
+    assert "CANON_PUBLISH_NOTIFIER_URL" in body
+    assert "absence is a clean no-op" in body
+    assert "30 seconds" in body
+    assert "best-effort" in body
+    assert ".canon/release-publish/<plan_id>/<release_id>.json" in body
+    assert "docs/SYSTEM-WORKFLOW.md" in body
+
+
 def test_release_orchestrator_template_resume_aware() -> None:
     body = resources.files("canon_systems.templates.agents").joinpath("release-orchestrator.md").read_text(
         encoding="utf-8"
