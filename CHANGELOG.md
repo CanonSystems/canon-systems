@@ -13,6 +13,22 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.4.3] - 2026-04-23
+
+### Added
+
+- **`canon e2e-check`** (`--agent` wraps JSON in `<<<CANON_E2E_VERDICT>>>`):
+  single plug-and-play validation from repo root — executable hooks, Cursor
+  rules, version pin vs CLI, and **`canon memory-health`** for required
+  backends. Exit **0** iff **`"verdict": "PASS"`**.
+
+### Changed
+
+- **`canon memory-health`:** optional backends (**state**, **graph**) in
+  **`not_configured`** no longer force **`overall_status: degraded`** — only
+  configured-but-unhealthy optionals degrade. Unset state/axon is normal for
+  memory-only installs; overall is **`ok`** when canonical + mempalace pass.
+
 ## [3.4.2] - 2026-04-23
 
 ### Fixed

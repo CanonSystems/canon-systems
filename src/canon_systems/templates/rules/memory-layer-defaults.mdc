@@ -20,6 +20,10 @@ This repo is wired to Canon Systems (tenant-scoped to this `company_id` +
    last time?"), use:
    `canon ask "<question>"`
    This queries both canonical artifacts and MemPalace, scoped to this repo.
+4. After a `pipx upgrade canon-systems` or when validating a machine, from
+   **repo root** run: `canon e2e-check --agent` — the JSON must show
+   `"verdict": "PASS"` (single plug-and-play health check: wiring + required
+   memory backends).
 
 ## During work
 

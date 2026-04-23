@@ -176,6 +176,14 @@ pipx upgrade canon-systems
 pipx install --force git+ssh://git@github.com/CanonSystems/canon-systems.git
 ```
 
+**Plug-and-play check (any wired repo, from repo root):**
+
+```bash
+canon e2e-check --agent
+```
+
+Exit code **0** and JSON **`"verdict": "PASS"`** means Cursor hooks/rules, version pin, and required memory backends (canonical + MemPalace) are healthy. Use this as the single end-to-end validation after install or upgrade; paste the output block into an agent if you want a recorded proof.
+
 `install.sh` (or `pipx install`) installs:
 
 - The `canon` CLI on your PATH.
@@ -262,7 +270,8 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon dor-log --event-json '{...}'` | Push DoR failure telemetry to server; queue locally on send failure. |
 | `canon qa-validate --file <path> --require-pass [--handoff-id <id> --task-id <id> --require-dor-telemetry] [--require-checkpoints]` | Validate persisted QA gate packet fields/referenced tests; optionally require DoR rejection telemetry artifacts and/or (with ids) on-disk per-phase checkpoint JSON. |
 | `canon flow-audit --handoff-id <id> --task-id <id> [--require-checkpoints]` | Audit process compliance artifacts (handoff files + plan/task tracking), with optional sampling; `--require-checkpoints` enforces checkpoint JSON per §B phase. |
-| `canon memory-health [--required <csv>] [--timeout-ms <int>] [--output <path>] [--verbose]` | Probe canonical + mempalace (+ optional state/graph) /healthz; JSON report; exit 0 iff all required backends OK within budget. The **graph** row probes `AXON_SERVICE_URL` (axon-service). |
+| `canon memory-health [--required <csv>] [--timeout-ms <int>] [--output <path>] [--verbose]` | Probe canonical + mempalace (+ optional state/graph) /healthz; JSON report; exit 0 iff all required backends OK within budget. Optional backends left unconfigured do **not** degrade overall status. The **graph** row probes `AXON_SERVICE_URL` (axon-service). |
+| `canon e2e-check [--agent]` | **Plug-and-play validation:** wiring + pin + required memory backends in one JSON report; exit 0 iff `"verdict": "PASS"`. `--agent` adds `<<<CANON_E2E_VERDICT>>>` delimiters for proof paste. |
 | `canon checkpoint <read\|write\|lease-acquire\|lease-renew\|lease-release> ...` | stdlib JSON client for state-api checkpoints and leases; exits 0 ok, 1 `state_version_conflict`, 2 lease denied, 3 not found, 4 usage/validation, 5 transport. |
 | `canon graph index` | Push a graph snapshot for a commit (stub payload in v1). |
 | `canon graph reindex-status` | Query axon-service for snapshot status. |

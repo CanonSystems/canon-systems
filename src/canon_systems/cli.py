@@ -263,6 +263,17 @@ def main(argv: list[str] | None = None) -> int:
     dl.add_argument("--strict", action="store_true")
     dl.add_argument("--quiet", action="store_true")
 
+    e2e_p = sub.add_parser(
+        "e2e-check",
+        help="Plug-and-play validation: Cursor wiring + required memory backends (one JSON report).",
+    )
+    e2e_p.add_argument(
+        "--agent",
+        action="store_true",
+        dest="e2e_agent",
+        help="Wrap JSON with <<<CANON_E2E_VERDICT>>> for agent parsing.",
+    )
+
     qv = sub.add_parser(
         "qa-validate",
         help="Validate persisted qa-gate packet artifacts for merge gating.",
@@ -551,6 +562,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.require_memory_health:
             fa_args.append("--require-memory-health")
         return run_flow_audit(fa_args)
+
+    if args.command == "e2e-check":
+        from .e2e_check import run as run_e2e_check
+
+        e2e_argv = ["--agent"] if getattr(args, "e2e_agent", False) else []
+        return run_e2e_check(e2e_argv)
 
     if args.command == "memory-health":
         mh_args: list[str] = []

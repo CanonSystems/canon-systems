@@ -297,9 +297,14 @@ def _overall_status(rows: list[dict[str, Any]]) -> tuple[str, int]:
     for r in required_rows:
         if r.get("status") != "ok":
             return "unhealthy", 1
+    # Optionals that are intentionally unset (no URL) are plug-and-play noise —
+    # only flag degraded when an optional backend *was* configured but is unhealthy.
     optionals = [r for r in rows if r.get("required") is not True]
-    if any(x.get("status") != "ok" for x in optionals):
-        return "degraded", 0
+    for x in optionals:
+        if x.get("status") == "not_configured":
+            continue
+        if x.get("status") != "ok":
+            return "degraded", 0
     return "ok", 0
 
 

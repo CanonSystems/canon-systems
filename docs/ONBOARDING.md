@@ -54,8 +54,16 @@ Verify:
 
 ```bash
 canon --version
-# e.g. canon-systems 3.4.1  (see CHANGELOG.md / git describe for current)
+# e.g. canon-systems 3.4.3  (see CHANGELOG.md / git describe for current)
 ```
+
+**One-shot validation (after install or upgrade):** from any **wired** repo root,
+
+```bash
+canon e2e-check --agent
+```
+
+Expect exit code **0** and `"verdict": "PASS"` in the JSON (proof the machine is plug-and-play ready for Canon).
 
 If pipx installs but `canon` isn't found, see [§1c](#1c-after-pipx-canon-not-on-path)
 below.

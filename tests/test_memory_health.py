@@ -403,7 +403,7 @@ def test_system_workflow_section_6_bullet() -> None:
 def test_graph_optional_not_configured_exit_ok(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Default required set: graph row may be not_configured without failing the run (exit 0, degraded)."""
+    """Default required set: graph not configured does not degrade overall (plug-and-play)."""
     root = _write_repo(
         tmp_path,
         KNOWLEDGE_API_URL="http://k.test",
@@ -422,7 +422,7 @@ def test_graph_optional_not_configured_exit_ok(
     c, s = _run_captured(argv=[], monkeypatch=monkeypatch)
     o = json.loads(s)
     assert c == 0
-    assert o["overall_status"] == "degraded"
+    assert o["overall_status"] == "ok"
     graph = next(b for b in o["backends"] if b["name"] == "graph")
     assert graph["status"] == "not_configured"
     assert graph["required"] is False
@@ -492,8 +492,7 @@ def test_urls_from_home_canon_env_when_local_env_omits_urls(
     c, s = _run_captured(argv=[], monkeypatch=monkeypatch)
     assert c == 0
     o = json.loads(s)
-    # Required pair ok; state/graph unset → optional rows not ok → overall degraded (still exit 0).
-    assert o["overall_status"] == "degraded"
+    assert o["overall_status"] == "ok"
     assert any("from.home.k" in u for u in seen)
     assert any("from.home.m" in u for u in seen)
     assert not any("localhost:8080" in u for u in seen)
