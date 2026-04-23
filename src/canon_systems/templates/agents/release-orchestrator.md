@@ -190,6 +190,37 @@ CLI exit codes: `0` OK; `1` = `EXIT_VERSION_CONFLICT` (retry after re-read); `2`
 
 - **Conflict recovery:** when any `canon checkpoint` mutating call returns exit `1` or `2`, consult the `### Conflict recovery (E4-T2)` section of `src/canon_systems/templates/agents/implementer.md` for the canonical recovery flow. The stderr `resolution` object contains the exact `canon checkpoint ...` command to re-run.
 
+## Auto-publish hook on RELEASE_STATUS PASS
+
+**Fires once per release, not per task.** When this agent emits a
+`RELEASE_STATUS` block with `qa_gate: PASS`, `ci_gate: PASS`, and
+`merge_gate: PASS`, immediately invoke the auto-publish hook so the
+S3 vault reflects the latest delivery and downstream
+`canon vault sync` clients see the update on their next tick:
+
+```shell
+canon release publish-on-pass \
+  --release-status-file .cursor/handoffs/<handoff_id>/release-status.md \
+  --release-id <release_id>
+```
+
+Failure-tolerant retry: bounded exponential backoff (min(base*2**(k-1), 60s)),
+default 3 attempts via `CANON_PUBLISH_RETRIES`. A permanent failure after
+retries surfaces as exit code `5`; this agent MUST report it as a targeted
+unblock request and hold the deploy gate.
+
+Optional notifier: set `CANON_PUBLISH_NOTIFIER_URL` to signal vault-sync
+listeners so they pull the fresh vault within 30 seconds instead of waiting
+for the ~10s poll tick; absence is a clean no-op. The notifier POST is
+best-effort — a slow or missing endpoint never blocks the release.
+
+The hook is idempotent: a second invocation for the same
+`(plan_id, release_id)` is a byte-identical no-op via the sentinel at
+`.canon/release-publish/<plan_id>/<release_id>.json`.
+
+See `docs/SYSTEM-WORKFLOW.md` ("Auto-publish on RELEASE PASS") for the
+end-to-end flow diagram.
+
 ## Resume check (E4-T4)
 
 Before advancing the merge gate, run `canon resume` to verify every task in the plan has reached `release-orchestrator` / `completed`:

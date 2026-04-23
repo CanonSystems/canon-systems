@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>systems.canon.vault-sync.{COMPANY_SHORTHASH}-{REPO_SHORTHASH}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>{CANON_BIN}</string>
+    <string>vault</string>
+    <string>sync</string>
+    <string>--interval-seconds</string>
+    <string>{INTERVAL_SECONDS}</string>
+    <string>--company-id</string>
+    <string>{COMPANY_ID}</string>
+    <string>--repository-id</string>
+    <string>{REPOSITORY_ID}</string>
+    <string>--plan-id</string>
+    <string>{PLAN_ID}</string>
+    <string>--bucket</string>
+    <string>{BUCKET}</string>
+    <string>--prefix</string>
+    <string>{PREFIX}</string>
+    <string>--target-dir</string>
+    <string>{TARGET_DIR}</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>{LOG_OUT}</string>
+  <key>StandardErrorPath</key><string>{LOG_ERR}</string>
+</dict>
+</plist>

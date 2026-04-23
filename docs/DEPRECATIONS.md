@@ -1,58 +1,114 @@
-# Sibling repository disposition (local machine)
+# Sibling repository disposition (local machine) — FINAL
 
-One-line **keep** | **absorb** | **delete** recommendation per sibling for the Canon Memory Platform v1 consolidation. Paths are absolute on this workstation.
+_Last updated: 2026-04-23 (E7-T2 close-out — moved-for-review variant)_
+
+One-line **keep** | **absorb** | **delete** final disposition per sibling
+for the Canon Memory Platform v1 consolidation. This document is **FINAL**.
+
+Per operator direction at E7-T2, the three `absorb` targets (`mempalace`,
+`obsidian-mind`, `total_recall`) were **not** deleted. Instead they were
+moved to `/Users/edwardwalker/localwork/_deprecated/` as a holding area
+for post-release review. Any final delete happens under a separate
+operator action after review.
+
+Paths below reflect **current** filesystem locations. `keep` / vendor
+repos were untouched. Two canonical event types are recorded in
+`.canon/memory/events.ndjson` as the durable record:
+`sibling_disposition_finalized` (one per sibling; emitted at E7-T2 open)
+and `sibling_moved_for_review` (one per moved sibling; emitted at
+E7-T2 close after the physical move).
 
 ---
 
 ## canon-platform
 
 - **Path:** `/Users/edwardwalker/localwork/canon-platform`
-- **Label:** **keep**
-- **Justification:** Mature serverless product surface (Lambda, API Gateway, Amplify per `README.md`); not the home of `KNOWLEDGE_API_URL` / worker / memory-adapter backends audited in `docs/WAVE-0-AUDIT.md`.
-- **Recommended wave:** E1+ (integration boundaries only; no merge into v2 backend tree without explicit program decision).
+- **Final label:** **keep** (production-adjacent; outside v1 scope)
+- **Justification:** Mature serverless product surface (Lambda, API Gateway,
+  Amplify per `README.md`); not the home of `KNOWLEDGE_API_URL` / worker /
+  memory-adapter backends audited in `docs/WAVE-0-AUDIT.md`.
+- **Action taken:** none; integration boundaries preserved.
 
 ---
 
 ## canon-systems-v2
 
 - **Path:** `/Users/edwardwalker/localwork/canon-systems-v2`
-- **Label:** **keep**
-- **Justification:** Authoritative implementation and container definitions for knowledge-api, knowledge-worker, and memory-adapter source (`services/*`, `deploy/manifest.json`, `deploy/docker/*`).
-- **Recommended wave:** E0–E2 (continue as primary backend repo).
-- **Infra note:** `infra/terraform/` absorbed into `canon-systems/infra/terraform/` @ E0-T4 (`ebecb91`).
+- **Final label:** **keep** (authoritative backend; already partially absorbed)
+- **Justification:** Authoritative implementation and container definitions
+  for `knowledge-api`, `knowledge-worker`, and `memory-adapter` source.
+- **Action taken:** `infra/terraform/` absorbed into
+  `canon-systems/infra/terraform/` @ E0-T4 (`ebecb91`). Remaining services
+  stay in v2 as the primary backend repo; canon-systems references
+  manifest-tracked deploy artefacts.
 
 ---
 
 ## mempalace
 
-- **Path:** `/Users/edwardwalker/localwork/mempalace`
-- **Label:** **absorb**
-- **Justification:** Local semantic-memory engine; `memory-adapter` in v2 wraps MemPalace-style search—capabilities should fold into the unified memory platform rather than stay a separate operational concern.
-- **Recommended wave:** E4–E5 (adapter + storage semantics).
+- **Original path:** `/Users/edwardwalker/localwork/mempalace`
+- **Current path:** `/Users/edwardwalker/localwork/_deprecated/mempalace`
+- **Original label:** absorb
+- **Final label:** **absorbed + moved-for-review**
+- **Absorption wave:** E4 (memory-adapter behavioural contract) /
+  E5 (synthesis read paths).
+- **Action taken:** MemPalace-style semantic search capabilities wrapped by
+  the memory-adapter in canon-systems-v2. Sibling moved to
+  `_deprecated/mempalace` on 2026-04-23 pending post-release review;
+  delete gated by a separate operator action.
 
 ---
 
 ## obsidian-mind
 
-- **Path:** `/Users/edwardwalker/localwork/obsidian-mind`
-- **Label:** **absorb**
-- **Justification:** Agent, command, script, and vault patterns for synthesis and session memory—explicit Wave 5 absorption target (see `docs/OBSIDIAN-MIND-CATALOGUE.md`).
-- **Recommended wave:** E5 (catalogue) → E6–E7 (platform hooks).
+- **Original path:** `/Users/edwardwalker/localwork/obsidian-mind`
+- **Current path:** `/Users/edwardwalker/localwork/_deprecated/obsidian-mind`
+- **Original label:** absorb
+- **Final label:** **absorbed + moved-for-review**
+- **Absorption wave:** E5 (catalogue → human synthesis plane) and E6
+  (observability hooks).
+- **Action taken:** Synthesis agent, command, script, and vault patterns
+  folded into `backend/synthesis-web/`, `canon synth show`, `canon vault
+  sync`, and `canon release publish-on-pass`. Sibling moved to
+  `_deprecated/obsidian-mind` on 2026-04-23 pending post-release review.
 
 ---
 
 ## temporal
 
 - **Path:** `/Users/edwardwalker/localwork/temporal`
-- **Label:** **keep**
-- **Justification:** Upstream Temporal server OSS (`README.md`); dependency for durable execution, not Canon-owned application code to delete or merge.
-- **Recommended wave:** N/A (vendor baseline; pin/version only).
+- **Final label:** **keep (vendor baseline)**
+- **Justification:** Upstream Temporal server OSS — pinned dependency for
+  durable execution, not Canon-owned application code.
+- **Action taken:** none; vendor baseline only.
 
 ---
 
 ## total_recall
 
-- **Path:** `/Users/edwardwalker/localwork/total_recall`
-- **Label:** **absorb**
-- **Justification:** Repo-scoped Cursor session recall design (`docs/total-recall-whitepaper.md`); concepts overlap Canon Memory Platform goals—merge into platform design rather than maintain a parallel product.
-- **Recommended wave:** E3–E5 (ingestion + retrieval alignment).
+- **Original path:** `/Users/edwardwalker/localwork/total_recall`
+- **Current path:** `/Users/edwardwalker/localwork/_deprecated/total_recall`
+- **Original label:** absorb
+- **Final label:** **absorbed + moved-for-review**
+- **Absorption wave:** E3 (graph-first retrieval) / E5 (synthesis read paths).
+- **Action taken:** Session-recall concepts unified with canonical
+  `retrieval_breakdown` events (E3) and the three synthesis read paths
+  (E5). Sibling moved to `_deprecated/total_recall` on 2026-04-23 pending
+  post-release review.
+
+---
+
+## Close-out
+
+- **Deletions executed:** 0. No sibling reached the `delete` label.
+- **Moves executed:** 3. `mempalace`, `obsidian-mind`, and `total_recall`
+  were moved from `/Users/edwardwalker/localwork/` to
+  `/Users/edwardwalker/localwork/_deprecated/` on 2026-04-23 pending
+  post-release review. `canon-platform`, `canon-systems-v2`, and
+  `temporal` were left in place per their `keep` labels.
+- **Canonical events:** two event types in `.canon/memory/events.ndjson`:
+  `sibling_disposition_finalized` (6, one per sibling) and
+  `sibling_moved_for_review` (3, one per moved sibling).
+- **Follow-ups:** operator review of `_deprecated/` determines whether the
+  three moved siblings are restored, archived elsewhere, or deleted.
+  canon-systems has no remaining runtime references to those paths.

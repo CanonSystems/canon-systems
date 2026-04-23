@@ -9,6 +9,113 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [3.4.0] - 2026-04-23
+
+Canon Memory Platform **v1** — complete. Ships operator CLI (`canon report` full rollup, hard-lock rule via `canon wire`, vault sync, synth publish/show, release publish-on-pass), in-repo backends (`state-api`, `axon-service`, `synthesis`, `synthesis-web`), Terraform modules (apply separately for cloud). Test suite: **440** passing at release tag.
+
+
+### Added
+
+- **E7-T3** Final five-file living-spec refresh + Canon Memory Platform v1
+  sign-off: `README.md` gains a dated "Canon Memory Platform v1 — shipped"
+  summary enumerating Waves 0–7 deliverables.
+  `docs/MEMORY-PLATFORM-PLAN.md §9` rewritten so each wave lists SHIPPED
+  status with outcomes. `docs/MEMORY-PLATFORM-BACKLOG.md` and
+  `docs/SYSTEM-WORKFLOW.md` each get a top-of-document v1 status callout.
+  `.cursor/handoffs/canon-memory-v1/E7-T3/release-status.md` records the
+  final release sign-off (`release_id: canon-memory-v1-final`,
+  `signed_off_at: 2026-04-23`, all three gates PASS, 440/440 suite). (E7-T3)
+- **E7-T2** Sibling repository disposition FINAL (moved-for-review
+  variant): `docs/DEPRECATIONS.md` marked FINAL with explicit
+  `Original path`, `Current path`, `Original label`, and `Final label`
+  per sibling. Zero deletions. Per operator direction, the three `absorb`
+  targets were physically moved from `/Users/edwardwalker/localwork/` to
+  `/Users/edwardwalker/localwork/_deprecated/` pending post-release
+  review: `mempalace`, `obsidian-mind`, and `total_recall`. `canon-platform`,
+  `canon-systems-v2`, and `temporal` left in place per their `keep` labels.
+  Canonical events appended to `.canon/memory/events.ndjson`: 6 ×
+  `sibling_disposition_finalized` + 3 × `sibling_moved_for_review`
+  (with `old_path`, `new_path`, `reason`, `deletion_executed: false`).
+  Wave-0 audit regex coverage preserved; `tests/` suite still 440/440
+  green. (E7-T2)
+- **E7-T1** Hard-lock rule distribution via `canon wire`: packaged
+  `src/canon_systems/templates/rules/memory-platform-build-discipline.mdc`
+  (byte-identical to the workspace rule) and extended
+  `repo_enable.enable_repo` and `repo_enable.install_user_scope` to install
+  it alongside `memory-layer-defaults.mdc`. Every repo wired by `canon
+  setup` / `canon enable-repo` now carries the hard-lock rule in
+  `.cursor/rules/` so the Canon Memory Platform build discipline stays
+  enforced across the fleet. New 5-test suite
+  `tests/test_wire_distribution.py` asserts the packaging, byte-identity
+  with the workspace rule, installation via `enable_repo` and
+  `install_user_scope`, and idempotence of repeat installs. Full `tests/`
+  suite 435 → 440 passed. (E7-T1)
+- **E6-T2** `canon report` CLI over canonical events: `src/canon_systems/report_cli.py`
+  reworked from the E3-T5 stub into the first-class `canon report` surface.
+  Ingests NDJSON canonical event streams and supports scope filters
+  (`--company-id / --repository-id / --plan-id / --task-id`) and time-window
+  filters (`--since / --until` ISO-8601 Z inclusive). Two output modes: default
+  `--by {source,phase,agent}` preserves the legacy `{by, groups}` envelope
+  consumed by `tests/test_retrieval_telemetry.py`, and `--full` delegates to
+  `metrics_rollup.aggregate` (E6-T1) emitting the complete rollup schema.
+  `--format {json,csv}` supported; CSV for `--full` emits
+  `section,key,tokens_in,tokens_out,count` rows. Exit codes: `0` OK, `2`
+  usage, `3` events-file not found, `4` malformed NDJSON. Byte-identical
+  determinism verified. 13-test suite in `tests/test_cli_report.py`; full
+  `tests/` suite 422 → 435 passed. (E6-T2)
+- **E6-T1** Metrics aggregator over canonical events: new pure-Python
+  `src/canon_systems/metrics_rollup.py` (`SCHEMA_VERSION = 1`) consumes an
+  iterable of canonical events and returns a deterministic JSON rollup
+  covering `lead_time_by_task` (first→last event timestamps + seconds),
+  `cycle_time_by_phase` (task_count/total/avg across the five canonical
+  phases), `retries_by_task_phase` (distinct-`agent_run_id` counts minus
+  1 per (task, phase)), `dor_causes` (`dor_failure.payload.stage`
+  counts), `stalls` (total + per-task from `lease_stall_detected`),
+  `token_cost` (`retrieval_breakdown` split by phase/agent/source across
+  the graph/state/canonical/file buckets), and `synth_publish`
+  (ok/failed/notifier_ok counts from E5-T7 events). Scope filters on
+  `company_id`/`repository_id`/`plan_id`; `since`/`until` ISO-8601 Z
+  window filter; malformed timestamps silently skipped. Stdlib-only,
+  read-only (no boto3/pandas/numpy; no filesystem I/O; no canonical
+  events emitted — enforced by 16-test suite `tests/test_metrics_rollup.py`
+  incl. source-scan). Determinism verified via back-to-back
+  `json.dumps(..., sort_keys=True)` byte-identical assertion. Suite
+  406 → 422 passed. (E6-T1)
+- **E5-T7** Auto-publish hook on `RELEASE_STATUS` PASS: new `canon release
+  publish-on-pass` subcommand (wired through `src/canon_systems/cli.py`) reads
+  the release-orchestrator's `RELEASE_STATUS` packet (YAML or JSON), and when
+  `qa_gate`, `ci_gate`, and `merge_gate` all equal `PASS` invokes
+  `canon synth publish` exactly once via a subprocess seam with bounded
+  exponential-backoff retries (`min(base*2**(k-1), 60s)`, default 3 attempts
+  via `CANON_PUBLISH_RETRIES`). Fires once per release (not per task):
+  idempotent via `.canon/release-publish/<plan_id>/<release_id>.json` sentinel;
+  second invocation is a byte-identical no-op. Optional notifier via
+  `CANON_PUBLISH_NOTIFIER_URL` (best-effort POST with 5s timeout; failure
+  never fails the release, never interrupts the exit code). Emits one
+  `synth_publish` canonical event per attempt outcome plus an optional
+  `vault_sync_notified` event on 2xx POSTs. All S3 writes still flow through
+  the already-audited `canon synth publish` binary — the new module carries
+  a 24-method boto3 forbidden-write source scan. `release-orchestrator.md`
+  template gains the `## Auto-publish hook on RELEASE_STATUS PASS` section
+  documenting both knobs (+1 template assertion test). Tests: 18 new in
+  `tests/test_release_publish.py` (AC1..AC11 + inline-JSON body path +
+  usage/config error paths). Suite 388 → 406 passed.
+- `canon vault sync` read-only S3→<repo>/vault/ mirror (one-shot + loop) with
+  exponential backoff, content-hash diff, deletion propagation, and
+  `canon enable-repo` integration installing the OS-appropriate background
+  daemon (launchd/systemd/schtasks), the sentinel-framed `vault/` gitignore
+  block, and the `.cursor/hooks/vault-sync-preflight.sh` pre-turn refresh
+  hook. No S3 writes anywhere in the sync code path (20-method source-scan
+  gate). (E5-T6)
+- `canon synth show` read-only CLI subverb streams Obsidian vault markdown (plan + tasks) for `(plan_id[, task_id])` from the published S3 vault, with markdown/JSON modes, canonical stream order, ISO-Z `--cutoff-ts` filter, `--dry-run` event-log fallback, and a 21-method boto3 source-scan enforcing zero S3 write call sites. (E5-T5)
+- **E5-T4** `backend/synthesis-web` read-only FastAPI SSR browser over the E5-T2 S3 vault: routes `/healthz`, `/`, `/v/{company_shorthash}/{repo_shorthash}/` (vault home), markdown pages, `/_graph` (deterministic JSON), `/_search` (capped substring search); `markdown-it-py` with `html=False`; inline CSS templates (zero external CDN / zero `<script src>`); `S3VaultReader` is GET/HEAD/List-only; design spike **request-time SSR** documented in README + scoper (vs. rebuild-on-publish); tests in `synthesis_web_tests/` (not `tests/`) — 12 cases; suite 390 → 402 passed; unwired Terraform `infra/terraform/modules/synthesis-web/`.
+- **E5-T3**: New `canon synth publish` CLI drives the E5-T2 `SynthesisPublisher` deterministically from a canonical-event JSONL file. Emits a single JSON envelope with per-page diff stats (`written`, `skipped`, `keys_written`); safe to invoke repeatedly (content-hash idempotence from E5-T2). `--dry-run` renders the bundle without S3 I/O; transport failures map to exit 2, usage errors to exit 4.
+- **E5-T2** `backend/synthesis` deterministic vault generator + publisher: five new modules (`redaction.py`, `sources.py`, `generator.py`, `publisher.py`, plus additive routes on `main.py`) project `CanonicalEvent` rows through the E5-T1 15-field allowlist into an Obsidian-compatible S3 vault. `project_safe()` enforces SAFE / SCOPE-SAFE-aliased / DROPPED per `docs/VAULT-LAYOUT.md §5` (raw `company_id`/`repository_id`/`model` never serialized; unknown payload keys silently dropped with zero log/stderr output). `generate_vault()` is pure (no network, no S3, no wallclock — enforced by source-grep test), sorts events by `(timestamp, event_id)`, emits frontmatter anchors first then alphabetical, and absorbs obsidian-mind cross-links (citations in render paths) + vault-librarian indices (`_render_indices` / `_index/*`). `SynthesisPublisher` writes diff-only via SHA-256 content-hash sidecar metadata against injectable `boto3.client("s3")`; `.obsidian/` seed files are write-once. Two new FastAPI routes: `GET /synth/vault/changes?since=<iso8601>` (422 on junk, deterministic sorted change list) and `GET /synth/show?plan_id=...[&task_id=...][&format=json|markdown]` (JSON envelope default, raw markdown alt, 404 on empty). Tests: 10 in `synthesis_tests/test_generator.py` + 2 in `synthesis_tests/test_endpoints.py` + 1 moto idempotence in `synthesis_tests/test_publisher_moto.py`. Suite 367 → 380 passed. Deps: `boto3>=1.35,<2` prod; `pytest>=8.2,<9`, `moto[s3]>=5.0,<6`, `httpx>=0.27,<1` test-only. New unwired terraform module `infra/terraform/modules/synthesis-vault/` captures infra under Precedent §1 `cloud_execution_deferred` — NOT wired into `infra/terraform/main.tf`.
+- **E5-T1** Vault layout spec + redaction allowlist: new `docs/VAULT-LAYOUT.md` (`schema_version: 1`) publishes the versioned contract for how `backend/synthesis` (Wave 5 / E5-T2) will project `CanonicalEvent` rows into an Obsidian-compatible S3 vault. 9 sections cover the S3 layout tree, per-company/per-repo shorthash scoping (never raw company_id/repository_id in page values), markdown frontmatter schema, `.obsidian/` seed config (app/workspace/graph only; no plugins/themes), the exhaustive 15-field redaction allowlist (10 SAFE + 4 SCOPE-SAFE-aliased + `model` DROPPED; unknown payload keys silently dropped — no logs, no warnings), the per-event-type payload catalogue (`retrieval_breakdown`, `lease_stall_detected`, `checkpoint_write`, opaque fallback), the `[[event:<id>]]` citation contract, the determinism/idempotence rules, and the schema_version bump policy. `backend/synthesis/README.md` now links to the spec. New `tests/test_vault_layout_spec.py` locks `schema_version: 1`, the §5 allowlist completeness against `CanonicalEvent`, and the `backend/synthesis/README.md` backlink. Documentation-only; zero production-code changes.
 - **E4-T4** Resume runbook + release-gate integration: new `docs/runbooks/RESUME.md` one-page operator runbook for `canon resume` with basic invocation examples, output interpretation decision matrix, stall-watchdog cross-reference, release-gate integration pointer, and a troubleshooting table. New `## Resume check (E4-T4)` section in `src/canon_systems/templates/agents/release-orchestrator.md` wires the resume check into the merge-gate checklist (operators must confirm `resume_target == null` before advancing the merge gate). Two new template-assertion tests in `tests/test_agent_templates.py` (`test_release_orchestrator_template_resume_aware` satisfies the backlog done_signal; `test_resume_runbook_exists_and_covers_workflow` locks in the runbook structure). Documentation-only task; zero production-code changes; suite goes 363 → 365 passed.
 - **E4-T3** `canon stall-watchdog scan` stall watchdog + unblock event: stdlib-only, read-only GET-probe CLI that scans a scoped list of (task_id, workstream_id) pairs (via `--tasks-file` or `--handoffs-dir`), classifies any checkpoint whose `lease.expires_at <= now_epoch` as STALLED, and emits one `lease_stall_detected` canonical event per stall to `.canon/memory/events.ndjson` (or `--event-log <path>`, or stderr under `--dry-run`). Event payload carries `diagnostic` evidence (stale owner, expires_at, ttl_remaining_s) plus `suggested_next_step` imported verbatim from `checkpoint_cli._resolution_hint("lease_held")` (zero drift). Uses GET (not acquire) because the state-api silently steals expired leases on acquire — GET surfaces expired `expires_at` verbatim and is side-effect-free. Exit 5 on any degraded probe (stricter than `canon resume` by design: a missed stall probe may hide the actual stall). `CanonicalEvent` imported from `backend/shared` (Wave-3 discipline; never redefined). New `tests/test_stall_watchdog.py` (≥13 cases) covers the simulated-stall done signal, dry-run stderr, append semantics, and the canonical-event-import-not-redefined source scan.
 - **E4-T2** Lease + versioning enforcement in CLI + templates: `canon checkpoint write | lease-acquire | lease-renew | lease-release` now emit an additive `resolution: {message, command}` object on every 409 stderr envelope carrying the copy-pasteable recovery command (`canon checkpoint read` for stale versions, `canon checkpoint lease-acquire` for lease conflicts). Exit codes (`1` = version conflict, `2` = lease denied) and all pre-existing stderr keys preserved byte-for-byte. New `tests/test_checkpoint_concurrency.py` validates the acquire → write → renew → release happy path and every 409 recovery path via a monkeypatched `_http_request` seam. `src/canon_systems/templates/agents/implementer.md` gains a `### Conflict recovery (E4-T2)` subsection; `release-orchestrator.md` cross-references it.
@@ -86,7 +193,6 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
----
 
 ## [3.3.5] - 2026-04-24
 

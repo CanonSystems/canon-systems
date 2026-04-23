@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}synthesis-web{% endblock %}</title>
+<style>
+body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 1rem 2rem; line-height: 1.5; color: #1a1a1a; max-width: 56rem; }
+.crumbs { font-size: 0.9rem; color: #444; margin-bottom: 1rem; }
+.crumbs a { color: #0b57d0; text-decoration: none; }
+.crumbs a:hover { text-decoration: underline; }
+h1 { font-size: 1.5rem; margin-top: 0; }
+.link-list { list-style: none; padding-left: 0; }
+.link-list li { margin: 0.35rem 0; }
+a { color: #0b57d0; }
+.wikilink { font-weight: 500; }
+.wikilink-unresolved { color: #666; font-style: italic; }
+.page-main { display: flex; gap: 2rem; flex-wrap: wrap; align-items: flex-start; }
+.page-content { flex: 1 1 24rem; min-width: 0; }
+.page-content pre, .page-content code { background: #f4f4f4; border-radius: 4px; padding: 0.15em 0.35em; font-size: 0.9em; }
+.page-content pre { padding: 0.75rem; overflow-x: auto; }
+aside.backlinks { flex: 0 1 14rem; border-left: 1px solid #ddd; padding-left: 1rem; margin-top: 0; }
+aside.backlinks h2 { font-size: 1rem; margin-top: 0; }
+.footer { margin-top: 2rem; font-size: 0.8rem; color: #666; border-top: 1px solid #eee; padding-top: 0.75rem; }
+.not-found { padding: 1rem 0; }
+</style>
+</head>
+<body>
+{% block body %}{% endblock %}
+<footer class="footer">synthesis-web — read-only vault browser</footer>
+</body>
+</html>

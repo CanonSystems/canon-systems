@@ -4,6 +4,12 @@ This document is the current source of truth for how Canon works end-to-end.
 Update it on every meaningful Canon iteration (new command, gate, agent
 contract, hook behavior, memory behavior, or rollout policy).
 
+> **Canon Memory Platform v1 — SHIPPED (2026-04-23).** Waves 0–7 are
+> complete. See `docs/MEMORY-PLATFORM-PLAN.md §9` for wave-level
+> outcomes, `docs/MEMORY-PLATFORM-BACKLOG.md` for the per-task record,
+> and `CHANGELOG.md` for the detailed per-epic entries. Everything
+> described below reflects the v1 final state.
+
 ## 1) Runtime model
 
 - Canon ships as one CLI package: `canon-systems` (binary: `canon`).
@@ -45,6 +51,60 @@ Plan state file:
 - **Resume engine (`canon resume`)**: Read-only, idempotent scanner over state-api checkpoints. Given a `--plan-id` + tenant scope and a task list (via `--tasks-file` or `--handoffs-dir`), it returns a JSON envelope identifying the first incomplete `(task_id, phase)` pair per the canonical 5-phase order (`scoper → cursor-pilot → implementer → qa-gate → release-orchestrator`). The engine emits zero canonical events — operators (or the parent agent) use the output to decide which agent to re-invoke; the re-invocation itself happens elsewhere. Running `canon resume` twice on unchanged plan state yields byte-identical stdout.
 - **E4-T2 lease + versioning enforcement (CLI):** every `canon checkpoint` mutating command (`write`, `lease-acquire`, `lease-renew`, `lease-release`) now emits an additive `resolution: {message, command}` object on 409 stderr envelopes, carrying the exact `canon checkpoint ...` recovery invocation. Exit codes remain `1` (version conflict) and `2` (lease denied). Operators (and orchestrator agents) can parse `resolution.command` to drive automated recovery. See `src/canon_systems/templates/agents/implementer.md § Conflict recovery (E4-T2)`.
 - **E4-T3 stall watchdog (`canon stall-watchdog scan`):** Read-only GET-probe scanner that detects stalled leases (`lease.expires_at <= now_epoch`) and emits one `lease_stall_detected` canonical event per stall (default target `.canon/memory/events.ndjson`; `--dry-run` routes to stderr). Event payload embeds a `suggested_next_step` copy-pasteable `canon checkpoint lease-acquire` command imported verbatim from `checkpoint_cli._resolution_hint("lease_held")`. Deliberately uses GET (not `POST /state/lease/acquire`) because the state-api silently steals expired leases on acquire, destroying stall evidence. Exit 5 on any degraded probe.
+- **E5-T2 synthesis generator + publisher:** `backend/synthesis` renders `CanonicalEvent` rows deterministically into the E5-T1 S3 vault layout via `redaction.py` (15-field allowlist + per-event-type payload catalogue), `sources.py` (`InMemoryEventSource` for tests/E5-T3 CLI; `StateApiEventSource` Wave-5-waived stub), `generator.py` (pure `events → VaultBundle`; no wallclock, no S3, no network), `publisher.py` (SHA-256 content-hash diff-only writes via injectable `boto3.client("s3")`, `.obsidian/` write-once), and two new FastAPI routes (`GET /synth/vault/changes`, `GET /synth/show`). Suite +13 (367 → 380). Unwired terraform module `infra/terraform/modules/synthesis-vault/` under Precedent §1 `cloud_execution_deferred` waiver. Tests live in `backend/synthesis/synthesis_tests/` (pytest import-path: avoids `tests.conftest` collision with `backend/state-api/tests`).
+- E5-T3 (canon synth publish CLI): operators and release-orchestrator may invoke `canon synth publish --events-file <jsonl> --plan-id ... --bucket ... --prefix ...` to converge an S3 vault to the current canonical-event set. The command is idempotent: repeat invocations with unchanged inputs + bucket state report `written=0, skipped=<all>`. `--dry-run` renders the bundle in-memory and prints the JSON envelope without any S3 I/O.
+- **E5-T5 (canon synth show CLI):** agent-side read path — `canon synth show` streams the already-published S3 Obsidian vault (plan index + per-task pages in canonical phase order, or JSON snapshot) to stdout for inline hydration in the scoper → cursor-pilot → implementer → qa-gate → release-orchestrator chain, without regenerating the vault, write I/O, or a browser. Emits `retrieval_breakdown` + `synth_show` events to the same NDJSON seam as other canon CLIs.
+- **E5-T4 `backend/synthesis-web`:** read-only FastAPI service SSRs HTML + JSON (`/_graph`, `/_search`) from the live S3 vault at request time (ETag from `content-hash` metadata; no S3 writes). URLs are scoped by 8-char hex `company_shorthash`/`repo_shorthash` under `/v/{c}/{r}/...`. Templates use inline CSS only (zero CDN). Tests: `backend/synthesis-web/synthesis_web_tests/`. Terraform module `infra/terraform/modules/synthesis-web/` is unwired (Precedent §1 deferred apply).
+- **E5-T1 vault layout spec (schema_version 1):** new `docs/VAULT-LAYOUT.md` is the Wave-5 projection contract. Defines the Obsidian-compatible S3 vault layout, `company_shorthash`/`repo_shorthash` path scoping, the 15-field `CanonicalEvent` redaction allowlist (with `model` dropped + unknown payload keys silently dropped), the per-event-type payload catalogue, citation/idempotence rules, and the `schema_version` bump policy. E5-T2..E5-T7 implement against this contract; `backend/synthesis/README.md` links it.
+- **In-repo vault mirror (E5-T6).** `canon enable-repo` installs a per-tenant
+  background daemon (launchd/systemd/schtasks) that runs `canon vault sync
+  --interval-seconds 10` and maintains `<repo>/vault/` as a one-way read-only
+  projection of the canonical S3 vault. The Cursor `beforeSubmitPrompt` hook
+  `.cursor/hooks/vault-sync-preflight.sh` smoke-refreshes before agent work;
+  `vault/` is added to `.gitignore` via a sentinel-framed idempotent block.
+- **Metrics aggregator (E6-T1).** `src/canon_systems/metrics_rollup.py`
+  exports `aggregate(events, *, scope=None, window=None)` — a stdlib-only
+  pure function that consumes any iterable of canonical events (NDJSON
+  rows loaded by callers) and produces a stable `schema_version=1`
+  JSON rollup describing lead/cycle time per task, per-phase retries,
+  DoR cause counts, stall counts, token cost split by phase/agent/source
+  (graph/state/canonical/file), and `synth_publish` health. Scope
+  filters (`company_id`, `repository_id`, `plan_id`) and ISO-Z window
+  filters (`since`/`until`) apply before aggregation.   Deterministic
+  under `json.dumps(..., sort_keys=True)`. This is the data model the
+  E6-T2 operator CLI and downstream dashboards consume.
+- **Operator rollups (E6-T2).** `canon report --events <ndjson>` is the
+  first-class surface over `metrics_rollup.aggregate`. Default mode
+  preserves the legacy `{by, groups}` envelope (`--by
+  {source,phase,agent}`) for back-compat with E3-T5 callers; `--full`
+  emits the complete E6-T1 schema. Scope (`--company-id /
+  --repository-id / --plan-id / --task-id`) and window (`--since /
+  --until`) filters narrow the event stream before aggregation.
+  `--format {json,csv}` controls output shape; CSV under `--full` emits
+  `section,key,tokens_in,tokens_out,count` rows for direct spreadsheet
+  import. Byte-identical deterministic output.
+- **Auto-publish on RELEASE PASS (E5-T7).** When the release-orchestrator
+  emits a `RELEASE_STATUS` packet with all three gates (qa/ci/merge) equal
+  to `PASS`, it calls `canon release publish-on-pass --release-status-file
+  .cursor/handoffs/<handoff_id>/release-status.md --release-id <release_id>`.
+  The hook fires exactly once per release (not per task) and invokes
+  `canon synth publish` with bounded exponential-backoff retries
+  (`min(base*2**(k-1), 60 s)`; default 3 attempts via
+  `CANON_PUBLISH_RETRIES`). Idempotent via the per-release sentinel at
+  `.canon/release-publish/<plan_id>/<release_id>.json`. Set
+  `CANON_PUBLISH_NOTIFIER_URL` to an HTTP endpoint to signal downstream
+  `canon vault sync` listeners within ~30 s — absence is a clean no-op and
+  notifier failures never fail the release. Emits one `synth_publish`
+  canonical event per attempt outcome, plus an optional
+  `vault_sync_notified` event on successful POST.
+- **Hard-lock rule distribution (E7-T1).** The Canon Memory Platform v1 build
+  discipline rule lives at `.cursor/rules/memory-platform-build-discipline.mdc`
+  and is packaged byte-identically at
+  `src/canon_systems/templates/rules/memory-platform-build-discipline.mdc`.
+  Every repo wired by `canon setup` / `canon enable-repo` (and the
+  user-scope `~/.cursor/rules/` tree) gets the rule installed automatically;
+  `tests/test_wire_distribution.py` regression-locks byte-identity and
+  idempotence so the rule cannot drift between wire and workspace.
 - **E4-T4 resume runbook + release-gate integration:** new `docs/runbooks/RESUME.md` gives operators a one-page path for `canon resume`. The `release-orchestrator` template now requires a `canon resume` check before advancing the merge gate (`resume_target == null` AND empty `degraded_tasks`). Cross-references the E4-T3 stall watchdog for the combined "scan-then-resume" operator workflow.
 
 ## 4) DoR rejection telemetry contract
@@ -120,7 +180,7 @@ See rule §§9-10 for authoritative wording.
 ## 6) Validation commands
 
 - **Retrieval policy (graph-first)**: Coder-facing templates (scoper/cursor-pilot/implementer) consult memory sources in a fixed order — `graph → state → canonical → file`. Graph reads via `canon graph query`/`canon graph impact`, state via `canon checkpoint read`, canonical via `.canon/memory/context-latest.md` + `canon ask`. Fail-open when axon is unset or returns 2/3/4/5; degradation is recorded in the HANDOFF_TO_QA `notes:` field.
-- **Retrieval-source telemetry**: Each agent phase emits one `retrieval_breakdown` canonical event with `payload.sources` keyed by the fixed `graph/state/canonical/file` 4-bucket contract (see `src/canon_systems/retrieval_telemetry.py`). `canon report --events <ndjson>` provides a stub rollup grouped by `phase`, `agent`, or `source` (Wave-6 polish). Zero counts are valid when a source is unused or degraded; the event is still emitted.
+- **Retrieval-source telemetry**: Each agent phase emits one `retrieval_breakdown` canonical event with `payload.sources` keyed by the fixed `graph/state/canonical/file` 4-bucket contract (see `src/canon_systems/retrieval_telemetry.py`). `canon report --events <ndjson>` provides a rollup grouped by `phase`, `agent`, or `source` by default, or the full E6-T1 schema via `--full` (see *Operator rollups* above). Zero counts are valid when a source is unused or degraded; the event is still emitted.
 - QA packet validator:
   - `canon qa-validate --file <qa-gate.md> --require-pass`
 - Process audit validator:

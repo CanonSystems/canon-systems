@@ -17,7 +17,7 @@ pip install -e backend/knowledge-policy
 pip install -e backend/knowledge-client
 pip install -e backend/memory-adapter
 
-for svc in knowledge-api knowledge-worker memory-adapter state-api axon-service synthesis; do
+for svc in knowledge-api knowledge-worker memory-adapter state-api axon-service synthesis synthesis-web; do
   pip install -e "backend/${svc}"
   case "${svc}" in
     knowledge-api) pkg=app ;;
@@ -26,6 +26,7 @@ for svc in knowledge-api knowledge-worker memory-adapter state-api axon-service 
     state-api) pkg=state_api ;;
     axon-service) pkg=axon_service ;;
     synthesis) pkg=synthesis ;;
+    synthesis-web) pkg=synthesis_web ;;
     *) echo "unknown service: ${svc}" >&2; exit 1 ;;
   esac
   "${PYTHON_CMD}" -c "import ${pkg}.main as _m; assert hasattr(_m, 'app')"

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ page_path }} — synthesis-web{% endblock %}
+{% block body %}
+<nav class="crumbs">
+<a href="/">All vaults</a> /
+<a href="/v/{{ company_shorthash }}/{{ repo_shorthash }}/">{{ company_shorthash }}/{{ repo_shorthash }}</a> /
+<span>{{ page_path }}</span>
+</nav>
+<div class="page-main">
+<div class="page-content">
+<h1>{{ page_path }}</h1>
+{{ html_body | safe }}
+</div>
+<aside class="backlinks">
+<h2>Backlinks</h2>
+{% if backlinks %}
+<ul class="link-list">
+{% for b in backlinks %}
+<li><a href="/v/{{ company_shorthash }}/{{ repo_shorthash }}/{{ b }}">{{ b }}</a></li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="wikilink-unresolved">None</p>
+{% endif %}
+</aside>
+</div>
+{% endblock %}

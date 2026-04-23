@@ -123,29 +123,60 @@ Every terminal event must answer:
 
 ## 9) Implementation Waves
 
-### Wave 1: Stabilize present stack
+**Status:** Waves 0–7 **shipped** under Canon Memory Platform v1
+(see `docs/MEMORY-PLATFORM-BACKLOG.md` and `CHANGELOG.md` for the
+per-task record). Summary:
 
-- Add memory backend health checks and hard reporting.
-- Ensure rejection telemetry and packet persistence are enforced.
+### Wave 0 — Inventory + consolidation (E0) — SHIPPED
 
-### Wave 2: Shared checkpoint API
+- Sibling-repo audit (`docs/WAVE-0-AUDIT.md`, `docs/DEPRECATIONS.md`);
+  consolidated backend monorepo under `backend/`; Terraform root
+  mirrored into `infra/terraform/`.
 
-- Introduce explicit `checkpoint read/write` contracts for all agents.
-- Enforce in templates and release gates.
+### Wave 1 — Stabilize present stack (E1) — SHIPPED
 
-### Wave 3: Graph-first integration
+- `canon memory-health` probes canonical/mempalace/state/graph.
+- MemPalace retry queue + `canon flow-audit --require-memory-health`
+  release-gate flag; release-orchestrator enforces memory-health.
 
-- Integrate graph MCP tooling for structural retrieval and impact queries.
-- Route agent retrieval policy to graph-first flow.
+### Wave 2 — Shared checkpoint API (E2) — SHIPPED
 
-### Wave 4: Resume automation
+- `backend/state-api` REST plane on DynamoDB; `canon checkpoint`
+  lease + versioning CLI; per-phase checkpoint artifacts enforced in
+  `canon flow-audit` / `canon qa-validate`.
 
-- Add orchestrator resume engine from durable checkpoints.
-- Validate crash/restart continuation in tests and runbooks.
+### Wave 3 — Graph-first integration (E3) — SHIPPED
 
-### Wave 5: Human synthesis
+- `backend/axon-service` FastAPI multi-tenant graph plane
+  (`/index`, `/query`, `/impact`, `/healthz`); `canon graph` CLI
+  subcommands; `retrieval_breakdown` canonical events.
 
-- Auto-publish task/program summaries to Obsidian-Mind views.
+### Wave 4 — Resume automation (E4) — SHIPPED
+
+- `canon resume` orchestrator resume engine; lease enforcement in
+  CLI + templates; `canon stall-watchdog scan` with
+  `lease_stall_detected` events; resume runbook wired into the
+  release-gate checklist.
+
+### Wave 5 — Human synthesis (E5) — SHIPPED
+
+- `docs/VAULT-LAYOUT.md` v1; deterministic `backend/synthesis`
+  generator + publisher; `backend/synthesis-web` read-only SSR
+  browser; `canon synth show` streaming CLI; `canon vault sync`
+  + background mirror daemon; `canon release publish-on-pass`
+  auto-publish hook.
+
+### Wave 6 — Observability (E6) — SHIPPED
+
+- `metrics_rollup.aggregate` pure-Python aggregator; `canon report`
+  CLI with scope/window filters and JSON/CSV output.
+
+### Wave 7 — Cleanup + distribution (E7) — SHIPPED
+
+- Hard-lock discipline rule distributed via `canon wire` to every
+  enabled repo (`tests/test_wire_distribution.py`); sibling-repo
+  disposition finalized in `docs/DEPRECATIONS.md`; five-file
+  living-spec refresh.
 
 ## 9a) Executable backlog
 

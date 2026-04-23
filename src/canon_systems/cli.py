@@ -18,12 +18,14 @@ from .graph_indexer import run as run_graph_cli
 from .report_cli import run as run_report_cli
 from .resume_engine import run as run_resume_engine
 from .stall_watchdog import run as run_stall_watchdog
+from .synth_cli import run as run_synth_cli
 from .dor_log import run as run_dor_log
 from .flow_audit import run as run_flow_audit
 from .memory_health import run as run_memory_health
 from .context_preload import run as run_preflight
 from .install_wizard import detect_repo_root, run as run_setup
 from .repo_enable import enable_repo, install_user_scope
+from . import vault_sync
 from .qa_validate import run as run_qa_validate
 from .secrets_submit import run as run_secrets_submit
 from .store_pending_user import run as run_store_pending_user
@@ -192,7 +194,19 @@ def main(argv: list[str] | None = None) -> int:
     setup_p = sub.add_parser("setup", help="Configure machine + repo memory-layer access.")
     setup_p.add_argument("--non-interactive", action="store_true")
 
-    sub.add_parser("enable-repo", help="Install Cursor hooks + subagents + rule in current repo.")
+    en = sub.add_parser("enable-repo", help="Install Cursor hooks + subagents + rule in current repo.")
+    en.add_argument(
+        "--install-vault-sync",
+        action="store_true",
+        help="Also install the OS-appropriate `canon vault sync` service (requires tenant scope in env/flags).",
+    )
+    en.add_argument("--company-id", default="")
+    en.add_argument("--repository-id", default="")
+    en.add_argument("--plan-id", default="")
+    en.add_argument("--bucket", default="")
+    en.add_argument("--prefix", default="")
+    en.add_argument("--vault-target-dir", default="")
+    en.add_argument("--interval-seconds", type=int, default=10)
 
     pre = sub.add_parser("preflight", help="Run memory preflight (writes .canon/memory/context-latest.md).")
     pre.add_argument("prompt", nargs="?", default="")
@@ -324,6 +338,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     stall_watchdog_parser.add_argument("args", nargs=argparse.REMAINDER)
 
+    vault_parser = sub.add_parser("vault", help="Read-only in-repo S3 → vault/ mirror and related helpers.")
+    vault_parser.add_argument("args", nargs=argparse.REMAINDER)
+
+    synth_parser = sub.add_parser(
+        "synth",
+        help="Synthesis vault publishing driver (internal; subcommands: publish).",
+    )
+    synth_parser.add_argument("args", nargs=argparse.REMAINDER)
+
+    release_parser = sub.add_parser(
+        "release",
+        help="Release lifecycle helpers (auto-publish on RELEASE_STATUS PASS).",
+    )
+    release_parser.add_argument("args", nargs=argparse.REMAINDER)
+
     sec = sub.add_parser(
         "secrets",
         help="Structured AWS Secrets Manager workflows for Canon runtime credentials.",
@@ -394,7 +423,18 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "enable-repo":
-        enable_repo(root)
+        vtd = getattr(args, "vault_target_dir", "") or ""
+        enable_repo(
+            root,
+            install_vault_sync=bool(getattr(args, "install_vault_sync", False)),
+            company_id=str(getattr(args, "company_id", "") or "").strip() or None,
+            repository_id=str(getattr(args, "repository_id", "") or "").strip() or None,
+            plan_id=str(getattr(args, "plan_id", "") or "").strip() or None,
+            bucket=str(getattr(args, "bucket", "") or "").strip() or None,
+            prefix=str(getattr(args, "prefix", "") or "").strip() or None,
+            vault_target_dir=vtd if vtd.strip() else None,
+            interval_seconds=int(getattr(args, "interval_seconds", 10) or 10),
+        )
         print(f"Enabled canon-systems in {root}")
         return 0
 
@@ -540,6 +580,17 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "stall-watchdog":
         return run_stall_watchdog(list(getattr(args, "args", [])))
+
+    if args.command == "vault":
+        return vault_sync.run(list(getattr(args, "args", [])))
+
+    if args.command == "synth":
+        return run_synth_cli(list(getattr(args, "args", [])))
+
+    if args.command == "release":
+        from . import release_publish
+
+        return release_publish.run(list(getattr(args, "args", [])))
 
     if args.command == "secrets":
         sec_cmd = args.secrets_command or "wizard"

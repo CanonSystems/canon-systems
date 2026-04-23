@@ -1,5 +1,12 @@
 # Canon Memory Platform — Implementation Backlog
 
+> **v1 status (2026-04-23):** All 23 tasks across Waves 0–7 have a PASS
+> `RELEASE_STATUS` under `.cursor/handoffs/canon-memory-v1/<task_id>/`. Full
+> `tests/` suite: **440 passing**. The backlog is preserved below as the
+> authoritative record of what was built; see `CHANGELOG.md` for the
+> per-task summary and `docs/MEMORY-PLATFORM-PLAN.md §9` for the wave-level
+> outcomes.
+
 This document turns `docs/MEMORY-PLATFORM-PLAN.md` into a concrete execution
 backlog that the Canon agent flow can run task-by-task from `scoper` onwards.
 

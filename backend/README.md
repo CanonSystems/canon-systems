@@ -13,7 +13,7 @@ placeholder.
 | `state-api/` | Checkpoints + leases (FastAPI scaffold). |
 | `axon-service/` | Code graph (FastAPI scaffold). |
 | `synthesis/` | Vault / synthesis generator (FastAPI scaffold). |
-| `synthesis-web/` | Reserved UI slot; stack chosen in **E5-T4**. |
+| `synthesis-web/` | **SSR browser** over the E5-T2 vault (`GET`/`HEAD` S3 only); see [`backend/synthesis-web/README.md`](synthesis-web/README.md). |
 
 **Workspace install** (from repo root):
 
