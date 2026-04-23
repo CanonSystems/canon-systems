@@ -25,6 +25,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
+"canon_systems" = ["templates/vault-sync/*"]
 "canon_systems.templates.hooks" = ["*"]
 "canon_systems.templates.rules" = ["*"]
 "canon_systems.templates.agents" = ["*"]

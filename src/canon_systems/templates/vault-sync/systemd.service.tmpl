@@ -1,0 +1,12 @@
+[Unit]
+Description=Canon vault sync daemon ({COMPANY_SHORTHASH}-{REPO_SHORTHASH})
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart={CANON_BIN} vault sync --interval-seconds {INTERVAL_SECONDS} --company-id {COMPANY_ID} --repository-id {REPOSITORY_ID} --plan-id {PLAN_ID} --bucket {BUCKET} --prefix {PREFIX} --target-dir {TARGET_DIR}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

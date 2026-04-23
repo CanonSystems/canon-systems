@@ -50,6 +50,12 @@ Plan state file:
 - **E5-T5 (canon synth show CLI):** agent-side read path — `canon synth show` streams the already-published S3 Obsidian vault (plan index + per-task pages in canonical phase order, or JSON snapshot) to stdout for inline hydration in the scoper → cursor-pilot → implementer → qa-gate → release-orchestrator chain, without regenerating the vault, write I/O, or a browser. Emits `retrieval_breakdown` + `synth_show` events to the same NDJSON seam as other canon CLIs.
 - **E5-T4 `backend/synthesis-web`:** read-only FastAPI service SSRs HTML + JSON (`/_graph`, `/_search`) from the live S3 vault at request time (ETag from `content-hash` metadata; no S3 writes). URLs are scoped by 8-char hex `company_shorthash`/`repo_shorthash` under `/v/{c}/{r}/...`. Templates use inline CSS only (zero CDN). Tests: `backend/synthesis-web/synthesis_web_tests/`. Terraform module `infra/terraform/modules/synthesis-web/` is unwired (Precedent §1 deferred apply).
 - **E5-T1 vault layout spec (schema_version 1):** new `docs/VAULT-LAYOUT.md` is the Wave-5 projection contract. Defines the Obsidian-compatible S3 vault layout, `company_shorthash`/`repo_shorthash` path scoping, the 15-field `CanonicalEvent` redaction allowlist (with `model` dropped + unknown payload keys silently dropped), the per-event-type payload catalogue, citation/idempotence rules, and the `schema_version` bump policy. E5-T2..E5-T7 implement against this contract; `backend/synthesis/README.md` links it.
+- **In-repo vault mirror (E5-T6).** `canon enable-repo` installs a per-tenant
+  background daemon (launchd/systemd/schtasks) that runs `canon vault sync
+  --interval-seconds 10` and maintains `<repo>/vault/` as a one-way read-only
+  projection of the canonical S3 vault. The Cursor `beforeSubmitPrompt` hook
+  `.cursor/hooks/vault-sync-preflight.sh` smoke-refreshes before agent work;
+  `vault/` is added to `.gitignore` via a sentinel-framed idempotent block.
 - **E4-T4 resume runbook + release-gate integration:** new `docs/runbooks/RESUME.md` gives operators a one-page path for `canon resume`. The `release-orchestrator` template now requires a `canon resume` check before advancing the merge gate (`resume_target == null` AND empty `degraded_tasks`). Cross-references the E4-T3 stall watchdog for the combined "scan-then-resume" operator workflow.
 
 ## 4) DoR rejection telemetry contract

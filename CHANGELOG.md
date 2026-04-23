@@ -9,6 +9,13 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `canon vault sync` read-only S3→<repo>/vault/ mirror (one-shot + loop) with
+  exponential backoff, content-hash diff, deletion propagation, and
+  `canon enable-repo` integration installing the OS-appropriate background
+  daemon (launchd/systemd/schtasks), the sentinel-framed `vault/` gitignore
+  block, and the `.cursor/hooks/vault-sync-preflight.sh` pre-turn refresh
+  hook. No S3 writes anywhere in the sync code path (20-method source-scan
+  gate). (E5-T6)
 - `canon synth show` read-only CLI subverb streams Obsidian vault markdown (plan + tasks) for `(plan_id[, task_id])` from the published S3 vault, with markdown/JSON modes, canonical stream order, ISO-Z `--cutoff-ts` filter, `--dry-run` event-log fallback, and a 21-method boto3 source-scan enforcing zero S3 write call sites. (E5-T5)
 - **E5-T4** `backend/synthesis-web` read-only FastAPI SSR browser over the E5-T2 S3 vault: routes `/healthz`, `/`, `/v/{company_shorthash}/{repo_shorthash}/` (vault home), markdown pages, `/_graph` (deterministic JSON), `/_search` (capped substring search); `markdown-it-py` with `html=False`; inline CSS templates (zero external CDN / zero `<script src>`); `S3VaultReader` is GET/HEAD/List-only; design spike **request-time SSR** documented in README + scoper (vs. rebuild-on-publish); tests in `synthesis_web_tests/` (not `tests/`) — 12 cases; suite 390 → 402 passed; unwired Terraform `infra/terraform/modules/synthesis-web/`.
 - **E5-T3**: New `canon synth publish` CLI drives the E5-T2 `SynthesisPublisher` deterministically from a canonical-event JSONL file. Emits a single JSON envelope with per-page diff stats (`written`, `skipped`, `keys_written`); safe to invoke repeatedly (content-hash idempotence from E5-T2). `--dry-run` renders the bundle without S3 I/O; transport failures map to exit 2, usage errors to exit 4.

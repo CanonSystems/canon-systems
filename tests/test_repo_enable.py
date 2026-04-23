@@ -13,6 +13,7 @@ def test_enable_repo_writes_hooks_rule_agents_and_version(tmp_path: Path) -> Non
     # Hooks
     assert (repo / ".cursor" / "hooks" / "memory-preflight.sh").exists()
     assert (repo / ".cursor" / "hooks" / "memory-capture.sh").exists()
+    assert (repo / ".cursor" / "hooks" / "vault-sync-preflight.sh").exists()
 
     hooks_json = repo / ".cursor" / "hooks.json"
     assert hooks_json.exists()
@@ -20,7 +21,12 @@ def test_enable_repo_writes_hooks_rule_agents_and_version(tmp_path: Path) -> Non
     before = payload["hooks"]["beforeSubmitPrompt"]
     after = payload["hooks"]["afterAgentResponse"]
     assert any(item.get("command") == "bash .cursor/hooks/memory-preflight.sh" for item in before)
+    assert any(item.get("command") == "bash .cursor/hooks/vault-sync-preflight.sh" for item in before)
     assert any(item.get("command") == "bash .cursor/hooks/memory-capture.sh" for item in after)
+
+    gi = (repo / ".gitignore").read_text(encoding="utf-8")
+    assert "vault/" in gi
+    assert "canon-systems:vault-sync" in gi
 
     # Rule
     assert (repo / ".cursor" / "rules" / "memory-layer-defaults.mdc").exists()

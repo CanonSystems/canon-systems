@@ -9,6 +9,7 @@ detect version drift.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from importlib import resources
 from pathlib import Path
@@ -76,6 +77,35 @@ def _merge_hooks_json(repo_root: Path) -> None:
     hooks_json_path.write_text(json.dumps(parsed, indent=2) + "\n", encoding="utf-8")
 
 
+_VAULT_GITIGN_START = "# >>> canon-systems:vault-sync >>>"
+_VAULT_GITIGN_END = "# <<< canon-systems:vault-sync <<<"
+_VAULT_GITIGN_BODY = "vault/\n.canon/memory/events.ndjson.lock\n"
+
+
+def _apply_vault_sync_gitignore_block(repo_root: Path) -> None:
+    path = repo_root / ".gitignore"
+    expected = f"{_VAULT_GITIGN_START}\n{_VAULT_GITIGN_BODY}{_VAULT_GITIGN_END}\n"
+    if path.exists():
+        text = path.read_text(encoding="utf-8")
+    else:
+        text = ""
+    if expected in text:
+        return
+    if _VAULT_GITIGN_START in text and _VAULT_GITIGN_END in text:
+        a = text.index(_VAULT_GITIGN_START)
+        b = text.index(_VAULT_GITIGN_END) + len(_VAULT_GITIGN_END)
+        while b < len(text) and text[b] in "\n\r":
+            b += 1
+        text = text[:a] + text[b:]
+    sep = "" if (not text or text.endswith("\n")) else "\n"
+    path.write_text(text + sep + expected, encoding="utf-8")
+
+
+def _env_o(name: str) -> str | None:
+    v = os.environ.get(name, "").strip()
+    return v or None
+
+
 def _pin_version(repo_root: Path) -> None:
     """Write CANON_SYSTEMS_VERSION=<installed> into .canon/memory-layer.local.env.
 
@@ -91,7 +121,18 @@ def _pin_version(repo_root: Path) -> None:
     env_path.write_text(body, encoding="utf-8")
 
 
-def enable_repo(repo_root: Path) -> None:
+def enable_repo(  # noqa: PLR0912
+    repo_root: Path,
+    *,
+    install_vault_sync: bool = False,
+    company_id: str | None = None,
+    repository_id: str | None = None,
+    plan_id: str | None = None,
+    bucket: str | None = None,
+    prefix: str | None = None,
+    vault_target_dir: Path | str | None = None,
+    interval_seconds: int = 10,
+) -> None:
     cursor_dir = repo_root / ".cursor"
     hooks_dir = cursor_dir / "hooks"
     rules_dir = cursor_dir / "rules"
@@ -100,9 +141,12 @@ def enable_repo(repo_root: Path) -> None:
     # Install hook scripts (bash wrappers that invoke the installed CLI).
     _copy_template("hooks/memory-preflight.sh", hooks_dir / "memory-preflight.sh", executable=True)
     _copy_template("hooks/memory-capture.sh", hooks_dir / "memory-capture.sh", executable=True)
+    _copy_template("hooks/vault-sync-preflight.sh", hooks_dir / "vault-sync-preflight.sh", executable=True)
 
     # Merge hooks.json (preserve any pre-existing hooks; dedupe by command).
     _merge_hooks_json(repo_root)
+
+    _apply_vault_sync_gitignore_block(repo_root)
 
     # Install repo-level Cursor rule.
     _copy_template("rules/memory-layer-defaults.mdc", rules_dir / "memory-layer-defaults.mdc")
@@ -120,6 +164,37 @@ def enable_repo(repo_root: Path) -> None:
 
     # Pin installed version for drift detection.
     _pin_version(repo_root)
+
+    if install_vault_sync:
+        from .vault_sync import install_service
+
+        cid = (company_id or _env_o("CANON_COMPANY_ID") or "").strip()
+        rid = (repository_id or _env_o("CANON_REPOSITORY_ID") or "").strip()
+        pid = (plan_id or _env_o("CANON_PLAN_ID") or "").strip()
+        bkt = (bucket or _env_o("CANON_VAULT_BUCKET") or "").strip()
+        pfx = (prefix or _env_o("CANON_VAULT_PREFIX") or "").strip()
+        if not all((cid, rid, pid, bkt, pfx)):
+            raise ValueError(
+                "install_vault_sync requires company_id, repository_id, plan_id, bucket, prefix "
+                "(flags on enable-repo or CANON_COMPANY_ID / CANON_REPOSITORY_ID / CANON_PLAN_ID / "
+                "CANON_VAULT_BUCKET / CANON_VAULT_PREFIX in the environment)"
+            )
+        tdir: Path
+        if vault_target_dir is not None and str(vault_target_dir).strip():
+            tdir = Path(vault_target_dir).expanduser().resolve()
+        else:
+            tdir = (repo_root / "vault").resolve()
+        elog = (repo_root / ".canon" / "memory" / "events.ndjson").resolve()
+        install_service(
+            company_id=cid,
+            repository_id=rid,
+            plan_id=pid,
+            bucket=bkt,
+            prefix=pfx,
+            target_dir=tdir,
+            interval_seconds=int(interval_seconds),
+            event_log=elog,
+        )
 
 
 def install_user_scope() -> None:
