@@ -4,15 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "canon-systems"
-version = "3.4.0"
+version = "3.4.1"
 description = "Canon Systems — Cursor-native workflow: memory, agent chain (Scoper → Cursor Pilot → QA Gate), hooks, and auto-setup. Tenant-scoped, AWS-backed."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Proprietary" }
-dependencies = []
+# boto3 is required: vault_sync and other CLIs import botocore at module import time.
+dependencies = ["boto3>=1.34,<2"]
 
 [project.optional-dependencies]
-aws = ["boto3>=1.34"]
+# Back-compat alias; core install already includes boto3.
+aws = ["boto3>=1.34,<2"]
 
 [project.scripts]
 canon = "canon_systems.cli:main"
@@ -22,7 +24,9 @@ package-dir = {"" = "src"}
 include-package-data = true
 
 [tool.setuptools.packages.find]
-where = ["src"]
+# Ship `canon_backend_shared` in the same wheel/sdist so `pip install canon-systems`
+# works outside the monorepo (CLI imports CanonicalEvent from day one).
+where = ["src", "backend/shared"]
 
 [tool.setuptools.package-data]
 "canon_systems" = ["templates/vault-sync/*"]

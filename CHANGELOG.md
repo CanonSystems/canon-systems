@@ -13,6 +13,19 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.4.1] - 2026-04-23
+
+### Fixed
+
+- **PyPI/sdist/wheel installability:** bundle `canon_backend_shared` into the
+  same distribution via `tool.setuptools.packages.find` (`where = ["src",
+  "backend/shared"]`) so `from canon_backend_shared.events import
+  CanonicalEvent` resolves after `pip install canon-systems` outside the
+  monorepo.
+- Declare **`boto3>=1.34,<2`** as a core dependency so importing
+  `canon_systems.vault_sync` (top-level `botocore.exceptions`) does not
+  fail on a clean venv; `canon --version` works on minimal install.
+
 ## [3.4.0] - 2026-04-23
 
 Canon Memory Platform **v1** — complete. Ships operator CLI (`canon report` full rollup, hard-lock rule via `canon wire`, vault sync, synth publish/show, release publish-on-pass), in-repo backends (`state-api`, `axon-service`, `synthesis`, `synthesis-web`), Terraform modules (apply separately for cloud). Test suite: **440** passing at release tag.
