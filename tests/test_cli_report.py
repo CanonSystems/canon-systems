@@ -233,6 +233,151 @@ def test_canon_cli_dispatches_report(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "phase" in captured["argv"]
 
 
+def test_full_compare_by_adds_section(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    def _comp(mm: str, tid: str) -> dict[str, str]:
+        return {
+            "experiment_id": "E",
+            "memory_mode": mm,
+            "run_id": "r1",
+            "task_attempt_id": tid,
+        }
+
+    events = [
+        _ev(
+            "retrieval_breakdown",
+            payload={
+                "totals": {"tokens_in": 2, "tokens_out": 1},
+                "sources": {},
+                "comparison": _comp("a", "t1"),
+            },
+        ),
+        _ev(
+            "task_outcome",
+            agent_name="release-orchestrator",
+            payload={
+                "comparison": _comp("a", "t1"),
+                "status": "ready",
+                "qa_gate": "PASS",
+                "elapsed_seconds": 10,
+                "retry_count": 0,
+                "reopen_count": 0,
+                "rework_count": 0,
+            },
+        ),
+    ]
+    p = tmp_path / "events.ndjson"
+    _write_ndjson(p, events)
+    rc = report_cli.run(["--events", str(p), "--full", "--compare-by", "memory_mode"])
+    assert rc == report_cli.EXIT_OK
+    data = json.loads(capsys.readouterr().out)
+    assert "compare" in data
+    assert data["compare"]["buckets"]["a"]["outcomes"]["status_completed_or_ready"] == 1
+
+
+def test_full_compare_by_experiment_id_groups_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    def _comp(eid: str, tid: str) -> dict[str, str]:
+        return {
+            "experiment_id": eid,
+            "memory_mode": "mode-a",
+            "run_id": "r1",
+            "task_attempt_id": tid,
+        }
+
+    events = [
+        _ev(
+            "retrieval_breakdown",
+            payload={
+                "totals": {"tokens_in": 2, "tokens_out": 1},
+                "sources": {},
+                "comparison": _comp("E1", "t1"),
+            },
+        ),
+        _ev(
+            "retrieval_breakdown",
+            payload={
+                "totals": {"tokens_in": 5, "tokens_out": 4},
+                "sources": {},
+                "comparison": _comp("E2", "t2"),
+            },
+        ),
+    ]
+    p = tmp_path / "events.ndjson"
+    _write_ndjson(p, events)
+    rc = report_cli.run(["--events", str(p), "--full", "--compare-by", "experiment_id"])
+    assert rc == report_cli.EXIT_OK
+    data = json.loads(capsys.readouterr().out)
+    assert data["compare"]["buckets"]["E1"]["tokens"] == {"tokens_in": 2, "tokens_out": 1}
+    assert data["compare"]["buckets"]["E2"]["tokens"] == {"tokens_in": 5, "tokens_out": 4}
+
+
+def test_compare_by_without_full_exits_2(tmp_path: Path) -> None:
+    p = tmp_path / "e.ndjson"
+    p.write_text("{}\n", encoding="utf-8")
+    assert report_cli.run(["--events", str(p), "--compare-by", "memory_mode"]) == report_cli.EXIT_USAGE
+
+
+def test_memory_mode_filter_narrowing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    c = {
+        "experiment_id": "E",
+        "memory_mode": "baseline",
+        "run_id": "r",
+        "task_attempt_id": "t",
+    }
+    events = [
+        _ev(
+            "retrieval_breakdown",
+            payload={"totals": {"tokens_in": 1, "tokens_out": 1}, "sources": {}, "comparison": dict(c)},
+        ),
+        _ev(
+            "retrieval_breakdown",
+            payload={
+                "totals": {"tokens_in": 99, "tokens_out": 99},
+                "sources": {},
+                "comparison": {**c, "memory_mode": "other"},
+            },
+        ),
+    ]
+    p = tmp_path / "events.ndjson"
+    _write_ndjson(p, events)
+    rc = report_cli.run(
+        ["--events", str(p), "--by", "phase", "--memory-mode", "BASELINE"]
+    )
+    assert rc == report_cli.EXIT_OK
+    data = json.loads(capsys.readouterr().out)
+    assert data["groups"]["scoper"] == {"tokens_in": 1, "tokens_out": 1}
+
+
+def test_experiment_id_filter_narrowing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    c = {
+        "experiment_id": "KEEP",
+        "memory_mode": "m",
+        "run_id": "r",
+        "task_attempt_id": "t",
+    }
+    events = [
+        _ev(
+            "retrieval_breakdown",
+            payload={"totals": {"tokens_in": 1, "tokens_out": 1}, "sources": {}, "comparison": dict(c)},
+        ),
+        _ev(
+            "retrieval_breakdown",
+            payload={
+                "totals": {"tokens_in": 99, "tokens_out": 99},
+                "sources": {},
+                "comparison": {**c, "experiment_id": "OTHER"},
+            },
+        ),
+    ]
+    p = tmp_path / "events.ndjson"
+    _write_ndjson(p, events)
+    rc = report_cli.run(
+        ["--events", str(p), "--by", "phase", "--experiment-id", "KEEP"]
+    )
+    assert rc == report_cli.EXIT_OK
+    data = json.loads(capsys.readouterr().out)
+    assert data["groups"]["scoper"] == {"tokens_in": 1, "tokens_out": 1}
+
+
 def test_determinism_json_output_is_stable(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     events = [
         _ev("synth_publish", payload={"status": "ok"}),

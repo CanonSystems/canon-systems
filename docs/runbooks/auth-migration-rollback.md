@@ -29,9 +29,16 @@ scripts/auth-migration/rollback.sh --repo-root /path/to/repo
 python scripts/migrate_memory_secrets.py --profile <profile> --phase prepare
 ```
 
-   - Or restore prior secret version in AWS console/CLI if needed.
+   - Or restore prior secret version in AWS console/CLI if needed (required for **stable URL cutovers** such as `canon-memory-dev/memory-layer__csc__canon-systems`).
 
-3. Re-check endpoint health:
+3. Clear local AWS secret cache on affected machines:
+
+```bash
+canon doctor --fix-cache
+# or: rm -f ~/.canon/memory-layer-aws-cache.json
+```
+
+4. Re-check endpoint health:
 
 ```bash
 python scripts/validate_memory_endpoints.py \
@@ -39,7 +46,7 @@ python scripts/validate_memory_endpoints.py \
   --secret-id <secret-id>
 ```
 
-4. Confirm capture path:
+5. Confirm capture path:
 
 ```bash
 canon --repo-root /path/to/repo capture --summary "rollback probe" --user-text "probe" --assistant-text "probe"

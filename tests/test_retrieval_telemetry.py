@@ -13,7 +13,10 @@ from canon_systems.retrieval_telemetry import (
     RETRIEVAL_SOURCES,
     RetrievalBreakdown,
     SourceCounts,
+    build_comparison_block,
     build_retrieval_breakdown_event,
+    build_task_outcome_event,
+    comparison_from_payload,
     sum_breakdown,
 )
 
@@ -83,6 +86,76 @@ def test_build_event_canonical_shape() -> None:
     assert ev.event_type == "retrieval_breakdown"
     assert ev.schema_version == 1
     assert isinstance(ev, CanonicalEvent)
+
+
+def test_canonical_event_envelope_fields_remain_unchanged() -> None:
+    expected_keys = [
+        "schema_version",
+        "event_id",
+        "parent_event_id",
+        "event_type",
+        "company_id",
+        "repository_id",
+        "plan_id",
+        "task_id",
+        "handoff_id",
+        "agent_name",
+        "agent_run_id",
+        "actor_id",
+        "model",
+        "timestamp",
+        "state_version",
+        "payload",
+    ]
+    comp = build_comparison_block(
+        experiment_id="exp-1",
+        memory_mode="Base",
+        run_id="run-1",
+        task_attempt_id="attempt-1",
+    )
+    retrieval_event = build_retrieval_breakdown_event(
+        event_id="e",
+        parent_event_id="p",
+        company_id="c",
+        repository_id="r",
+        plan_id="pl",
+        task_id="t",
+        handoff_id="h",
+        agent_name="scoper",
+        agent_run_id="ar",
+        actor_id="a",
+        model="m",
+        timestamp="2026-01-01T00:00:00Z",
+        state_version=1,
+        breakdown=RetrievalBreakdown(graph=SourceCounts(1, 0)),
+        comparison=comp,
+    )
+    outcome_event = build_task_outcome_event(
+        event_id="to-1",
+        parent_event_id="p",
+        company_id="c",
+        repository_id="r",
+        plan_id="pl",
+        task_id="t",
+        handoff_id="h",
+        agent_name="release-orchestrator",
+        agent_run_id="ar",
+        actor_id="a",
+        model="m",
+        timestamp="2026-01-01T00:00:00Z",
+        state_version=1,
+        comparison=comp,
+        status="completed",
+        qa_gate="PASS",
+        elapsed_seconds=1,
+        retry_count=0,
+        reopen_count=0,
+        rework_count=0,
+    )
+    assert list(retrieval_event.to_dict().keys()) == expected_keys
+    assert list(outcome_event.to_dict().keys()) == expected_keys
+    assert "comparison" not in retrieval_event.to_dict()
+    assert "comparison" not in outcome_event.to_dict()
 
 
 def test_build_event_payload_sources_keys() -> None:
@@ -270,6 +343,85 @@ def test_report_cli_malformed_line_exit_4(tmp_path: Path) -> None:
 
 def test_report_cli_missing_events_flag_exit_2() -> None:
     assert run_report([]) == 2
+
+
+def test_comparison_from_payload_requires_all_keys() -> None:
+    assert comparison_from_payload({}) is None
+    assert comparison_from_payload({"comparison": {"experiment_id": "e"}}) is None
+    c = comparison_from_payload(
+        {
+            "comparison": {
+                "experiment_id": "exp1",
+                "memory_mode": "BASELINE",
+                "run_id": "r1",
+                "task_attempt_id": "t1",
+            }
+        }
+    )
+    assert c is not None
+    assert c["memory_mode"] == "baseline"
+
+
+def test_build_retrieval_breakdown_with_comparison_adds_block() -> None:
+    comp = build_comparison_block(
+        experiment_id="e1", memory_mode="Mode_A", run_id="run-x", task_attempt_id="ta-1"
+    )
+    ev = build_retrieval_breakdown_event(
+        event_id="e",
+        parent_event_id="p",
+        company_id="c",
+        repository_id="r",
+        plan_id="pl",
+        task_id="t",
+        handoff_id="h",
+        agent_name="scoper",
+        agent_run_id="agent-proc",
+        actor_id="a",
+        model="m",
+        timestamp="2026-01-01T00:00:00Z",
+        state_version=1,
+        breakdown=RetrievalBreakdown(graph=SourceCounts(1, 1)),
+        comparison=comp,
+    )
+    assert ev.payload["comparison"]["run_id"] == "run-x"
+    assert ev.payload["comparison"]["memory_mode"] == "mode_a"
+    assert ev.agent_run_id == "agent-proc"
+
+
+def test_build_task_outcome_event_shape() -> None:
+    comp = build_comparison_block(
+        experiment_id="e1", memory_mode="ab", run_id="run-1", task_attempt_id="ta-1"
+    )
+    ev = build_task_outcome_event(
+        event_id="to-1",
+        parent_event_id="p",
+        company_id="c",
+        repository_id="r",
+        plan_id="pl",
+        task_id="t",
+        handoff_id="h",
+        agent_name="release-orchestrator",
+        agent_run_id="ar-proc",
+        actor_id="a",
+        model="m",
+        timestamp="2026-01-01T00:00:00Z",
+        state_version=1,
+        comparison=comp,
+        status="completed",
+        qa_gate="pass",
+        elapsed_seconds=120,
+        retry_count=1,
+        reopen_count=0,
+        rework_count=2,
+    )
+    assert ev.event_type == "task_outcome"
+    assert ev.schema_version == 1
+    p = ev.payload
+    assert p["qa_gate"] == "PASS"
+    assert p["elapsed_seconds"] == 120
+    assert p["retry_count"] == 1
+    assert p["comparison"]["task_attempt_id"] == "ta-1"
+    assert p["comparison"]["run_id"] == "run-1"
 
 
 def test_cli_graph_and_report_help() -> None:

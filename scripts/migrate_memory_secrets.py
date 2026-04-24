@@ -25,6 +25,8 @@ def _rewrite_payload(payload: dict[str, Any], base_url: str, phase: str) -> dict
     updated["KNOWLEDGE_API_URL"] = base_url
     updated["KNOWLEDGE_WORKER_URL"] = base_url
     updated["MEMORY_ADAPTER_URL"] = base_url
+    # Stable dev/prod memory plane: same HTTPS DNS base as knowledge-api (state-api may share the gateway).
+    updated["CANON_STATE_API_URL"] = base_url
     updated["CANON_AUTH_PHASE"] = phase
     updated["CANON_AUTH_MODE"] = "cognito" if phase == "enforce" else "dual"
     return updated
@@ -68,6 +70,7 @@ def main(argv: list[str] | None = None) -> int:
         updated = _rewrite_payload(payload, base_url, args.phase)
         print(f"- {name}")
         print(f"  KNOWLEDGE_API_URL: {payload.get('KNOWLEDGE_API_URL', '')} -> {updated['KNOWLEDGE_API_URL']}")
+        print(f"  CANON_STATE_API_URL: {payload.get('CANON_STATE_API_URL', '')} -> {updated.get('CANON_STATE_API_URL', '')}")
         print(f"  CANON_AUTH_PHASE: {payload.get('CANON_AUTH_PHASE', '')} -> {updated['CANON_AUTH_PHASE']}")
         if args.apply:
             client.put_secret_value(SecretId=name, SecretString=json.dumps(updated))

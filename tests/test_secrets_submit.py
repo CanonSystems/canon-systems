@@ -63,6 +63,22 @@ def test_template_outputs_structured_payload(capsys) -> None:
     assert '"CANON_HTTP_BEARER_TOKEN": "<token>"' in out
 
 
+def test_coerce_state_api_url_defaults_from_knowledge_api() -> None:
+    payload = {
+        "KNOWLEDGE_API_URL": "https://memory.canon-systems.com/",
+        "CANON_STATE_API_URL": "",
+    }
+    secrets_submit._coerce_state_api_url(payload)
+    assert payload["CANON_STATE_API_URL"] == "https://memory.canon-systems.com"
+
+    explicit = {
+        "KNOWLEDGE_API_URL": "https://memory.canon-systems.com",
+        "CANON_STATE_API_URL": "https://state.memory.canon-systems.com",
+    }
+    secrets_submit._coerce_state_api_url(explicit)
+    assert explicit["CANON_STATE_API_URL"] == "https://state.memory.canon-systems.com"
+
+
 def test_submit_validates_and_writes_existing_secret(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:

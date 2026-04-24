@@ -25,3 +25,13 @@ output "task_role_arn" {
 output "task_definition_family" {
   value = aws_ecs_task_definition.baseline.family
 }
+
+output "ingress_enabled" {
+  description = "Whether the baseline service is registered with a load balancer target group."
+  value       = var.ingress_enabled
+}
+
+output "ingress_target_group_arn" {
+  description = "Target group ARN passed through when ingress is enabled; null when disabled."
+  value       = var.ingress_enabled ? var.ingress_target_group_arn : null
+}

@@ -142,6 +142,7 @@ def test_secret_migration_rewrites_to_canonical_domain() -> None:
     assert result["KNOWLEDGE_API_URL"] == "https://memory.canon-systems.com"
     assert result["KNOWLEDGE_WORKER_URL"] == "https://memory.canon-systems.com"
     assert result["MEMORY_ADAPTER_URL"] == "https://memory.canon-systems.com"
+    assert result["CANON_STATE_API_URL"] == "https://memory.canon-systems.com"
     assert result["CANON_AUTH_PHASE"] == "enforce"
     assert result["CANON_AUTH_MODE"] == "cognito"
 
@@ -153,13 +154,28 @@ def test_validate_script_connectivity_probe_and_ip_detection() -> None:
     assert module._is_ip_host("127.0.0.1")
     assert not module._is_ip_host("memory.canon-systems.com")
 
+    ok, detail, _info = module.validate_memory_url(
+        key="CANON_STATE_API_URL", value="", timeout=0.5
+    )
+    assert ok and "skipped" in detail
+
+    ok, detail, _info = module.validate_memory_url(
+        key="KNOWLEDGE_API_URL", value="http://memory.example.com", timeout=0.5
+    )
+    assert not ok and "https" in detail
+
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.bind(("127.0.0.1", 0))
     listener.listen(1)
     try:
-        host, port = listener.getsockname()
-        ok, _detail = module._probe(host, port, 0.5)
+        _host, port = listener.getsockname()
+        ok, _detail, info = module.validate_memory_url(
+            key="KNOWLEDGE_API_URL",
+            value=f"https://localhost:{port}",
+            timeout=0.5,
+        )
         assert ok
+        assert info.get("scheme") == "https"
     finally:
         listener.close()
 
@@ -168,13 +184,23 @@ def test_migration_and_rollback_docs_exist_with_expected_sections() -> None:
     root = _repo_root()
     migration_doc = root / "docs" / "migrations" / "cognito-ingress-migration.md"
     rollback_doc = root / "docs" / "runbooks" / "auth-migration-rollback.md"
+    runtime_doc = root / "docs" / "MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md"
+    onboarding_doc = root / "docs" / "ONBOARDING.md"
 
     assert migration_doc.exists()
     assert rollback_doc.exists()
 
     migration_text = migration_doc.read_text(encoding="utf-8")
     rollback_text = rollback_doc.read_text(encoding="utf-8")
+    runtime_text = runtime_doc.read_text(encoding="utf-8")
+    onboarding_text = onboarding_doc.read_text(encoding="utf-8")
     assert "## Phase Workflow" in migration_text
     assert "## Rollback Trigger" in migration_text
+    assert "memory-layer__csc__canon-systems" in migration_text
     assert "## Rollback Steps" in rollback_text
+    assert "memory-layer__csc__canon-systems" in rollback_text
+    assert "canon doctor --fix-cache" in rollback_text
+    assert "### 1.2c Stable dev memory URLs" in runtime_text
+    assert "memory-layer__csc__canon-systems" in runtime_text
+    assert "memory-layer__csc__canon-systems" in onboarding_text
     assert "## Verification Checklist" in rollback_text

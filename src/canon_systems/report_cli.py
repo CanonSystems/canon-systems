@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from . import metrics_rollup
+from .retrieval_telemetry import comparison_from_payload
 
 EXIT_OK = 0
 EXIT_USAGE = 2
@@ -92,6 +93,29 @@ def _filter_events(
                 continue
             if until is not None and ts > until:
                 continue
+        out.append(ev)
+    return out
+
+
+def _filter_by_experiment(
+    events: list[dict[str, Any]],
+    *,
+    experiment_id: str | None,
+    memory_mode: str | None,
+) -> list[dict[str, Any]]:
+    eid = (experiment_id or "").strip()
+    mm = (memory_mode or "").strip().lower()
+    if not eid and not mm:
+        return events
+    out: list[dict[str, Any]] = []
+    for ev in events:
+        c = comparison_from_payload(ev.get("payload") or {})
+        if c is None:
+            continue
+        if eid and c["experiment_id"] != eid:
+            continue
+        if mm and c["memory_mode"] != mm:
+            continue
         out.append(ev)
     return out
 
@@ -187,6 +211,23 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--repository-id", default=None)
     p.add_argument("--since", default=None, help="ISO-8601 Z lower bound (inclusive).")
     p.add_argument("--until", default=None, help="ISO-8601 Z upper bound (inclusive).")
+    p.add_argument(
+        "--experiment-id",
+        default=None,
+        help="When set, only include events with matching payload.comparison.experiment_id.",
+    )
+    p.add_argument(
+        "--memory-mode",
+        default=None,
+        help="When set, only include events with matching payload.comparison.memory_mode (case-insensitive).",
+    )
+    p.add_argument(
+        "--compare-by",
+        choices=("memory_mode", "experiment_id"),
+        default=None,
+        help="With --full, add a compare.buckets roll-up grouped by this comparison dimension. "
+        "Unlabeled non-experiment events go under the 'unlabeled' bucket.",
+    )
     return p
 
 
@@ -199,6 +240,10 @@ def run(argv: list[str] | None = None) -> int:
         code = exc.code
         if code in (0, None):
             return EXIT_OK
+        return EXIT_USAGE
+
+    if args.compare_by is not None and not args.full:
+        print("error: --compare-by requires --full", file=sys.stderr)
         return EXIT_USAGE
 
     path = Path(args.events)
@@ -221,6 +266,9 @@ def run(argv: list[str] | None = None) -> int:
     until = _parse_iso_z(args.until or "") if args.until else None
 
     filtered = _filter_events(events, scope=scope, since=since, until=until)
+    exp_id = str(args.experiment_id or "").strip() or None
+    mem_m = str(args.memory_mode or "").strip() or None
+    filtered = _filter_by_experiment(filtered, experiment_id=exp_id, memory_mode=mem_m)
 
     if args.full:
         rollup_scope = {k: v for k, v in scope.items() if v and k != "task_id"}
@@ -229,7 +277,13 @@ def run(argv: list[str] | None = None) -> int:
             window["since"] = args.since
         if args.until:
             window["until"] = args.until
-        rollup = metrics_rollup.aggregate(filtered, scope=rollup_scope, window=window)
+        # Experiment filters are applied above so groupby and full see the same slice.
+        rollup = metrics_rollup.aggregate(
+            filtered,
+            scope=rollup_scope,
+            window=window,
+            compare_by=str(args.compare_by) if args.compare_by else None,
+        )
         if args.format == "csv":
             sys.stdout.write(_render_full_csv(rollup))
         else:

@@ -26,6 +26,13 @@ def test_template_rule_is_packaged() -> None:
     assert _template_rule_bytes(), "hard-lock rule template must not be empty"
 
 
+def test_hard_lock_includes_experimental_multilane_opt_in_section() -> None:
+    text = _template_rule_bytes().decode("utf-8")
+    assert "## 11. Experimental parent-session multilane orchestration (opt-in only)" in text
+    assert "CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION" in text
+    assert "canon resume --tasks-file <path> --lanes" in text
+
+
 def test_template_rule_byte_identical_to_workspace() -> None:
     ws = Path(_WORKSPACE_RULE).read_bytes()
     tpl = _template_rule_bytes()

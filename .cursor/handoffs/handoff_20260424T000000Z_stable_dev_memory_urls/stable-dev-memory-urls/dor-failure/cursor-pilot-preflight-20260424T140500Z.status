@@ -1,0 +1,2 @@
+exit_code: 0
+command: canon dor-log --event-file .cursor/handoffs/handoff_20260424T000000Z_stable_dev_memory_urls/stable-dev-memory-urls/dor-failure/cursor-pilot-preflight-20260424T140500Z.json --quiet

@@ -53,6 +53,21 @@ output "ecs_task_role_arn" {
   value       = module.ecs_baseline.task_role_arn
 }
 
+output "ecs_ingress_enabled" {
+  description = "Whether the baseline ECS service registers with a load balancer target group."
+  value       = module.ecs_baseline.ingress_enabled
+}
+
+output "ecs_ingress_target_group_arn" {
+  description = "Target group ARN when ingress is enabled; null otherwise."
+  value       = module.ecs_baseline.ingress_target_group_arn
+}
+
+output "memory_plane_stable_dns_hostname" {
+  description = "Stable DNS hostname for memory-plane HTTPS URLs when set by the operator."
+  value       = var.memory_plane_stable_dns_hostname != "" ? var.memory_plane_stable_dns_hostname : null
+}
+
 output "rds_endpoint" {
   description = "RDS hostname (no port)."
   value       = module.rds.address

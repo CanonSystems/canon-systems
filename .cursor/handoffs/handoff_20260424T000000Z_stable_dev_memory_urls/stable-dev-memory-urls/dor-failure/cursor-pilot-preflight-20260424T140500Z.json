@@ -1,0 +1,15 @@
+{
+  "stage": "cursor-pilot-preflight",
+  "handoff_id": "handoff_20260424T000000Z_stable_dev_memory_urls",
+  "task_id": "stable-dev-memory-urls",
+  "root_causes": [
+    "missing_required_scoper_fields",
+    "missing_acceptance_traceability_artifact",
+    "missing_dor_verification_metadata"
+  ],
+  "evidence": [
+    "The provided packet includes identifiers, story, repository, and constraints, but omitted risks_and_assumptions.",
+    "The provided packet omitted dor_checklist metadata.",
+    "The provided packet omitted ac_traceability."
+  ]
+}

@@ -134,6 +134,24 @@ as the canonical constructor. Zero counts are acceptable when a source was
 unused or degraded (e.g., axon unreachable); the event must still be emitted
 so `canon report` can render the phase.
 
+For runs that carry experiment metadata, pass the same additive
+`payload.comparison` object (keys `experiment_id`, `memory_mode`, `run_id`,
+`task_attempt_id`) into `build_retrieval_breakdown_event` so token rollups
+join to task attempts. `memory_mode` is an opaque lowercase slug; keep
+`payload.comparison.run_id` distinct from the envelope `agent_run_id`.
+
+## Task-outcome telemetry (required)
+
+At the end of the **release-orchestrator** phase for each task attempt, emit
+exactly one canonical `task_outcome` event using
+`src/canon_systems/retrieval_telemetry.py::build_task_outcome_event`. The
+payload must include the same `payload.comparison` block as other
+experiment-bearing events, plus final fields: `status` (terminal task
+outcome), `qa_gate` (`PASS`/`FAIL`/`PENDING`), `elapsed_seconds`,
+`retry_count`, `reopen_count`, and `rework_count`. This powers
+`canon report --full --compare-by` without changing the `RELEASE_STATUS` or
+`canon release publish-on-pass` contracts.
+
 ## Output format
 
 Emit exactly:
@@ -238,3 +256,19 @@ Interpret the stdout envelope:
 - `degraded_tasks` non-empty → state-api transport issue; resolve before advancing.
 
 This check is required **before advancing the merge gate**; operators consult `docs/runbooks/RESUME.md` for the full operator workflow (including stall-watchdog cross-reference and troubleshooting).
+
+## Experimental multilane visibility (parent session, opt-in)
+
+When **`CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION=1`** is set on the parent,
+optional **`canon resume --tasks-file <path> --lanes`** may be used during
+execution planning. It reads the same per-task checkpoints as the serial engine
+and adds `runnable_targets`, `active_targets`, `blocked_targets`, and
+`task_threads` to the stdout envelope (manifest entries may include
+`depends_on`, `parallel_group`, and `can_run_parallel`). **`--lanes` requires
+`--tasks-file`** and does not apply to legacy `--handoffs-dir` discovery.
+
+**Merge gate discipline is unchanged:** the required pre-merge sweep remains the
+**Resume check (E4-T4)** invocation above (handoffs-dir or serial tasks-file
+without depending on experimental fields). Per-task QA, packets, and
+artifact-backed advancement stay mandatory; multilane output is scheduling
+visibility only.

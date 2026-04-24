@@ -194,3 +194,18 @@ Equivalent with variables:
 terraform import 'module.axon_snapshots.aws_s3_bucket.snapshots' "${var.project_name}-${var.environment}-axon-snapshots"
 terraform import 'module.axon_snapshots.aws_dynamodb_table.meta' "${var.project_name}-${var.environment}-axon-snapshots-meta"
 ```
+
+## Optional stable ingress for `ecs_baseline` (target group attachment)
+
+This root keeps existing **`module.ecs_baseline`** naming and import addresses. Optional variables wire the baseline Fargate service to an **operator-provisioned** load balancer target group without creating ACM certificates or Route53 records here.
+
+| Variable | Purpose |
+| --- | --- |
+| `ecs_ingress_enabled` | When `true`, add a `load_balancer` block on `aws_ecs_service.baseline` |
+| `ecs_ingress_target_group_arn` | ARN of the existing target group (required when ingress is enabled) |
+| `ecs_ingress_source_security_group_ids` | SGs allowed to reach `ecs_container_port` on the task ENIs (e.g. ALB SG); optional if you manage rules elsewhere |
+| `memory_plane_stable_dns_hostname` | Bookkeeping only: echoed in `memory_plane_stable_dns_hostname` output for runbooks (not applied as a resource) |
+
+**Outputs:** `ecs_ingress_enabled`, `ecs_ingress_target_group_arn`, `memory_plane_stable_dns_hostname`.
+
+**CSC dev secret cutover** (`canon-memory-dev/memory-layer__csc__canon-systems`): after ingress and DNS/TLS work in AWS, update the secret JSON to stable `https://` bases for `KNOWLEDGE_API_URL`, `KNOWLEDGE_WORKER_URL`, `MEMORY_ADAPTER_URL`, and `CANON_STATE_API_URL`; clear `~/.canon/memory-layer-aws-cache.json` or run `canon doctor --fix-cache`; validate with `scripts/validate_memory_endpoints.py` and `canon memory-health`. **Rollback:** restore the prior secret version in Secrets Manager, clear the cache again, re-validate. See `docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md` §1.2c.

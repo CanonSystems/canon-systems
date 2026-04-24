@@ -15,6 +15,14 @@ from .shared import load_env_file, repo_root
 
 _IPV4_IN_URL = re.compile(r"https?://\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?")
 
+# Canonical Secrets Manager keys that should use stable https:// DNS (not raw task IPs).
+CANONICAL_MEMORY_HTTPS_KEYS: tuple[str, ...] = (
+    "KNOWLEDGE_API_URL",
+    "KNOWLEDGE_WORKER_URL",
+    "MEMORY_ADAPTER_URL",
+    "CANON_STATE_API_URL",
+)
+
 
 def _scan_env_files_for_raw_ips(paths: list[Path]) -> list[tuple[str, str, str]]:
     """Return list of (path, key, value) for lines that look like URLs with literal IPv4."""
@@ -144,6 +152,7 @@ def run(argv: list[str] | None = None) -> int:
         "tenant_context_mismatch": mismatch,
         "resolved_secret_id": secret_id,
         "aws_secret_cache": cache,
+        "canonical_memory_https_url_keys": list(CANONICAL_MEMORY_HTTPS_KEYS),
         "env_files_with_literal_ipv4_urls": [
             {"path": a, "key": b, "value": c} for a, b, c in ip_hits
         ],
@@ -178,6 +187,11 @@ def run(argv: list[str] | None = None) -> int:
         "After changing Secrets Manager JSON, clear cache: "
         "`canon doctor --fix-cache` or `rm -f ~/.canon/memory-layer-aws-cache.json`"
     )
+    print(
+        "Secrets Manager canonical shape: stable https:// DNS (same host is OK) for "
+        + ", ".join(CANONICAL_MEMORY_HTTPS_KEYS)
+        + "; MEMORY_ADAPTER_URL may match KNOWLEDGE_API_URL when POST /memory/search is on knowledge-api."
+    )
     if ip_hits:
         print("WARNING: literal IPv4 URLs in env files (brittle on Fargate / redeploy):", file=sys.stderr)
         for path_s, key, val in ip_hits:
@@ -192,4 +206,4 @@ def run(argv: list[str] | None = None) -> int:
     return 1 if mismatch or ip_hits else 0
 
 
-__all__ = ["run"]
+__all__ = ["run", "CANONICAL_MEMORY_HTTPS_KEYS"]

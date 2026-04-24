@@ -75,6 +75,8 @@ rm -f ~/.canon/memory-layer-aws-cache.json
 
 See [MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md §1.2b](MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md#12b-aws-secrets-manager-client-cache-when-to-clear-it) and [§1.2a](MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md#12a-urls-only-in-secrets-manager-repo-and-dot-canon-env-look-clean) (URLs may exist **only** in Secrets Manager + `memory-layer-aws-cache.json`, so repo greps miss them). For a wiring sanity pass on **3.4.7+**, run `canon doctor`; on **3.4.6**, use `canon preflight "tenant check"`, **`canon memory-health --json`**, read `.canon/memory/context-latest.md`, and `canon e2e-check --agent`.
 
+**Stable HTTPS URLs:** after operators move dev ECS behind ingress, the memory-layer secret should use **`https://` + DNS** for `KNOWLEDGE_API_URL`, `KNOWLEDGE_WORKER_URL`, `MEMORY_ADAPTER_URL`, and `CANON_STATE_API_URL`. Full cutover/rollback for `canon-memory-dev/memory-layer__csc__canon-systems` is in [MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md §1.2c](MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md#12c-stable-dev-memory-urls--csc-canon-systems-cutover-and-rollback).
+
 If pipx installs but `canon` isn't found, see [§1c](#1c-after-pipx-canon-not-on-path)
 below.
 

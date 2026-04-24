@@ -121,3 +121,27 @@ variable "ecs_desired_count" {
   description = "Desired task count for the baseline service (0 avoids running tasks until images are ready)."
   default     = 0
 }
+
+variable "ecs_ingress_enabled" {
+  type        = bool
+  description = "When true, attach ecs_baseline to ecs_ingress_target_group_arn (operator-provisioned ALB/NLB)."
+  default     = false
+}
+
+variable "ecs_ingress_target_group_arn" {
+  type        = string
+  description = "Target group ARN for stable ingress. Required when ecs_ingress_enabled is true. Import/apply is operator-owned."
+  default     = ""
+}
+
+variable "ecs_ingress_source_security_group_ids" {
+  type        = list(string)
+  description = "Security groups allowed to reach ecs_container_port on task ENIs (e.g. load balancer SG)."
+  default     = []
+}
+
+variable "memory_plane_stable_dns_hostname" {
+  type        = string
+  description = "Optional operator bookkeeping: stable public DNS hostname for HTTPS memory URLs (echoed in outputs only; ACM/Route53 not managed here)."
+  default     = ""
+}

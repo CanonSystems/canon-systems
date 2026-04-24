@@ -40,7 +40,8 @@ Waves 0–7 of the Canon Memory Platform v1 plan are complete:
   telemetry via `retrieval_breakdown` canonical events.
 - **Wave 4 (E4)** — `canon resume` orchestrator resume engine;
   `canon stall-watchdog scan` with `lease_stall_detected` events;
-  resume runbook + release-gate integration.
+  resume runbook + release-gate integration; optional experimental **`--lanes`**
+  multilane visibility (`CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION`, see runbook).
 - **Wave 5 (E5)** — `docs/VAULT-LAYOUT.md` v1; deterministic
   `backend/synthesis` vault generator + publisher; `backend/synthesis-web`
   read-only SSR browser; `canon synth show` streamer; `canon vault sync`
@@ -63,7 +64,7 @@ Full `tests/` suite: **440 passing** at v1 sign-off.
 > Canon iteration).
 >
 > **Runtime + agents (env, secrets, retrieval order, per-agent matrix)?** See
-> [docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md](docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md).
+> [docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md](docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md) (including §1.2c stable dev HTTPS URLs and CSC secret cutover/rollback).
 >
 > **Why project-planner uses canonical memory before graph?** See
 > [docs/PROJECT-PLANNER-RETRIEVAL-RATIONALE.md](docs/PROJECT-PLANNER-RETRIEVAL-RATIONALE.md).
@@ -286,7 +287,7 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon graph query --commit-sha <sha> --company-id <c> --repository-id <r> --q <str> [--limit N]` | Retrieve graph-backed snippets from axon-service (pure RPC). |
 | `canon graph impact --commit-sha <sha> --company-id <c> --repository-id <r> --symbol <sym> [--depth N]` | Return upstream/downstream blast radius from axon-service. |
 | `canon report --events <ndjson> [--by phase\|agent\|source] [--plan-id X] [--task-id Y] [--company-id X] [--repository-id R] [--since ISO] [--until ISO] [--full] [--format json\|csv]` | Aggregate canonical events into a deterministic rollup. Default `{by, groups}` envelope for back-compat; `--full` emits the complete E6-T1 `metrics_rollup` schema (lead/cycle time, retries, DoR causes, stalls, token cost, synth_publish). |
-| `canon resume --plan-id <id> --company-id <c> --repository-id <r> (--tasks-file <path> \| --handoffs-dir <path>)` | Print the first incomplete (task_id, phase) pair for a plan as structured JSON (read-only; idempotent). |
+| `canon resume --plan-id <id> --company-id <c> --repository-id <r> (--tasks-file <path> \| --handoffs-dir <path>) [--lanes]` | Print the first incomplete (task_id, phase) pair for a plan as structured JSON (read-only; idempotent). **`--lanes`** (requires `--tasks-file`, optional manifest fields) adds experimental multilane visibility when **`CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION`** is enabled; see `docs/runbooks/RESUME.md`. |
 | `canon stall-watchdog scan --plan-id <p> --company-id <c> --repository-id <r> (--tasks-file <path> \| --handoffs-dir <path>) [--event-log <path>] [--dry-run]` | Detect stalled leases via GET probes and emit `lease_stall_detected` canonical events (read-only; idempotent). Exit 5 on any degraded probe. |
 | `canon synth publish` | Publish a deterministic Obsidian vault bundle to S3 (idempotent, diff-only). Internal driver for backend/synthesis. |
 | `canon synth show` | Stream Obsidian vault markdown for `(plan_id[, task_id])` from S3 (read-only; markdown or JSON). Honors `CANON_PLAN_ID` / `CANON_TASK_ID` / `CANON_VAULT_BUCKET` / `CANON_VAULT_PREFIX` / `CANON_SYNTH_CUTOFF_TS`. |

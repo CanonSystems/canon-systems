@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
+from .task_thread_scheduler import compute_lane_state
+
 EXIT_OK = 0
 EXIT_NOT_FOUND = 3
 EXIT_USAGE = 4
@@ -68,24 +70,46 @@ def _resolve_base_url(args: argparse.Namespace) -> str:
     return u.rstrip("/")
 
 
-def _load_tasks_from_file(path: Path, default_ws: str) -> list[dict[str, str]]:
+def _normalize_manifest_task(item: dict[str, Any], default_ws: str) -> dict[str, Any]:
+    if "task_id" not in item:
+        raise ValueError("each task entry must be an object with task_id")
+    tid = str(item["task_id"])
+    ws = str(item.get("workstream_id", default_ws))
+    raw_deps = item.get("depends_on", [])
+    if raw_deps is None:
+        deps: list[str] = []
+    elif isinstance(raw_deps, list):
+        deps = [str(x) for x in raw_deps]
+    else:
+        raise ValueError("depends_on must be a JSON array when present")
+    pg = item.get("parallel_group", "")
+    if pg is not None and not isinstance(pg, str):
+        raise ValueError("parallel_group must be a string when present")
+    crp = item.get("can_run_parallel", False)
+    if not isinstance(crp, bool):
+        raise ValueError("can_run_parallel must be a boolean when present")
+    return {
+        "task_id": tid,
+        "workstream_id": ws,
+        "depends_on": deps,
+        "parallel_group": str(pg or ""),
+        "can_run_parallel": bool(crp),
+    }
+
+
+def _load_tasks_from_file(path: Path, default_ws: str) -> list[dict[str, Any]]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
         raise ValueError("--tasks-file must contain a JSON array")
-    out: list[dict[str, str]] = []
+    out: list[dict[str, Any]] = []
     for item in data:
-        if not isinstance(item, dict) or "task_id" not in item:
-            raise ValueError("each task entry must be an object with task_id")
-        out.append(
-            {
-                "task_id": str(item["task_id"]),
-                "workstream_id": str(item.get("workstream_id", default_ws)),
-            }
-        )
+        if not isinstance(item, dict):
+            raise ValueError("each task entry must be a JSON object")
+        out.append(_normalize_manifest_task(item, default_ws))
     return out
 
 
-def _load_tasks_from_handoffs(path: Path, default_ws: str) -> list[dict[str, str]]:
+def _load_tasks_from_handoffs(path: Path, default_ws: str) -> list[dict[str, Any]]:
     if not path.is_dir():
         raise FileNotFoundError(path)
     import re
@@ -147,7 +171,7 @@ def _scan_task(
 
 
 def _compute_resume_target(
-    tasks: list[dict[str, str]],
+    tasks: list[dict[str, Any]],
     scans: list[tuple[str | None, str | None, str | None]],
 ) -> dict[str, str] | None:
     for task, (phase, status, degrade) in zip(tasks, scans, strict=True):
@@ -168,8 +192,9 @@ def _build_envelope(
     plan_id: str,
     company_id: str,
     repository_id: str,
-    tasks: list[dict[str, str]],
+    tasks: list[dict[str, Any]],
     scans: list[tuple[str | None, str | None, str | None]],
+    lanes_mode: bool,
 ) -> dict[str, Any]:
     resume_target = _compute_resume_target(tasks, scans)
     degraded = [{"task_id": t["task_id"], "reason": s[2]} for t, s in zip(tasks, scans) if s[2] is not None]
@@ -179,7 +204,7 @@ def _build_envelope(
         if degrade is None and phase == PHASE_ORDER[-1] and status == "completed"
     )
     resume_available = resume_target is not None and len(degraded) < len(tasks)
-    return {
+    envelope: dict[str, Any] = {
         "plan_id": plan_id,
         "company_id": company_id,
         "repository_id": repository_id,
@@ -189,6 +214,14 @@ def _build_envelope(
         "degraded_tasks": degraded,
         "resume_available": resume_available,
     }
+    if lanes_mode:
+        lane = compute_lane_state(tasks, scans, phase_order=PHASE_ORDER)
+        envelope["active_targets"] = lane["active_targets"]
+        envelope["blocked_targets"] = lane["blocked_targets"]
+        envelope["experimental_lanes"] = True
+        envelope["runnable_targets"] = lane["runnable_targets"]
+        envelope["task_threads"] = lane["task_threads"]
+    return envelope
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -205,6 +238,14 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--workstream-id-default", default=_DEFAULT_WS)
     p.add_argument("--base-url", default=None)
     p.add_argument("--timeout-ms", type=int, default=_DEFAULT_TIMEOUT_MS)
+    p.add_argument(
+        "--lanes",
+        action="store_true",
+        help=(
+            "Experimental: include multilane fields (requires --tasks-file). "
+            "No effect on checkpoint writes or legacy resume_target selection."
+        ),
+    )
     return p
 
 
@@ -217,6 +258,16 @@ def run(argv: list[str] | None = None) -> int:
         code = exc.code
         if code in (0, None):
             return EXIT_OK
+        return EXIT_USAGE
+
+    if getattr(args, "lanes", False) and not args.tasks_file:
+        print(
+            json.dumps(
+                {"error": "usage", "detail": "--lanes requires --tasks-file (enriched lane manifest)"},
+                sort_keys=True,
+            ),
+            file=sys.stderr,
+        )
         return EXIT_USAGE
 
     try:
@@ -252,6 +303,7 @@ def run(argv: list[str] | None = None) -> int:
         repository_id=args.repository_id,
         tasks=tasks,
         scans=scans,
+        lanes_mode=bool(getattr(args, "lanes", False)),
     )
     print(json.dumps(envelope, sort_keys=True))
 

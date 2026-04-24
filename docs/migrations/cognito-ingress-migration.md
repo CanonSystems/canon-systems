@@ -47,6 +47,10 @@ This runbook migrates Canon memory traffic from raw IP endpoints + IAM keypair a
 
 Do not advance phases unless all gates are green for at least 30 minutes.
 
+## CSC `canon-systems` stable dev URLs
+
+For secret `canon-memory-dev/memory-layer__csc__canon-systems`, follow **`docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md` §1.2c**: apply/import optional ECS target-group attachment in `infra/terraform`, update the four HTTPS URL keys + optional `canon doctor --fix-cache`, validate with `scripts/validate_memory_endpoints.py` and `canon memory-health`. Rollback = previous secret version + cache clear.
+
 ## Rollback Trigger
 
 Rollback immediately if:

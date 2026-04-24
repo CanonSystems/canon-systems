@@ -74,3 +74,13 @@ END_PROJECT_EXECUTION_PLAN
 No prose before or after.
 
 Per-task packets **MUST** carry or reference the same **checkpoint read-before/write-after contract** for downstream **scoper**, **cursor-pilot**, **implementer**, **qa-gate**, and **release-orchestrator** playbooks (hydrate via `canon checkpoint read` before phase work; persist via lease-guarded `canon checkpoint write` after).
+
+## Experimental lane manifest (parent orchestration)
+
+For **parent-session** scheduling only, you may emit a companion JSON array
+(same `task_id` / `workstream_id` keys as `canon resume`, plus optional
+`depends_on`, `parallel_group`, `can_run_parallel` copied from the backlog)
+for use with **`canon resume --tasks-file ... --lanes`** when the parent sets
+**`CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION=1`**. This does not replace
+legacy **`canon resume --handoffs-dir ...`** for serial discovery or merge-gate
+sweeps; it adds read-only multilane visibility atop existing checkpoints.

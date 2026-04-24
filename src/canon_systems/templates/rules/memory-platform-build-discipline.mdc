@@ -200,3 +200,34 @@ Never do any of the following automatically:
 - Rewriting commits that have been pushed.
 - Merging to `main` without either a CI-green PR or `CANON_AUTO_MERGE=1`.
 - Deleting branches other than the wave branch after its PR is merged.
+
+## 11. Experimental parent-session multilane orchestration (opt-in only)
+
+The canon-memory-v1 serial agent chain in **§1** remains authoritative for every
+workspace unless the parent orchestrator explicitly opts in.
+
+When **`CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION=1`** is set in the parent
+orchestrator environment **and** operators use an enriched JSON task manifest
+(not legacy `--handoffs-dir` discovery alone), the parent MAY plan multiple
+concurrent **task lanes** only as visibility and scheduling hints:
+
+- Use **`canon resume --tasks-file <path> --lanes`** (experimental) to read
+  per-task checkpoints and emit `runnable_targets`, `active_targets`,
+  `blocked_targets`, and `task_threads` alongside the unchanged
+  `resume_target`. The manifest may include optional `depends_on`,
+  `parallel_group`, and `can_run_parallel` fields per task.
+- **§1 ordering is not relaxed for checkpoint truth**: the canonical five
+  phases per task remain `scoper -> cursor-pilot -> implementer -> qa-gate ->
+  release-orchestrator`; this mode does not change `state-api` schemas or the
+  checkpoint write contract.
+- **Merge, PR, and release advancement remain per-task and artifact-backed**:
+  each `task_id` still requires its own packet quartet, QA PASS, and
+  release-orchestrator evidence before merge; multilane scheduling does not
+  batch merge gates across tasks.
+- Without **`CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION=1`**, treat **§1**
+  as a strict serial chain (one runnable agent phase at a time per parent
+  policy); do not use lane visibility to bypass serial protections.
+
+Legacy **`canon resume --handoffs-dir ...`** remains the recommended default
+for deterministic serial discovery; **`--lanes`** requires **`--tasks-file`**
+and is for parent-session scheduling visibility only.

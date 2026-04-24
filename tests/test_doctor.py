@@ -25,6 +25,12 @@ def test_doctor_json_ok_when_wired_no_hits(tmp_path: Path, monkeypatch: pytest.M
     o = json.loads(buf.getvalue())
     assert o["company_id_file"] == "ACME"
     assert o["tenant_context_mismatch"] is False
+    assert o["canonical_memory_https_url_keys"] == [
+        "KNOWLEDGE_API_URL",
+        "KNOWLEDGE_WORKER_URL",
+        "MEMORY_ADAPTER_URL",
+        "CANON_STATE_API_URL",
+    ]
 
 
 def test_doctor_warns_literal_ip_in_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

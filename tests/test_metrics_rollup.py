@@ -271,3 +271,164 @@ def test_non_mapping_events_skipped() -> None:
     events = [_mk_event("scoper"), "garbage", 42, None]
     result = metrics_rollup.aggregate(events)
     assert result["totals"]["events"] == 1
+
+
+def _cmp(
+    eid: str = "exp-a", mm: str = "base", run: str = "r1", task_att: str = "ta-1"
+) -> dict[str, str]:
+    return {
+        "experiment_id": eid,
+        "memory_mode": mm,
+        "run_id": run,
+        "task_attempt_id": task_att,
+    }
+
+
+def test_experiment_filter_requires_comparison() -> None:
+    events = [
+        _mk_event(
+            "retrieval_breakdown",
+            payload={"totals": {"tokens_in": 1, "tokens_out": 1}, "sources": {}},
+        )
+    ]
+    r0 = metrics_rollup.aggregate(events, experiment_id="exp-a")
+    assert r0["totals"]["events"] == 0
+    events2 = [
+        _mk_event(
+            "retrieval_breakdown",
+            payload={
+                "totals": {"tokens_in": 1, "tokens_out": 1},
+                "sources": {},
+                "comparison": _cmp(eid="exp-a", mm="m", run="r", task_att="t"),
+            },
+        )
+    ]
+    r1 = metrics_rollup.aggregate(events2, experiment_id="exp-a")
+    assert r1["totals"]["events"] == 1
+
+
+def test_compare_by_memory_mode_buckets_unlabeled() -> None:
+    events = [
+        _mk_event(
+            "retrieval_breakdown",
+            agent_name="scoper",
+            payload={
+                "totals": {"tokens_in": 10, "tokens_out": 4},
+                "sources": {"graph": {"tokens_in": 10, "tokens_out": 4}},
+                "comparison": _cmp(mm="mode_a", task_att="a1"),
+            },
+        ),
+        _mk_event(
+            "retrieval_breakdown",
+            agent_name="scoper",
+            payload={
+                "totals": {"tokens_in": 5, "tokens_out": 2},
+                "sources": {},
+            },
+        ),
+        _mk_event(
+            "task_outcome",
+            agent_name="release-orchestrator",
+            payload={
+                "comparison": _cmp(mm="mode_a", task_att="a1"),
+                "status": "completed",
+                "qa_gate": "PASS",
+                "elapsed_seconds": 100,
+                "retry_count": 1,
+                "reopen_count": 0,
+                "rework_count": 1,
+            },
+        ),
+    ]
+    r = metrics_rollup.aggregate(events, compare_by="memory_mode")
+    assert "compare" in r
+    b = r["compare"]["buckets"]
+    assert b["mode_a"]["tokens"]["tokens_in"] == 10
+    assert b["mode_a"]["outcomes"]["task_outcomes_seen"] == 1
+    assert b["mode_a"]["outcomes"]["qa_pass"] == 1
+    assert b["unlabeled"]["tokens"]["tokens_in"] == 5
+    assert b["unlabeled"]["outcomes"]["task_outcomes_seen"] == 0
+
+
+def test_compare_rollup_includes_all_outcome_summary_fields() -> None:
+    events = [
+        _mk_event(
+            "task_outcome",
+            agent_name="release-orchestrator",
+            payload={
+                "comparison": _cmp(mm="mode_a", task_att="a1"),
+                "status": "completed",
+                "qa_gate": "PASS",
+                "elapsed_seconds": 100,
+                "retry_count": 1,
+                "reopen_count": 2,
+                "rework_count": 3,
+            },
+        ),
+        _mk_event(
+            "task_outcome",
+            agent_name="release-orchestrator",
+            payload={
+                "comparison": _cmp(mm="mode_a", task_att="a2", run="r2"),
+                "status": "failed",
+                "qa_gate": "FAIL",
+                "elapsed_seconds": 41,
+                "retry_count": 4,
+                "reopen_count": 0,
+                "rework_count": 1,
+            },
+        ),
+    ]
+    r = metrics_rollup.aggregate(events, compare_by="memory_mode")
+    outcomes = r["compare"]["buckets"]["mode_a"]["outcomes"]
+    assert outcomes == {
+        "task_outcomes_seen": 2,
+        "status_completed_or_ready": 1,
+        "qa_pass": 1,
+        "qa_fail": 1,
+        "avg_elapsed_seconds": 71,
+        "retry_total": 5,
+        "reopen_total": 2,
+        "rework_total": 4,
+    }
+
+
+def test_compare_by_experiment_id() -> None:
+    events = [
+        _mk_event(
+            "retrieval_breakdown",
+            payload={
+                "totals": {"tokens_in": 3, "tokens_out": 1},
+                "sources": {},
+                "comparison": _cmp(eid="E1", task_att="x1"),
+            },
+        ),
+        _mk_event(
+            "retrieval_breakdown",
+            payload={
+                "totals": {"tokens_in": 7, "tokens_out": 2},
+                "sources": {},
+                "comparison": _cmp(eid="E2", task_att="x2", run="r2"),
+            },
+        ),
+    ]
+    r = metrics_rollup.aggregate(events, compare_by="experiment_id")
+    b = r["compare"]["buckets"]
+    assert b["E1"]["tokens"]["tokens_in"] == 3
+    assert b["E2"]["tokens"]["tokens_out"] == 2
+
+
+def test_aggregate_without_compare_has_no_compare_key() -> None:
+    events = [
+        _mk_event(
+            "retrieval_breakdown",
+            payload={"totals": {"tokens_in": 1, "tokens_out": 1}, "sources": {}, "comparison": _cmp()},
+        )
+    ]
+    r = metrics_rollup.aggregate(events)
+    assert "compare" not in r
+
+
+def test_invalid_compare_by_raises() -> None:
+    with pytest.raises(ValueError, match="compare_by"):
+        metrics_rollup.aggregate([], compare_by="phase")

@@ -43,3 +43,21 @@ variable "secret_arns" {
   description = "Secrets Manager ARNs the task role may read (GetSecretValue)."
   default     = []
 }
+
+variable "ingress_enabled" {
+  type        = bool
+  description = "When true, register the baseline ECS service with ingress_target_group_arn."
+  default     = false
+}
+
+variable "ingress_target_group_arn" {
+  type        = string
+  description = "Existing ALB/NLB target group ARN. Required when ingress_enabled is true."
+  default     = ""
+}
+
+variable "ingress_source_security_group_ids" {
+  type        = list(string)
+  description = "Security groups allowed to reach container_port on the task ENIs (typically the load balancer SG). Ignored when empty."
+  default     = []
+}

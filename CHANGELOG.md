@@ -9,6 +9,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Experimental multilane `canon resume`:** optional **`--lanes`** with **`--tasks-file`** adds `runnable_targets`, `active_targets`, `blocked_targets`, and `task_threads` (plus `experimental_lanes`) from existing checkpoints plus optional manifest metadata (`depends_on`, `parallel_group`, `can_run_parallel`). Policy opt-in **`CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION`** documented in `memory-platform-build-discipline.mdc` §11, `docs/runbooks/RESUME.md`, and agent templates. Pure scheduler module `task_thread_scheduler.py`; no state-api schema changes.
 - **Docs:** `docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md` — full runtime checklist
   (layered env, secret keys, state defaulting, graph health vs index usefulness),
   global retrieval rule pointer, per-agent matrix, and living-update cross-links.

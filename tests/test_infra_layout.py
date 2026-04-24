@@ -232,3 +232,47 @@ def test_infra_readme_e3t1_section() -> None:
     text = (TERRAFORM_ROOT / "README.md").read_text(encoding="utf-8")
     assert "E3-T1" in text
     assert "axon-snapshots" in text
+
+
+ECS_FARGATE_MODULE = TERRAFORM_ROOT / "modules" / "ecs-fargate"
+
+
+def test_ecs_fargate_module_declares_optional_ingress() -> None:
+    vars_tf = (ECS_FARGATE_MODULE / "variables.tf").read_text(encoding="utf-8")
+    for needle in (
+        'variable "ingress_enabled"',
+        'variable "ingress_target_group_arn"',
+        'variable "ingress_source_security_group_ids"',
+    ):
+        assert needle in vars_tf, f"missing {needle}"
+    main_tf = (ECS_FARGATE_MODULE / "main.tf").read_text(encoding="utf-8")
+    assert 'dynamic "load_balancer"' in main_tf
+    assert "target_group_arn" in main_tf
+    assert "ingress_target_group_arn" in main_tf
+    assert 'dynamic "ingress"' in main_tf
+    assert "precondition" in main_tf
+    out_tf = (ECS_FARGATE_MODULE / "outputs.tf").read_text(encoding="utf-8")
+    assert 'output "ingress_enabled"' in out_tf
+    assert 'output "ingress_target_group_arn"' in out_tf
+
+
+def test_root_wires_ecs_ingress_variables_and_outputs() -> None:
+    main_tf = (TERRAFORM_ROOT / "main.tf").read_text(encoding="utf-8")
+    assert "ingress_enabled" in main_tf
+    assert "ingress_target_group_arn" in main_tf
+    assert "ingress_source_security_group_ids" in main_tf
+    root_vars = (TERRAFORM_ROOT / "variables.tf").read_text(encoding="utf-8")
+    assert 'variable "ecs_ingress_enabled"' in root_vars
+    assert 'variable "ecs_ingress_target_group_arn"' in root_vars
+    assert 'variable "memory_plane_stable_dns_hostname"' in root_vars
+    out = (TERRAFORM_ROOT / "outputs.tf").read_text(encoding="utf-8")
+    assert "ecs_ingress_target_group_arn" in out
+    assert "memory_plane_stable_dns_hostname" in out
+
+
+def test_infra_readme_stable_ingress_section() -> None:
+    text = (TERRAFORM_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "Optional stable ingress" in text
+    assert "ecs_ingress_enabled" in text
+    assert "memory-layer__csc__canon-systems" in text
+    assert "canon doctor --fix-cache" in text

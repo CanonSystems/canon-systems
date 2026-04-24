@@ -66,6 +66,23 @@ rm -f ~/.canon/memory-layer-aws-cache.json
 
 **Related (3.4.7+):** `canon doctor` (without flags) compares `COMPANY_ID` / `REPOSITORY_ID` in `.canon/memory-layer.local.env` to the last `.canon/memory/context-latest.md` preflight snapshot, and flags `http(s)://` URLs that use a **literal IPv4** in **the scanned `.env` paths** (§1.2a — not values inside the cache JSON). On **3.4.6**, use `canon preflight`, **`canon memory-health --json`**, `canon e2e-check --agent`, and inspect the cache file or AWS for secret-only URLs.
 
+### 1.2c Stable dev memory URLs — CSC `canon-systems` cutover and rollback
+
+**Secret id (example):** `canon-memory-dev/memory-layer__csc__canon-systems` (derived from `MEMORY_LAYER_AWS_SECRET_NAME_PREFIX` + slugs for `COMPANY_ID=CSC` and `REPOSITORY_ID=canon-systems`).
+
+**Goal:** point `KNOWLEDGE_API_URL`, `KNOWLEDGE_WORKER_URL`, `MEMORY_ADAPTER_URL`, and `CANON_STATE_API_URL` at the **same stable `https://` hostname** (ALB/NLB + DNS) instead of ephemeral task IPs. `MEMORY_ADAPTER_URL` may equal `KNOWLEDGE_API_URL` when **knowledge-api** mounts `POST /memory/search` on that base.
+
+**Cutover (operator):**
+
+1. **Infra:** Provision listener + target group + DNS/TLS in AWS (repo Terraform can model ECS **attachment** to an existing target group when `ecs_ingress_enabled`; ACM and Route53 records stay operator-owned). Apply or import the dev `ecs_baseline` stack as needed so the service registers with the target group.
+2. **Secret:** Update the JSON secret in Secrets Manager so all four URL keys use the stable `https://` base (e.g. `canon secrets submit`, console, or `scripts/migrate_memory_secrets.py` with your domain).
+3. **Clients:** Clear `~/.canon/memory-layer-aws-cache.json` or run **`canon doctor --fix-cache`** on every machine that had cached the old URLs.
+4. **Validate:** `python scripts/validate_memory_endpoints.py --secret-id canon-memory-dev/memory-layer__csc__canon-systems --profile <profile>` and **`canon memory-health`**, **`canon e2e-check --agent`** from a wired repo.
+
+**Rollback:** In Secrets Manager, restore the **previous secret version** (or re-apply known-good JSON), run **`canon doctor --fix-cache`** (or delete the cache file), then re-run `validate_memory_endpoints.py` and `canon memory-health`.
+
+See also: [`infra/terraform/README.md`](../infra/terraform/README.md) (optional ECS ingress variables) and [`docs/migrations/cognito-ingress-migration.md`](migrations/cognito-ingress-migration.md).
+
 ### 1.3 Secrets payload (structured JSON or compatible `.env`)
 
 **Required for `canon secrets submit` validation** (unless `--allow-partial`):  
@@ -87,6 +104,7 @@ rm -f ~/.canon/memory-layer-aws-cache.json
 |-----|------|
 | `CANON_STATE_API_URL` | Preferred client base for `canon checkpoint` / `canon resume`. |
 | `STATE_API_URL` | Alias read by `canon memory-health` for the **state** row (first wins if both set). |
+| `CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION` | When set to `1` / `true` / `yes` / `on`, parent orchestrators may use **`canon resume --tasks-file ... --lanes`** for additive multilane visibility (`runnable_targets`, `active_targets`, `blocked_targets`, `task_threads`) per `memory-platform-build-discipline.mdc` §11. Does not change checkpoint schemas or merge-gate serial requirements. |
 
 **Behavior (CLI ≥ 3.4.4):** If neither state URL is set but `KNOWLEDGE_API_URL` is set, **`CANON_STATE_API_URL` defaults to `KNOWLEDGE_API_URL`** after layered + Secrets hydration (`ensure_state_api_url_from_knowledge`). Dedicated `state-api` deployments can still set an explicit URL.
 

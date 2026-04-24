@@ -17,7 +17,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping
 
+from .retrieval_telemetry import comparison_from_payload
+
 SCHEMA_VERSION = 1
+_COMPARE_BY: frozenset[str] = frozenset({"memory_mode", "experiment_id"})
 
 _PHASE_NAMES: tuple[str, ...] = (
     "scoper",
@@ -67,6 +70,22 @@ def _in_scope(ev: Mapping[str, Any], scope: Mapping[str, str]) -> bool:
     return True
 
 
+def _event_matches_experiment_filters(
+    ev: Mapping[str, Any],
+    *,
+    experiment_id: str,
+    memory_mode: str,
+) -> bool:
+    c = comparison_from_payload(ev.get("payload"))
+    if c is None:
+        return False
+    if experiment_id and c["experiment_id"] != experiment_id:
+        return False
+    if memory_mode and c["memory_mode"] != memory_mode:
+        return False
+    return True
+
+
 def _coerce_int(val: Any) -> int:
     try:
         return int(val)
@@ -83,11 +102,64 @@ def _sort_nested(obj: Any) -> Any:
     return obj
 
 
+def _compare_bucket_key(
+    comparison: dict[str, str] | None,
+    compare_by: str,
+) -> str:
+    if not comparison or compare_by not in comparison:
+        return "unlabeled"
+    return str(comparison[compare_by])
+
+
+@dataclass
+class _CompareBucket:
+    tokens_in: int = 0
+    tokens_out: int = 0
+    task_outcomes_seen: int = 0
+    status_completed_or_ready: int = 0
+    qa_pass: int = 0
+    qa_fail: int = 0
+    elapsed_sum: int = 0
+    retry_total: int = 0
+    reopen_total: int = 0
+    rework_total: int = 0
+
+
+def _finalize_compare_buckets(
+    by: str, raw: dict[str, _CompareBucket]
+) -> dict[str, Any]:
+    buckets: dict[str, Any] = {}
+    for key in sorted(raw.keys()):
+        b = raw[key]
+        n = b.task_outcomes_seen
+        avg_elapsed = (b.elapsed_sum + n // 2) // n if n else 0
+        buckets[key] = {
+            "tokens": {
+                "tokens_in": b.tokens_in,
+                "tokens_out": b.tokens_out,
+            },
+            "outcomes": {
+                "task_outcomes_seen": b.task_outcomes_seen,
+                "status_completed_or_ready": b.status_completed_or_ready,
+                "qa_pass": b.qa_pass,
+                "qa_fail": b.qa_fail,
+                "avg_elapsed_seconds": int(avg_elapsed),
+                "retry_total": b.retry_total,
+                "reopen_total": b.reopen_total,
+                "rework_total": b.rework_total,
+            },
+        }
+    return {"by": by, "buckets": _sort_nested(buckets)}
+
+
 def aggregate(
     events: Iterable[Mapping[str, Any]],
     *,
     scope: Mapping[str, str] | None = None,
     window: Mapping[str, str] | None = None,
+    experiment_id: str | None = None,
+    memory_mode: str | None = None,
+    compare_by: str | None = None,
 ) -> dict[str, Any]:
     """Aggregate canonical events into a stable rollup dict.
 
@@ -101,6 +173,14 @@ def aggregate(
         Optional filter on ``since`` / ``until`` (ISO-8601 Z strings;
         events whose ``timestamp`` parses outside the window are
         dropped).
+    experiment_id / memory_mode:
+        Optional filters on ``payload.comparison`` (events without a
+        valid comparison block are excluded when either is set).
+    compare_by:
+        When ``memory_mode`` or ``experiment_id``, adds a deterministic
+        ``compare`` section with per-bucket token totals and task
+        ``task_outcome`` summaries. Unlabeled events use the
+        ``unlabeled`` bucket.
 
     Returns
     -------
@@ -110,6 +190,14 @@ def aggregate(
     """
     scope = dict(scope or {})
     window = dict(window or {})
+    eid_f = (experiment_id or "").strip()
+    mm_f = (memory_mode or "").strip().lower()
+    cby: str | None = None
+    if compare_by is not None and str(compare_by).strip():
+        cby = str(compare_by).strip()
+        if cby not in _COMPARE_BY:
+            raise ValueError("compare_by must be 'memory_mode' or 'experiment_id'")
+
     win = _Window(
         since=_parse_iso_z(window.get("since")) if window.get("since") else None,
         until=_parse_iso_z(window.get("until")) if window.get("until") else None,
@@ -126,11 +214,18 @@ def aggregate(
         if win.since is not None or win.until is not None:
             if not _in_window(ts, win):
                 continue
+        if eid_f or mm_f:
+            if not _event_matches_experiment_filters(ev, experiment_id=eid_f, memory_mode=mm_f):
+                continue
         events_total += 1
         if ts is not None:
             filtered.append((ev, ts))
         else:
             filtered.append((ev, datetime.min.replace(tzinfo=timezone.utc)))
+
+    compare_raw: dict[str, _CompareBucket] | None = (
+        defaultdict(_CompareBucket) if cby is not None else None
+    )
 
     lead_time_by_task: dict[str, dict[str, Any]] = {}
     per_phase_ts: dict[str, dict[str, list[datetime]]] = defaultdict(lambda: defaultdict(list))
@@ -191,6 +286,13 @@ def aggregate(
                     if agent_name in _PHASE_NAMES:
                         token_by_phase[agent_name]["tokens_in"] += tin
                         token_by_phase[agent_name]["tokens_out"] += tout
+            if compare_raw is not None:
+                c = comparison_from_payload(payload)
+                bkey = _compare_bucket_key(c, cby or "")
+                bk = compare_raw[bkey]
+                if isinstance(totals, Mapping):
+                    bk.tokens_in += _coerce_int(totals.get("tokens_in"))
+                    bk.tokens_out += _coerce_int(totals.get("tokens_out"))
             sources = payload.get("sources") or {}
             if isinstance(sources, Mapping):
                 for src, counts in sources.items():
@@ -207,6 +309,25 @@ def aggregate(
                 publish_failed += 1
         if etype == "vault_sync_notified":
             notifier_ok += 1
+
+        if etype == "task_outcome":
+            if compare_raw is not None:
+                c = comparison_from_payload(payload)
+                bkey = _compare_bucket_key(c, cby or "")
+                bk = compare_raw[bkey]
+                bk.task_outcomes_seen += 1
+                st = str(payload.get("status", "") or "").strip().lower()
+                if st in ("completed", "ready"):
+                    bk.status_completed_or_ready += 1
+                qg = str(payload.get("qa_gate", "") or "").strip().upper()
+                if qg == "PASS":
+                    bk.qa_pass += 1
+                elif qg == "FAIL":
+                    bk.qa_fail += 1
+                bk.elapsed_sum += _coerce_int(payload.get("elapsed_seconds"))
+                bk.retry_total += _coerce_int(payload.get("retry_count"))
+                bk.reopen_total += _coerce_int(payload.get("reopen_count"))
+                bk.rework_total += _coerce_int(payload.get("rework_count"))
 
     lead_time_out: dict[str, dict[str, Any]] = {}
     for task_id, bucket in lead_time_by_task.items():
@@ -274,7 +395,7 @@ def aggregate(
         "notifier_ok": notifier_ok,
     }
 
-    result = {
+    result: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "scope": {
             "company_id": scope.get("company_id", ""),
@@ -294,4 +415,6 @@ def aggregate(
         "token_cost": token_cost_out,
         "synth_publish": synth_publish_out,
     }
+    if compare_raw is not None and cby is not None:
+        result["compare"] = _finalize_compare_buckets(cby, dict(compare_raw))
     return _sort_nested(result)

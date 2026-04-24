@@ -66,6 +66,10 @@ module "ecs_baseline" {
   s3_bucket_arn = module.artifacts_bucket.bucket_arn
   secret_arns   = values(module.placeholders.secret_arns)
 
+  ingress_enabled                     = var.ecs_ingress_enabled
+  ingress_target_group_arn            = var.ecs_ingress_target_group_arn
+  ingress_source_security_group_ids = var.ecs_ingress_source_security_group_ids
+
   depends_on = [module.placeholders]
 }
 

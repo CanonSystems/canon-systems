@@ -21,6 +21,17 @@ resource "aws_security_group" "tasks" {
   vpc_id      = var.vpc_id
   description = "ECS Fargate baseline tasks"
 
+  dynamic "ingress" {
+    for_each = var.ingress_enabled && length(var.ingress_source_security_group_ids) > 0 ? [1] : []
+    content {
+      description     = "Load balancer to ECS tasks (optional stable ingress)"
+      from_port       = var.container_port
+      to_port         = var.container_port
+      protocol        = "tcp"
+      security_groups = var.ingress_source_security_group_ids
+    }
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -144,6 +155,15 @@ resource "aws_ecs_service" "baseline" {
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
 
+  dynamic "load_balancer" {
+    for_each = var.ingress_enabled ? [1] : []
+    content {
+      target_group_arn = var.ingress_target_group_arn
+      container_name   = var.container_name
+      container_port   = var.container_port
+    }
+  }
+
   network_configuration {
     subnets          = var.private_subnet_ids
     security_groups  = [aws_security_group.tasks.id]
@@ -155,5 +175,9 @@ resource "aws_ecs_service" "baseline" {
 
   lifecycle {
     ignore_changes = [task_definition]
+    precondition {
+      condition     = !var.ingress_enabled || var.ingress_target_group_arn != ""
+      error_message = "ingress_target_group_arn must be non-empty when ingress_enabled is true."
+    }
   }
 }

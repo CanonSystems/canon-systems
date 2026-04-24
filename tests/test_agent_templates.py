@@ -47,9 +47,23 @@ def test_release_orchestrator_template_has_merge_and_deploy_gates() -> None:
     assert "--require-memory-health" in body
     assert "canon memory-health --output" in body
     assert "DoR rejection telemetry contract (required)" in body
+    assert "build_task_outcome_event" in body
+    assert "task_outcome" in body
+    assert "Task-outcome telemetry (required)" in body
     assert "handoff-not-ready/<stage>-<timestamp>.md" in body
     assert "dor-failure/<stage>-<timestamp>.json" in body
     assert "canon dor-log --event-file" in body
+
+
+def test_workspace_release_orchestrator_template_stays_in_sync() -> None:
+    from pathlib import Path
+
+    packaged = resources.files("canon_systems.templates.agents").joinpath("release-orchestrator.md").read_text(
+        encoding="utf-8"
+    )
+    repo_root = Path(__file__).resolve().parent.parent
+    workspace = (repo_root / ".cursor" / "agents" / "release-orchestrator.md").read_text(encoding="utf-8")
+    assert workspace == packaged
 
 
 def test_cursor_pilot_requires_parallelization_plan() -> None:
@@ -260,6 +274,8 @@ def test_project_planner_template_checkpoint_propagation() -> None:
     assert "implementer" in body
     assert "qa-gate" in body
     assert "release-orchestrator" in body
+    assert "## Experimental lane manifest (parent orchestration)" in body
+    assert "CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION" in body
 
 
 def test_memory_layer_defaults_retrieval_policy() -> None:
@@ -387,6 +403,9 @@ def test_release_orchestrator_template_resume_aware() -> None:
     assert "docs/runbooks/RESUME.md" in body
     assert "resume_target" in body
     assert "before advancing the merge gate" in body
+    assert "## Experimental multilane visibility (parent session, opt-in)" in body
+    assert "CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION" in body
+    assert "--lanes" in body
 
 
 def test_resume_runbook_exists_and_covers_workflow() -> None:
@@ -401,3 +420,5 @@ def test_resume_runbook_exists_and_covers_workflow() -> None:
     assert "resume_target" in body
     assert "canon stall-watchdog" in body
     assert "Release-gate integration" in body
+    assert "--lanes" in body
+    assert "CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION" in body

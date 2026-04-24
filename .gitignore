@@ -14,6 +14,9 @@ node_modules/
 infra/terraform/.terraform/
 infra/terraform/*.tfstate*
 infra/terraform/.terraform.lock.hcl
+infra/axon-only/.terraform/
+infra/axon-only/*.tfstate*
+infra/axon-only/.terraform.lock.hcl
 infra/terraform/*.tfplan
 infra/**/crash.log
 # >>> canon-systems:vault-sync >>>

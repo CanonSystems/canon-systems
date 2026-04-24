@@ -36,6 +36,26 @@ canon resume \
 
 where `plan/tasks.json` is a JSON array of `{"task_id": "E4-T1", "workstream_id": "ws-main"}` objects.
 
+Optional enriched entries (for **experimental** parent-session multilane planning only) may add `depends_on` (JSON array of `task_id` strings), `parallel_group` (string), and `can_run_parallel` (boolean). Those fields are ignored unless you pass **`--lanes`** (see below).
+
+## Experimental multilane mode (`--lanes`, `--tasks-file` only)
+
+**Opt-in:** set **`CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION=1`** on the parent orchestrator and use an enriched manifest. The hard-lock build rule (**`memory-platform-build-discipline.mdc` §11**) describes policy; this section is the operator summary.
+
+```shell
+canon resume \
+  --plan-id canon-memory-v1 \
+  --company-id <c> --repository-id <r> \
+  --tasks-file plan/tasks.json \
+  --lanes
+```
+
+**Constraints:**
+
+- **`--lanes` requires `--tasks-file`**. It is **not** supported with `--handoffs-dir` (exit `4`).
+- Adds **`experimental_lanes`: true** plus **`runnable_targets`**, **`active_targets`**, **`blocked_targets`**, and **`task_threads`** to the JSON envelope. **`resume_target`**, exit codes, and checkpoint I/O are unchanged from the serial engine (first incomplete task in file order with a readable checkpoint).
+- **Merge-gate and release sweeps** should keep using **legacy serial discovery** (`--handoffs-dir` or a plain tasks-file **without** relying on lane-only fields) so incomplete work is not missed when experimental scheduling is off.
+
 ## Interpreting the output
 
 A typical envelope on stdout:
