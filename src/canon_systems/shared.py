@@ -21,16 +21,27 @@ from typing import Any
 import certifi
 
 
+def _runtime_canon_version_string() -> str:
+    """Prefer ``canon_systems.__version__`` so editable installs match ``canon --version``."""
+    try:
+        from . import __version__ as runtime_ver
+
+        if runtime_ver and str(runtime_ver).strip():
+            return str(runtime_ver).strip()
+    except Exception:
+        pass
+    try:
+        return pkg_version("canon-systems")
+    except PackageNotFoundError:
+        return "0"
+
+
 def _outbound_user_agent() -> str:
     """Identifiable UA for outbound HTTP(S); avoids empty/Python-urllib blocks on some CDNs."""
     explicit = os.environ.get("CANON_HTTP_USER_AGENT", "").strip()
     if explicit:
         return explicit
-    try:
-        ver = pkg_version("canon-systems")
-    except PackageNotFoundError:
-        ver = "0"
-    return f"canon-systems/{ver}"
+    return f"canon-systems/{_runtime_canon_version_string()}"
 
 
 def _ssl_context_for_outbound_https() -> ssl.SSLContext:

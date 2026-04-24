@@ -21,6 +21,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.5.4] - 2026-04-24
+
+### Fixed
+
+- **`canon doctor --curl-resolve-snippet`** and default HTTP **`User-Agent`** now use **`canon_systems.__version__`** (same as **`canon --version`**) instead of **`importlib.metadata.version("canon-systems")`**, which could stay on an old pipx wheel (e.g. **3.4.6**) while the repo checkout was newer.
+
 ## [3.5.3] - 2026-04-24
 
 ### Fixed

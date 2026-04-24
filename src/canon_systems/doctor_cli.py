@@ -11,11 +11,10 @@ import socket
 import sys
 import time
 import urllib.parse
-from importlib.metadata import PackageNotFoundError, version as pkg_version
 from pathlib import Path
 
 from .aws_secrets import _cache_file_path, resolve_canon_systems_secret_id
-from .shared import _resolve_ipv4_via_dig, load_env_file, repo_root
+from .shared import _resolve_ipv4_via_dig, _runtime_canon_version_string, load_env_file, repo_root
 
 _IPV4_IN_URL = re.compile(r"https?://\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?")
 
@@ -64,10 +63,8 @@ def _context_tenant(root: Path) -> tuple[str, str]:
 
 
 def _package_version() -> str:
-    try:
-        return pkg_version("canon-systems")
-    except PackageNotFoundError:
-        return "0"
+    """Same version as ``canon --version`` / loaded ``canon_systems.__version__``."""
+    return _runtime_canon_version_string()
 
 
 def _host_from_knowledge_base(url: str) -> str | None:
