@@ -70,6 +70,8 @@ rm -f ~/.canon/memory-layer-aws-cache.json
 
 **Secret id (example):** `canon-memory-dev/memory-layer__csc__canon-systems` (derived from `MEMORY_LAYER_AWS_SECRET_NAME_PREFIX` + slugs for `COMPANY_ID=CSC` and `REPOSITORY_ID=canon-systems`).
 
+**Multiple prefixes:** Repos may use **`canon-memory-dev`** or **`canon-systems-v2-dev`** (or another value) in `MEMORY_LAYER_AWS_SECRET_NAME_PREFIX`. **Every** tenant secret under **each** prefix must use the **same stable `https://` memory hostname** for the four URL keys. If one family of secrets still points at **ephemeral task IPs**, `canon memory-health` and **`canon e2e-check --agent`** will **FAIL** from machines that cannot route to those addresses (VPN/SG), even when onboarding and tenant IDs are correct — cut over **all** relevant `memory-layer__*` secrets for that prefix, then **`canon doctor --fix-cache`** on each laptop.
+
 **Goal:** point `KNOWLEDGE_API_URL`, `KNOWLEDGE_WORKER_URL`, `MEMORY_ADAPTER_URL`, and `CANON_STATE_API_URL` at the **same stable `https://` hostname** (ALB/NLB + DNS) instead of ephemeral task IPs. `MEMORY_ADAPTER_URL` may equal `KNOWLEDGE_API_URL` when **knowledge-api** mounts `POST /memory/search` on that base.
 
 **Cutover (operator):**

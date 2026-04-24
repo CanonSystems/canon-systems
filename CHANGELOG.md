@@ -21,6 +21,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.5.5] - 2026-04-24
+
+### Changed
+
+- **Docs:** `MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md` §1.2c — call out **`canon-memory-dev` vs `canon-systems-v2-dev`** (and other) `MEMORY_LAYER_AWS_SECRET_NAME_PREFIX` values; all `memory-layer__*` secrets for a prefix must use the **stable HTTPS memory hostname**, or **`canon e2e-check`** fails from networks that cannot reach raw task IPs.
+
 ## [3.5.4] - 2026-04-24
 
 ### Fixed
