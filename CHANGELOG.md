@@ -30,6 +30,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`knowledge-api`:** mounts **`memory-adapter`** `POST /memory/search` on the same
   app so MemPalace works when only the canonical API is deployed (no separate
   memory-adapter ECS service).
+- **`docker/knowledge-api/Dockerfile`:** reference image build for ECS Fargate
+  (`linux/amd64`). Dev tasks use ephemeral public IPs; after deploy, update
+  `KNOWLEDGE_*` / `MEMORY_ADAPTER_URL` in Secrets Manager if URLs embed the old
+  task IP (prefer an NLB/ALB DNS name long-term).
 
 ### Fixed
 
