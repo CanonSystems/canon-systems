@@ -6,12 +6,16 @@ import argparse
 import json
 import os
 import re
+import shlex
+import socket
 import sys
 import time
+import urllib.parse
+from importlib.metadata import PackageNotFoundError, version as pkg_version
 from pathlib import Path
 
 from .aws_secrets import _cache_file_path, resolve_canon_systems_secret_id
-from .shared import load_env_file, repo_root
+from .shared import _resolve_ipv4_via_dig, load_env_file, repo_root
 
 _IPV4_IN_URL = re.compile(r"https?://\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?")
 
@@ -59,6 +63,101 @@ def _context_tenant(root: Path) -> tuple[str, str]:
     return company, repo
 
 
+def _package_version() -> str:
+    try:
+        return pkg_version("canon-systems")
+    except PackageNotFoundError:
+        return "0"
+
+
+def _host_from_knowledge_base(url: str) -> str | None:
+    u = (url or "").strip()
+    if not u or "://" not in u:
+        return None
+    try:
+        host = urllib.parse.urlparse(u).hostname
+    except ValueError:
+        return None
+    if not host:
+        return None
+    if re.match(r"^(?:\d{1,3}\.){3}\d{1,3}$", host):
+        return None
+    return host
+
+
+def _read_cache_env_loose() -> dict[str, str]:
+    """Read ``env`` from the secrets cache JSON even if TTL expired (for diagnostics)."""
+    path = _cache_file_path()
+    if not path.is_file():
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    env = raw.get("env")
+    if not isinstance(env, dict):
+        return {}
+    return {str(k): str(v) for k, v in env.items()}
+
+
+def _memory_hostname_for_doctor(local: dict[str, str]) -> str | None:
+    h = _host_from_knowledge_base(local.get("KNOWLEDGE_API_URL", ""))
+    if h:
+        return h
+    cached = _read_cache_env_loose()
+    return _host_from_knowledge_base(cached.get("KNOWLEDGE_API_URL", ""))
+
+
+def _libc_resolver_tcp_ok(host: str, port: int = 443) -> bool:
+    try:
+        socket.getaddrinfo(host, port, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+        return True
+    except OSError:
+        return False
+
+
+def _curl_resolve_healthz_snippet(*, host: str, ipv4: str, canon_version: str) -> str:
+    health = f"https://{host}/healthz"
+    ua = f"canon-systems/{canon_version}"
+    return (
+        "curl -sS "
+        f"-A {shlex.quote(ua)} "
+        f"--resolve {shlex.quote(f'{host}:443:{ipv4}')} "
+        f"{shlex.quote(health)}"
+    )
+
+
+def _dns_warp_check(local: dict[str, str]) -> dict[str, object]:
+    host = _memory_hostname_for_doctor(local)
+    if not host:
+        return {
+            "status": "skipped",
+            "reason": "no KNOWLEDGE_API_URL hostname in .canon/memory-layer.local.env or ~/.canon/memory-layer-aws-cache.json",
+        }
+    libc_ok = _libc_resolver_tcp_ok(host, 443)
+    dig_a = _resolve_ipv4_via_dig(host)
+    split = bool(dig_a and not libc_ok)
+    ver = _package_version()
+    snippet = _curl_resolve_healthz_snippet(host=host, ipv4=dig_a, canon_version=ver) if dig_a else ""
+    return {
+        "status": "ok",
+        "memory_hostname": host,
+        "libc_resolver_ok": libc_ok,
+        "dig_a_record": dig_a or None,
+        "likely_split_dns_cloudflare_warp": split,
+        "note": (
+            "macOS libc resolver failed but dig found an A record — typical of Cloudflare WARP "
+            "(127.0.2.x DNS). `canon` 3.5.1+ works around this for Canon HTTP clients; raw curl "
+            "needs --resolve or a WARP split-tunnel / system DNS adjustment."
+        )
+        if split
+        else "",
+        "curl_resolve_healthz": snippet,
+    }
+
+
 def _cache_status() -> dict[str, object]:
     path = _cache_file_path()
     out: dict[str, object] = {"path": str(path), "exists": path.is_file()}
@@ -92,6 +191,14 @@ def run(argv: list[str] | None = None) -> int:
         "--fix-cache",
         action="store_true",
         help="Delete ~/.canon/memory-layer-aws-cache.json if it exists (forces next command to refetch Secrets Manager).",
+    )
+    p.add_argument(
+        "--curl-resolve-snippet",
+        action="store_true",
+        help=(
+            "Print a one-line curl that uses --resolve to reach KNOWLEDGE_API_URL /healthz "
+            "(for hosts where libc cannot resolve but dig can, e.g. Cloudflare WARP)."
+        ),
     )
     p.add_argument("--json", action="store_true", help="Emit machine-readable JSON to stdout.")
     args = p.parse_args(argv)
@@ -142,6 +249,19 @@ def run(argv: list[str] | None = None) -> int:
             if not args.json:
                 print(f"canon doctor: removed {cpath}", file=sys.stderr)
 
+    dns_info = _dns_warp_check(local)
+
+    if args.curl_resolve_snippet:
+        snippet = dns_info.get("curl_resolve_healthz") if isinstance(dns_info, dict) else ""
+        if not isinstance(snippet, str) or not snippet.strip():
+            print(
+                "canon doctor: no curl --resolve snippet (set KNOWLEDGE_API_URL or refresh AWS cache).",
+                file=sys.stderr,
+            )
+            return 1
+        print(snippet)
+        return 0
+
     out: dict[str, object] = {
         "repo_root": str(root),
         "memory_layer_local_env": str(env_path),
@@ -156,6 +276,7 @@ def run(argv: list[str] | None = None) -> int:
         "env_files_with_literal_ipv4_urls": [
             {"path": a, "key": b, "value": c} for a, b, c in ip_hits
         ],
+        "dns": dns_info,
     }
 
     if args.json:
@@ -202,6 +323,26 @@ def run(argv: list[str] | None = None) -> int:
         )
     else:
         print("env scan: no http(s)://x.x.x.x URLs found in standard Canon env paths")
+
+    if isinstance(dns_info, dict) and dns_info.get("status") == "ok":
+        host = dns_info.get("memory_hostname", "")
+        libc = dns_info.get("libc_resolver_ok")
+        dig_a = dns_info.get("dig_a_record")
+        split = dns_info.get("likely_split_dns_cloudflare_warp")
+        print(
+            f"dns check: host={host!r} libc_resolver_ok={libc} dig_a_record={dig_a!r}",
+        )
+        if split:
+            print(
+                "WARNING: split-brain DNS (libc cannot resolve; dig can) — often Cloudflare WARP. "
+                "Canon CLI 3.5.1+ uses a dig fallback for HTTP(S). For raw curl, run:\n  "
+                f"  canon doctor --curl-resolve-snippet",
+                file=sys.stderr,
+            )
+        elif dig_a and libc:
+            print("dns check: libc and dig agree; plain curl should resolve this host.")
+    elif isinstance(dns_info, dict) and dns_info.get("status") == "skipped":
+        print(f"dns check: skipped ({dns_info.get('reason', '')})")
 
     return 1 if mismatch or ip_hits else 0
 

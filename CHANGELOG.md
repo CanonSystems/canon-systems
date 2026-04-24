@@ -21,6 +21,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.5.2] - 2026-04-24
+
+### Added
+
+- **`canon doctor`:** detects **split-brain DNS** (libc cannot resolve the memory hostname but **`dig`** can — typical with **Cloudflare WARP**), prints a short warning, includes a **`dns`** object in **`--json`**, and adds **`canon doctor --curl-resolve-snippet`** to print a one-line **`curl --resolve`** command for **`/healthz`** (fresh **`dig`** A record + **`User-Agent`**).
+
 ## [3.5.1] - 2026-04-24
 
 ### Fixed
