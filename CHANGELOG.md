@@ -21,6 +21,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.5.3] - 2026-04-24
+
+### Fixed
+
+- **`canon doctor`:** the main CLI now declares and forwards **`--curl-resolve-snippet`** to `doctor_cli` (3.5.2 added the flag only on the inner parser).
+
 ## [3.5.2] - 2026-04-24
 
 ### Added

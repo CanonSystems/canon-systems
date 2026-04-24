@@ -290,6 +290,14 @@ def main(argv: list[str] | None = None) -> int:
         dest="doctor_json",
         help="Print JSON report.",
     )
+    doc_p.add_argument(
+        "--curl-resolve-snippet",
+        action="store_true",
+        dest="doctor_curl_resolve_snippet",
+        help=(
+            "Print a curl line with --resolve for KNOWLEDGE_API_URL /healthz (WARP / split DNS)."
+        ),
+    )
 
     qv = sub.add_parser(
         "qa-validate",
@@ -592,6 +600,8 @@ def main(argv: list[str] | None = None) -> int:
             d_args.append("--fix-cache")
         if getattr(args, "doctor_json", False):
             d_args.append("--json")
+        if getattr(args, "doctor_curl_resolve_snippet", False):
+            d_args.append("--curl-resolve-snippet")
         return run_doctor(d_args)
 
     if args.command == "memory-health":

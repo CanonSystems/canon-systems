@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+import canon_systems.cli as top_cli
 import canon_systems.doctor_cli as dr
 
 
@@ -80,6 +81,25 @@ def test_doctor_dns_split_brain_surfaces_in_json(
     assert o["dns"]["dig_a_record"] == "203.0.113.1"
     assert "memory.example.com" in o["dns"]["curl_resolve_healthz"]
     assert "203.0.113.1" in o["dns"]["curl_resolve_healthz"]
+
+
+def test_cli_doctor_forwards_curl_resolve_snippet(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(tmp_path))
+    (tmp_path / ".canon").mkdir(parents=True)
+    (tmp_path / ".canon" / "memory-layer.local.env").write_text(
+        "COMPANY_ID=ACME\n"
+        "REPOSITORY_ID=demo\n"
+        "KNOWLEDGE_API_URL=https://memory.example.com\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(dr, "repo_root", lambda: tmp_path)
+    monkeypatch.setattr(dr, "_resolve_ipv4_via_dig", lambda _h: "203.0.113.1")
+    buf = io.StringIO()
+    monkeypatch.setattr(dr.sys, "stdout", buf)
+    assert top_cli.main(["--repo-root", str(tmp_path), "doctor", "--curl-resolve-snippet"]) == 0
+    assert "--resolve" in buf.getvalue()
 
 
 def test_doctor_curl_resolve_snippet_stdout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
