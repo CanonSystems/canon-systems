@@ -208,11 +208,12 @@ When Canon behavior changes, update in the same PR:
 
 1. This file (`docs/SYSTEM-WORKFLOW.md`)
 2. `README.md` command/behavior docs
-3. Relevant agent templates/rules
-4. Tests that enforce the new behavior
-5. `CHANGELOG.md`
+3. `docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md` when retrieval, runtime env keys, or per-agent contracts change
+4. Relevant agent templates/rules
+5. Tests that enforce the new behavior
+6. `CHANGELOG.md`
 
-If any of the five are missing, iteration is incomplete.
+If any of the six are missing, iteration is incomplete.
 
 ## 9) Forward plan
 

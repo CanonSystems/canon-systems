@@ -62,6 +62,14 @@ Full `tests/` suite: **440 passing** at v1 sign-off.
 > [docs/SYSTEM-WORKFLOW.md](docs/SYSTEM-WORKFLOW.md) (living spec; update each
 > Canon iteration).
 >
+> **Runtime + agents (env, secrets, retrieval order, per-agent matrix)?** See
+> [docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md](docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md).
+>
+> **Why project-planner uses canonical memory before graph?** See
+> [docs/PROJECT-PLANNER-RETRIEVAL-RATIONALE.md](docs/PROJECT-PLANNER-RETRIEVAL-RATIONALE.md).
+>
+> **Future / tech-debt backlog (unordered)?** See [docs/ROADMAP.md](docs/ROADMAP.md).
+>
 > **Want the forward plan?** See the target architecture in
 > [docs/MEMORY-PLATFORM-PLAN.md](docs/MEMORY-PLATFORM-PLAN.md) and the
 > agent-executable backlog in

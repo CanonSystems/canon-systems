@@ -9,6 +9,14 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Docs:** `docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md` — full runtime checklist
+  (layered env, secret keys, state defaulting, graph health vs index usefulness),
+  global retrieval rule pointer, per-agent matrix, and living-update cross-links.
+- **Docs:** `docs/PROJECT-PLANNER-RETRIEVAL-RATIONALE.md` — design intent for
+  canonical-first planning vs graph-first implementation chain.
+- **Docs:** `docs/ROADMAP.md` — unordered future work, including AWS
+  `canon-systems-v2` naming alignment tech debt.
+
 ### Changed
 
 ### Fixed
