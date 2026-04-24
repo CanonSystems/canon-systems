@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import re
+import socket
+from importlib.metadata import PackageNotFoundError, version as pkg_version
 import ssl
 import subprocess
 import time
@@ -18,6 +21,18 @@ from typing import Any
 import certifi
 
 
+def _outbound_user_agent() -> str:
+    """Identifiable UA for outbound HTTP(S); avoids empty/Python-urllib blocks on some CDNs."""
+    explicit = os.environ.get("CANON_HTTP_USER_AGENT", "").strip()
+    if explicit:
+        return explicit
+    try:
+        ver = pkg_version("canon-systems")
+    except PackageNotFoundError:
+        ver = "0"
+    return f"canon-systems/{ver}"
+
+
 def _ssl_context_for_outbound_https() -> ssl.SSLContext:
     """TLS context for HTTPS clients (macOS Python often lacks a full CA bundle)."""
     if os.environ.get("CANON_INSECURE_SKIP_SSL_VERIFY", "").strip().lower() in ("1", "true", "yes"):
@@ -28,8 +43,183 @@ def _ssl_context_for_outbound_https() -> ssl.SSLContext:
     return ssl.create_default_context(cafile=certifi.where())
 
 
-def canon_urlopen(request: urllib.request.Request, *, timeout_s: float):
-    """Like ``urllib.request.urlopen``, but uses certifi's CA store for HTTPS."""
+_IPV4_RE = re.compile(r"^(?:\d{1,3}\.){3}\d{1,3}$")
+
+
+def _is_ipv4_literal(host: str) -> bool:
+    return bool(_IPV4_RE.match(host))
+
+
+def _is_dns_resolution_failure(exc: BaseException) -> bool:
+    """True when libc/getaddrinfo could not resolve the hostname (e.g. some WARP/DNS setups)."""
+    if isinstance(exc, urllib.error.HTTPError):
+        return False
+    if isinstance(exc, urllib.error.URLError):
+        r = exc.reason
+        if isinstance(r, OSError) and getattr(r, "errno", None) == 8:
+            return True
+        if type(r).__name__ == "gaierror":
+            return True
+        rs = str(r).lower()
+        if "nodename nor servname" in rs or "name or service not known" in rs:
+            return True
+    if isinstance(exc, OSError):
+        if getattr(exc, "errno", None) == 8:
+            return True
+        if type(exc).__name__ == "gaierror":
+            return True
+    return False
+
+
+def _resolve_ipv4_via_dig(host: str) -> str | None:
+    """Best-effort A-record lookup via ``dig`` when system resolver returns EAI_NONAME."""
+    try:
+        proc = subprocess.run(
+            ["dig", "+short", host, "A"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=6,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    for line in proc.stdout.splitlines():
+        cand = line.strip().rstrip(".")
+        if _is_ipv4_literal(cand):
+            return cand
+    return None
+
+
+def _format_http11_request(
+    method: str,
+    path_qs: str,
+    headers: dict[str, str],
+    payload: bytes | None,
+) -> bytes:
+    lines = [f"{method} {path_qs} HTTP/1.1"]
+    for k, v in headers.items():
+        lines.append(f"{k}: {v}")
+    if "connection" not in {x.lower() for x in headers}:
+        lines.append("Connection: close")
+    lines.append("")
+    head = "\r\n".join(lines) + "\r\n"
+    return head.encode("utf-8") + (payload or b"")
+
+
+def _read_http11_response(sock: socket.socket) -> tuple[int, bytes]:
+    """Parse a minimal HTTP/1.1 response (enough for JSON /healthz bodies)."""
+    fp = sock.makefile("rb")
+    try:
+        raw_status = fp.readline()
+        status_line = raw_status.decode("latin-1", errors="replace")
+        if not status_line:
+            return 0, b""
+        parts = status_line.split(None, 2)
+        if len(parts) < 2:
+            return 0, b""
+        code = int(parts[1])
+        headers: dict[str, str] = {}
+        while True:
+            raw = fp.readline()
+            if raw in (b"", b"\r\n", b"\n"):
+                break
+            line = raw.decode("latin-1", errors="replace").rstrip("\r\n")
+            if not line:
+                break
+            if ":" in line:
+                k, v = line.split(":", 1)
+                headers[k.strip().lower()] = v.strip()
+        clen = headers.get("content-length")
+        if clen is not None:
+            try:
+                n = int(clen)
+            except ValueError:
+                n = 0
+            body = fp.read(n) if n > 0 else b""
+        else:
+            body = fp.read(2_000_000)
+        return code, body
+    finally:
+        fp.close()
+
+
+class _SimpleHttpResponse:
+    """Minimal response object compatible with ``with resp: resp.read(); resp.getcode()``."""
+
+    def __init__(self, code: int, body: bytes) -> None:
+        self._code = code
+        self._body = body
+
+    def read(self) -> bytes:
+        return self._body
+
+    def getcode(self) -> int:
+        return self._code
+
+    def __enter__(self) -> _SimpleHttpResponse:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+
+def _try_urlopen_dns_dig_fallback(
+    request: urllib.request.Request, *, timeout_s: float
+) -> _SimpleHttpResponse | None:
+    if os.environ.get("CANON_DNS_FALLBACK", "1").strip().lower() in ("0", "false", "no"):
+        return None
+    url = request.full_url
+    parsed = urllib.parse.urlparse(url)
+    host = parsed.hostname
+    if not host or _is_ipv4_literal(host):
+        return None
+    ip = _resolve_ipv4_via_dig(host)
+    if not ip:
+        return None
+    scheme = (parsed.scheme or "").lower()
+    port = parsed.port or (443 if scheme == "https" else 80)
+    path_qs = parsed.path or "/"
+    if parsed.query:
+        path_qs = f"{path_qs}?{parsed.query}"
+    method = request.get_method() or "GET"
+    hdrs = {k: v for k, v in request.header_items()}
+    hdrs["Host"] = host
+    payload = request.data
+
+    if scheme == "https":
+        ctx = _ssl_context_for_outbound_https()
+        plain = socket.create_connection((ip, port), timeout=timeout_s)
+        try:
+            ssock = ctx.wrap_socket(plain, server_hostname=host)
+        except Exception:
+            plain.close()
+            raise
+        try:
+            req_bytes = _format_http11_request(method, path_qs, hdrs, payload)
+            ssock.sendall(req_bytes)
+            code, body = _read_http11_response(ssock)
+        finally:
+            try:
+                ssock.close()
+            except Exception:
+                pass
+        return _SimpleHttpResponse(code, body)
+    if scheme == "http":
+        conn = http.client.HTTPConnection(ip, port, timeout=timeout_s)
+        try:
+            conn.request(method, path_qs, body=payload, headers=hdrs)
+            raw_resp = conn.getresponse()
+            body = raw_resp.read()
+            code = int(raw_resp.status)
+        finally:
+            conn.close()
+        return _SimpleHttpResponse(code, body)
+    return None
+
+
+def _canon_urlopen_direct(request: urllib.request.Request, *, timeout_s: float):
     if request.full_url.lower().startswith("https:"):
         return urllib.request.urlopen(
             request,
@@ -37,6 +227,32 @@ def canon_urlopen(request: urllib.request.Request, *, timeout_s: float):
             context=_ssl_context_for_outbound_https(),
         )
     return urllib.request.urlopen(request, timeout=timeout_s)
+
+
+def canon_urlopen(request: urllib.request.Request, *, timeout_s: float):
+    """Like ``urllib.request.urlopen``, but uses certifi's CA store for HTTPS.
+
+    When the OS resolver fails to resolve the hostname (seen with some Cloudflare WARP /
+    split-DNS setups where ``dig`` works but ``getaddrinfo`` does not), optionally retries
+    via a ``dig``-assisted connect using the original hostname for SNI and ``Host``. Opt out
+    with ``CANON_DNS_FALLBACK=0``.
+
+    Sets ``User-Agent`` when missing so requests are not blocked as bare ``Python-urllib/*``
+    (e.g. some Cloudflare WAF / bot rules).
+    """
+    if not request.has_header("User-agent"):
+        request.add_header("User-Agent", _outbound_user_agent())
+    try:
+        return _canon_urlopen_direct(request, timeout_s=timeout_s)
+    except (urllib.error.URLError, OSError) as e:
+        if isinstance(e, urllib.error.HTTPError):
+            raise
+        if not _is_dns_resolution_failure(e):
+            raise
+        fb = _try_urlopen_dns_dig_fallback(request, timeout_s=timeout_s)
+        if fb is None:
+            raise
+        return fb
 
 
 @dataclass(slots=True)

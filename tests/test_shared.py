@@ -1,8 +1,13 @@
 import os
+import socket
+import urllib.error
+import urllib.request
 from pathlib import Path
 
+import canon_systems.shared as shared
 from canon_systems.shared import (
     apply_layered_canon_env_for_repo,
+    canon_urlopen,
     ensure_layered_memory_env,
     merge_canon_systems_env_files,
     repo_root,
@@ -94,3 +99,59 @@ def test_apply_layered_env_respects_explicit_state_url(monkeypatch, tmp_path: Pa
 
     apply_layered_canon_env_for_repo(tmp_path)
     assert os.environ.get("CANON_STATE_API_URL") == "http://state.example:9000"
+
+
+def test_canon_urlopen_dns_dig_fallback_on_gaierror(monkeypatch) -> None:
+    def boom(*_a, **_kw):
+        raise urllib.error.URLError(
+            socket.gaierror(8, "nodename nor servname provided, or not known")
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", boom)
+
+    def fake_fb(req: urllib.request.Request, *, timeout_s: float):
+        assert req.full_url == "https://example.test/healthz"
+        assert timeout_s == 1.5
+        return shared._SimpleHttpResponse(200, b'{"status":"ok"}')
+
+    monkeypatch.setattr(shared, "_try_urlopen_dns_dig_fallback", fake_fb)
+    req = urllib.request.Request("https://example.test/healthz")
+    with canon_urlopen(req, timeout_s=1.5) as resp:
+        assert resp.getcode() == 200
+        assert resp.read() == b'{"status":"ok"}'
+
+
+def test_canon_urlopen_dns_dig_fallback_disabled(monkeypatch) -> None:
+    monkeypatch.setenv("CANON_DNS_FALLBACK", "0")
+
+    def boom(*_a, **_kw):
+        raise urllib.error.URLError(
+            socket.gaierror(8, "nodename nor servname provided, or not known")
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", boom)
+    req = urllib.request.Request("https://example.test/z")
+    try:
+        with canon_urlopen(req, timeout_s=1.0):
+            pass
+    except urllib.error.URLError:
+        return
+    raise AssertionError("expected URLError")
+
+
+def test_resolve_ipv4_via_dig_parses_first_a_record(monkeypatch) -> None:
+    class _P:
+        returncode = 0
+        stdout = "172.64.80.1\n"
+
+    monkeypatch.setattr(shared.subprocess, "run", lambda *a, **k: _P())
+    assert shared._resolve_ipv4_via_dig("memory.example.com") == "172.64.80.1"
+
+
+def test_resolve_ipv4_via_dig_skips_cname_lines(monkeypatch) -> None:
+    class _P:
+        returncode = 0
+        stdout = "target.elb.amazonaws.com.\n172.64.80.1\n"
+
+    monkeypatch.setattr(shared.subprocess, "run", lambda *a, **k: _P())
+    assert shared._resolve_ipv4_via_dig("x.example.com") == "172.64.80.1"

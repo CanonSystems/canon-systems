@@ -21,6 +21,13 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.5.1] - 2026-04-24
+
+### Fixed
+
+- **`canon_urlopen`:** when `getaddrinfo` fails with “nodename nor servname …” (seen with some **Cloudflare WARP** setups where `dig` still resolves), retry via a **`dig` + TLS-SNI** connect to the IPv4 target while preserving the original hostname for certificate verification. Disable with **`CANON_DNS_FALLBACK=0`**.
+- **Outbound `User-Agent`:** default to **`canon-systems/<version>`** when callers omit one so **Cloudflare** (and similar) do not block bare **`Python-urllib/*`** probes; override with **`CANON_HTTP_USER_AGENT`**.
+
 ## [3.5.0] - 2026-04-24
 
 ### Added
