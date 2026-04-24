@@ -24,6 +24,14 @@ This repo is wired to Canon Systems (tenant-scoped to this `company_id` +
    **repo root** run: `canon e2e-check --agent` — the JSON must show
    `"verdict": "PASS"` (single plug-and-play health check: wiring + required
    memory backends).
+5. **canon-systems ≥ 3.4.7:** run `canon doctor` when validating wiring (tenant
+   alignment, env URL sanity, cache metadata). After secret or dev URL changes,
+   run `canon doctor --fix-cache` (or `rm -f ~/.canon/memory-layer-aws-cache.json`).
+   **3.4.6 and older:** there is no `doctor` command — use the `rm` line above,
+   then `canon preflight` / **`canon memory-health --json`** / `canon e2e-check --agent`
+   (see `docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md` §1.2a–§1.2b). If the repo has no
+   hardcoded IPs but endpoints still use a task IP, the URLs live in **AWS Secrets
+   Manager** (mirrored in `~/.canon/memory-layer-aws-cache.json`), not in git.
 
 ## During work
 

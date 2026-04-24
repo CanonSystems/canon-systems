@@ -21,6 +21,13 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.4.7] - 2026-04-24
+
+### Added
+
+- **`canon doctor`** — reports tenant wiring vs last preflight `context-latest.md`, AWS secret cache path/TTL, and warns on `http(s)://` URLs with **literal IPv4** in standard Canon env paths; **`canon doctor --fix-cache`** deletes `~/.canon/memory-layer-aws-cache.json` after secret rotation.
+- **Docs:** [MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md](docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md) §1.2b (Secrets Manager client cache), §1.2a (URLs may exist only in AWS + cache; `doctor` scans `.env` paths, not cache JSON), and [ONBOARDING](docs/ONBOARDING.md) — 3.4.6 vs 3.4.7 (`memory-health` / `rm` vs `doctor`). **Agent rule** `memory-layer-defaults.mdc` aligned.
+
 ## [3.4.6] - 2026-04-24
 
 ### Added
@@ -40,6 +47,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`canon memory-health` / preflight:** HTTPS probes no longer fail with
   `CERTIFICATE_VERIFY_FAILED` on typical macOS Python installs when the remote
   chain is valid.
+
+### Note
+
+- **`canon doctor`** is not part of this release; it ships in **3.4.7**. After
+  secret rotation on **3.4.6**, clear the client cache with
+  `rm -f ~/.canon/memory-layer-aws-cache.json` (see runtime doc §1.2b).
 
 ## [3.4.5] - 2026-04-23
 

@@ -32,6 +32,40 @@ Then **AWS Secrets Manager** is applied (same keys), using the secret id derived
 
 **Implication:** A key may exist **only** in Secrets Manager or only in `~/.canon/*.env` — that is valid.
 
+### 1.2a URLs only in Secrets Manager (repo and dot-canon env look clean)
+
+`KNOWLEDGE_API_URL`, `KNOWLEDGE_WORKER_URL`, `MEMORY_ADAPTER_URL`, and related keys are often **only** in the AWS memory-layer secret — not in tracked source and not in `~/.canon/canon-systems.env`. After hydration, the CLI mirrors the decoded JSON in **`~/.canon/memory-layer-aws-cache.json`** (until TTL or you delete it).
+
+So a search for `http://` / `https://` **+ literal IPv4** in the git repo or in `~/.canon/*.env` may find **nothing**, while the **secret** (and cache) still point at a **temporary ECS task IP**. Fixing that means updating the secret payload in AWS (or your Canon infra pipeline) to stable hostnames (ALB/NLB + DNS), then clearing the client cache (§1.2b).
+
+**Inspect what is actually in effect:**
+
+- Open `~/.canon/memory-layer-aws-cache.json` and read the merged URL fields (or use the AWS console/CLI on `MEMORY_LAYER_AWS_SECRET_ID`).
+- **`canon memory-health --json`** — works on **3.4.6+**; reports backend probe status for the resolved URLs.
+- **`canon doctor`** (**≥ 3.4.7**) scans **standard Canon `.env` paths** for `http(s)://` + IPv4; it does **not** parse URL values out of the cache blob, so a secret-only task IP will **not** show up in `env_files_with_literal_ipv4_urls` until you put that URL in a layered file or change the secret.
+
+### 1.2b AWS Secrets Manager **client cache** (when to clear it)
+
+After layered files are merged, `apply_canon_systems_secrets_from_aws()` may **cache** the decoded secret JSON on disk so hooks and CLIs do not call `GetSecretValue` on every turn.
+
+| | |
+|---|---|
+| **Cache file** | `~/.canon/memory-layer-aws-cache.json` |
+| **Default TTL** | 900 seconds (15 minutes), overridable with `MEMORY_LAYER_AWS_CACHE_TTL_SEC` |
+| **Disable reads** | Set `MEMORY_LAYER_AWS_DISABLE_CACHE=1` (or `true` / `yes`) |
+
+**Clear the cache when:** someone **rotated or replaced** the secret in AWS (new URLs, tokens, etc.) and your machine still behaves as if the **old** values are in effect—or you need new values **immediately** without waiting for TTL.
+
+**Ways to clear:**
+
+```bash
+rm -f ~/.canon/memory-layer-aws-cache.json
+```
+
+**canon-systems ≥ 3.4.7:** `canon doctor --fix-cache` does the same delete (convenience wrapper). **`canon doctor` is not in 3.4.6** — use the `rm` command above on older installs.
+
+**Related (3.4.7+):** `canon doctor` (without flags) compares `COMPANY_ID` / `REPOSITORY_ID` in `.canon/memory-layer.local.env` to the last `.canon/memory/context-latest.md` preflight snapshot, and flags `http(s)://` URLs that use a **literal IPv4** in **the scanned `.env` paths** (§1.2a — not values inside the cache JSON). On **3.4.6**, use `canon preflight`, **`canon memory-health --json`**, `canon e2e-check --agent`, and inspect the cache file or AWS for secret-only URLs.
+
 ### 1.3 Secrets payload (structured JSON or compatible `.env`)
 
 **Required for `canon secrets submit` validation** (unless `--allow-partial`):  

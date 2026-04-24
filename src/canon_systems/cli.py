@@ -19,6 +19,7 @@ from .report_cli import run as run_report_cli
 from .resume_engine import run as run_resume_engine
 from .stall_watchdog import run as run_stall_watchdog
 from .synth_cli import run as run_synth_cli
+from .doctor_cli import run as run_doctor
 from .dor_log import run as run_dor_log
 from .flow_audit import run as run_flow_audit
 from .memory_health import run as run_memory_health
@@ -272,6 +273,22 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         dest="e2e_agent",
         help="Wrap JSON with <<<CANON_E2E_VERDICT>>> for agent parsing.",
+    )
+
+    doc_p = sub.add_parser(
+        "doctor",
+        help="Diagnose wiring: tenant vs context, AWS secret cache, raw IPv4 URLs in env files.",
+    )
+    doc_p.add_argument(
+        "--fix-cache",
+        action="store_true",
+        help="Delete the AWS Secrets Manager client cache so the next command refetches JSON.",
+    )
+    doc_p.add_argument(
+        "--json",
+        action="store_true",
+        dest="doctor_json",
+        help="Print JSON report.",
     )
 
     qv = sub.add_parser(
@@ -568,6 +585,14 @@ def main(argv: list[str] | None = None) -> int:
 
         e2e_argv = ["--agent"] if getattr(args, "e2e_agent", False) else []
         return run_e2e_check(e2e_argv)
+
+    if args.command == "doctor":
+        d_args: list[str] = []
+        if getattr(args, "fix_cache", False):
+            d_args.append("--fix-cache")
+        if getattr(args, "doctor_json", False):
+            d_args.append("--json")
+        return run_doctor(d_args)
 
     if args.command == "memory-health":
         mh_args: list[str] = []
