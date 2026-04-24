@@ -16,3 +16,11 @@ infra/terraform/*.tfstate*
 infra/terraform/.terraform.lock.hcl
 infra/terraform/*.tfplan
 infra/**/crash.log
+# >>> canon-systems:vault-sync >>>
+vault/
+.canon/memory/events.ndjson.lock
+# <<< canon-systems:vault-sync <<<
+# Local tenant wiring + hook sidecars (do not commit)
+.canon/memory-layer.local.env
+.canon/memory/pending-user-turn.json
+.canon/memory/mempalace-retry-queue.jsonl

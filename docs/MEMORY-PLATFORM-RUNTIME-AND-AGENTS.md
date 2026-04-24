@@ -43,7 +43,7 @@ Then **AWS Secrets Manager** is applied (same keys), using the secret id derived
 |-----|------|
 | `KNOWLEDGE_API_URL` | Canonical / knowledge API base (no path; health at `/healthz`). |
 | `KNOWLEDGE_WORKER_URL` | Worker base. |
-| `MEMORY_ADAPTER_URL` | MemPalace adapter base. |
+| `MEMORY_ADAPTER_URL` | MemPalace adapter base (`POST {base}/memory/search`). When your stack does not run a separate memory-adapter process, the **knowledge-api** service may mount this route on the **same** base URL as `KNOWLEDGE_API_URL` (see `backend/knowledge-api/app/main.py`). |
 | `CANON_HTTP_BEARER_TOKEN` | Shared bearer for HTTP where configured. |
 | `SCOPE_ARTIFACT_BUCKET` | Artifact bucket name. |
 

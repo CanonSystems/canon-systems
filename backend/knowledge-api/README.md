@@ -2,6 +2,8 @@
 
 Canonical API service.
 
+**Co-install:** `app.main` mounts `memory_adapter.api.router.search_router` so `POST /memory/search` is available on the same base URL as the canonical API (for stacks without a separate memory-adapter ECS service). Install `backend/memory-adapter` before this package (`scripts/backend/build-services.sh` order).
+
 Phase 1 responsibilities:
 
 - artifact CRUD

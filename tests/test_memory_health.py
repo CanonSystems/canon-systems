@@ -145,6 +145,13 @@ def test_not_configured(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
         "CANON_STATE_API_URL",
         "AXON_SERVICE_URL",
         "CANON_MEMORY_HEALTH_REQUIRED",
+        "COMPANY_ID",
+        "REPOSITORY_ID",
+        "MEMORY_LAYER_AWS_SECRET_NAME_PREFIX",
+        "MEMORY_LAYER_AWS_SECRET_ID",
+        "AWS_PROFILE",
+        "AWS_DEFAULT_REGION",
+        "AWS_REGION",
     ):
         monkeypatch.delenv(v, raising=False)
     monkeypatch.setenv("CANON_MEMORY_HEALTH_REQUIRED", "state")
@@ -450,6 +457,13 @@ def test_graph_optional_not_configured_exit_ok(
         "STATE_API_URL",
         "AXON_SERVICE_URL",
         "CANON_MEMORY_HEALTH_REQUIRED",
+        "COMPANY_ID",
+        "REPOSITORY_ID",
+        "MEMORY_LAYER_AWS_SECRET_NAME_PREFIX",
+        "MEMORY_LAYER_AWS_SECRET_ID",
+        "AWS_PROFILE",
+        "AWS_DEFAULT_REGION",
+        "AWS_REGION",
     ):
         monkeypatch.delenv(v, raising=False)
     monkeypatch.setattr(mh, "_probe", lambda _u, _t: _ok_200())
@@ -477,6 +491,13 @@ def test_graph_required_unhealthy_when_unset(
         "MEMORY_ADAPTER_URL",
         "STATE_API_URL",
         "AXON_SERVICE_URL",
+        "COMPANY_ID",
+        "REPOSITORY_ID",
+        "MEMORY_LAYER_AWS_SECRET_NAME_PREFIX",
+        "MEMORY_LAYER_AWS_SECRET_ID",
+        "AWS_PROFILE",
+        "AWS_DEFAULT_REGION",
+        "AWS_REGION",
     ):
         monkeypatch.delenv(v, raising=False)
     monkeypatch.setattr(mh, "_probe", lambda _u, _t: _ok_200())
@@ -513,6 +534,13 @@ def test_urls_from_home_canon_env_when_local_env_omits_urls(
         "MEMORY_ADAPTER_URL",
         "STATE_API_URL",
         "AXON_SERVICE_URL",
+        "COMPANY_ID",
+        "REPOSITORY_ID",
+        "MEMORY_LAYER_AWS_SECRET_NAME_PREFIX",
+        "MEMORY_LAYER_AWS_SECRET_ID",
+        "AWS_PROFILE",
+        "AWS_DEFAULT_REGION",
+        "AWS_REGION",
     ):
         monkeypatch.delenv(v, raising=False)
 

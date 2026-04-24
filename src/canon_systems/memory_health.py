@@ -12,7 +12,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from .shared import apply_layered_canon_env_for_repo, load_env_file, repo_root
+from .shared import apply_layered_canon_env_for_repo, canon_urlopen, load_env_file, repo_root
 
 SCHEMA_VERSION = "1"
 
@@ -85,7 +85,7 @@ def _probe(url: str, timeout_ms: int) -> dict[str, Any]:
     to_s = max(timeout_ms, 1) / 1000.0
     req = urllib.request.Request(url=url, method="GET", headers={"Accept": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=to_s) as resp:  # noqa: S310
+        with canon_urlopen(req, timeout_s=to_s) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
             out["http_status"] = int(resp.getcode() or 0)
             out["body_text"] = raw

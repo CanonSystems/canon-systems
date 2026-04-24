@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import ssl
 import subprocess
 import time
 import urllib.error
@@ -13,6 +14,29 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import certifi
+
+
+def _ssl_context_for_outbound_https() -> ssl.SSLContext:
+    """TLS context for HTTPS clients (macOS Python often lacks a full CA bundle)."""
+    if os.environ.get("CANON_INSECURE_SKIP_SSL_VERIFY", "").strip().lower() in ("1", "true", "yes"):
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+    return ssl.create_default_context(cafile=certifi.where())
+
+
+def canon_urlopen(request: urllib.request.Request, *, timeout_s: float):
+    """Like ``urllib.request.urlopen``, but uses certifi's CA store for HTTPS."""
+    if request.full_url.lower().startswith("https:"):
+        return urllib.request.urlopen(
+            request,
+            timeout=timeout_s,
+            context=_ssl_context_for_outbound_https(),
+        )
+    return urllib.request.urlopen(request, timeout=timeout_s)
 
 
 @dataclass(slots=True)
@@ -441,7 +465,7 @@ def request_json(
 
     req = urllib.request.Request(url=url, method=method, headers=headers, data=payload)
     try:
-        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+        with canon_urlopen(req, timeout_s=float(timeout_s)) as resp:
             raw = resp.read().decode("utf-8")
             status = resp.getcode()
     except urllib.error.HTTPError as exc:

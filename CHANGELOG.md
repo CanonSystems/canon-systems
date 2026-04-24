@@ -21,6 +21,22 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.4.6] - 2026-04-24
+
+### Added
+
+- **`certifi` dependency** for HTTPS clients; `canon_urlopen` / `request_json` use
+  certifi’s CA bundle so macOS Python can verify TLS to hosts like App Runner.
+- **`knowledge-api`:** mounts **`memory-adapter`** `POST /memory/search` on the same
+  app so MemPalace works when only the canonical API is deployed (no separate
+  memory-adapter ECS service).
+
+### Fixed
+
+- **`canon memory-health` / preflight:** HTTPS probes no longer fail with
+  `CERTIFICATE_VERIFY_FAILED` on typical macOS Python installs when the remote
+  chain is valid.
+
 ## [3.4.5] - 2026-04-23
 
 ### Changed

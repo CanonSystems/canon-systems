@@ -167,3 +167,11 @@ def test_build_services_script_present_and_executable() -> None:
     p = REPO_ROOT / "scripts" / "backend" / "build-services.sh"
     assert p.is_file()
     assert os.access(p, os.X_OK)
+
+
+def test_knowledge_api_mounts_memory_search_router() -> None:
+    main_py = BACKEND / "knowledge-api" / "app" / "main.py"
+    text = main_py.read_text(encoding="utf-8")
+    assert "memory_adapter.api.router" in text
+    assert "memory_search_router" in text
+    assert "include_router(memory_search_router)" in text
