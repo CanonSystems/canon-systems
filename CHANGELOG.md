@@ -9,7 +9,6 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **Experimental multilane `canon resume`:** optional **`--lanes`** with **`--tasks-file`** adds `runnable_targets`, `active_targets`, `blocked_targets`, and `task_threads` (plus `experimental_lanes`) from existing checkpoints plus optional manifest metadata (`depends_on`, `parallel_group`, `can_run_parallel`). Policy opt-in **`CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION`** documented in `memory-platform-build-discipline.mdc` §11, `docs/runbooks/RESUME.md`, and agent templates. Pure scheduler module `task_thread_scheduler.py`; no state-api schema changes.
 - **Docs:** `docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md` — full runtime checklist
   (layered env, secret keys, state defaulting, graph health vs index usefulness),
   global retrieval rule pointer, per-agent matrix, and living-update cross-links.
@@ -21,6 +20,22 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 ### Fixed
+
+## [3.5.0] - 2026-04-24
+
+### Added
+
+- **Stable dev memory URL controls:** optional ECS ingress wiring, stable-HTTPS secret/tooling defaults, rollback guidance, and validation paths so Canon memory endpoints can move off ephemeral task IPs.
+- **Experiment-aware telemetry and reporting:** additive `payload.comparison` metadata, `task_outcome` canonical events, `metrics_rollup` comparison buckets, and `canon report` filters / `--compare-by` for memory-mode and experiment comparisons.
+- **Experimental multilane orchestration:** optional **`canon resume --lanes`** with enriched `--tasks-file` manifests adds `runnable_targets`, `active_targets`, `blocked_targets`, and `task_threads` while preserving legacy serial resume behavior.
+
+### Changed
+
+- **Parent orchestration policy:** templates, runbooks, and the hard-lock rule now document an explicit opt-in path for experimental parent-session multilane scheduling via `CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION`, while keeping canon-memory-v1 serial protections as the default.
+
+### Fixed
+
+- **Terraform hygiene:** removed stray tracked local Terraform lock/state artifacts under `infra/axon-only` and tightened ignore coverage so layout/regression checks stay green.
 
 ## [3.4.7] - 2026-04-24
 
