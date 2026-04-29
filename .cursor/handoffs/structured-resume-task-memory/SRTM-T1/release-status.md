@@ -5,7 +5,7 @@ RELEASE_STATUS
   task_id: "SRTM-T1"
   workstream_id: "ws-main"
   branch: "task/SRTM-structured-resume-task-memory"
-  pr_url: "pending"
+  pr_url: "https://github.com/CanonSystems/canon-systems/pull/8"
   qa_gate: "PASS"
   qa_validate_gate: "PASS"
   sampled_flow_audit_gate: "SKIPPED_NOT_SELECTED"
@@ -33,6 +33,7 @@ RELEASE_STATUS
     - "canon flow-audit --handoff-id structured-resume-task-memory --task-id SRTM-T1 --plan-file .cursor/plans/structured-resume-task-memory.plan.md --sample-rate 0.2"
     - "canon resume --plan-id structured-resume-task-memory --company-id CSC --repository-id canon-systems --handoffs-dir .cursor/handoffs/structured-resume-task-memory"
     - "gh pr view --json url,state,statusCheckRollup"
+    - "parent-observed PR checks after PR creation: smoke-test PASS; template-policy PASS; Cursor Bugbot PENDING"
   gate_results:
     qa_verdict: "PASS from persisted qa-gate.md"
     qa_validate: "PASS: local rerun reported qa-validate: PASS"
@@ -42,10 +43,10 @@ RELEASE_STATUS
     memory_health_flow_audit: "PASS: canon flow-audit --require-memory-health passed"
     resume_check: "PASS: documented canon resume command exited 0 with resume_target null, resume_available false, and no degraded_tasks after SRTM-T2 fixed the top-level CLI blocker; stdout reported tasks_scanned 0."
     checkpoint_read: "SKIPPED: CANON_STATE_API_URL unset"
-    ci: "PENDING: gh reports no pull requests found for branch task/SRTM-structured-resume-task-memory, so required PR CI has not run"
+    ci: "PENDING: PR #8 exists and required checks smoke-test and template-policy pass, but Cursor Bugbot remains pending"
     branch: "PASS: current branch is task/SRTM-structured-resume-task-memory"
     dirty_tree: "PRESENT_BUT_SCOPED: unrelated dirty files remain outside the SRTM-T1 release assessment and were excluded, including .canon/memory/capture-failures.log, .canon/memory/capture-latest.json, infra/terraform/variables.tf, and scripts/clone_memory_layer_secret.py."
   blockers:
-    - "Required PR CI is pending because no PR exists for branch task/SRTM-structured-resume-task-memory."
-  next_action: "Open a PR for task/SRTM-structured-resume-task-memory and wait for required CI checks before marking SRTM-T1 READY_TO_MERGE."
+    - "Cursor Bugbot is still pending on PR #8, so final merge readiness cannot be declared."
+  next_action: "Wait for Cursor Bugbot to complete on PR #8 before marking SRTM-T1 READY_TO_MERGE."
 END_RELEASE_STATUS
