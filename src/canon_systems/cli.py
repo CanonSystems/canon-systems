@@ -128,6 +128,35 @@ def _mark_global_rewire_done() -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _split_canon_resume_cli(user_argv: list[str]) -> tuple[str, list[str]] | None:
+    """Recognize [--repo-root PATH]* resume [--] <passthrough-tail> and return passthrough argv.
+
+    Top-level argparse cannot reliably forward resume flags beginning with "-" (REMAINDER
+    loses them during sub-parser resolution); this detects ``resume`` at the canon CLI boundary
+    and forwards the untouched tail directly to ``resume_engine.run``.
+    """
+    idx = 0
+    repo_root = ""
+    while idx < len(user_argv):
+        tok = user_argv[idx]
+        if tok == "--repo-root" and idx + 1 < len(user_argv):
+            repo_root = user_argv[idx + 1]
+            idx += 2
+            continue
+        if tok.startswith("--repo-root="):
+            repo_root = tok.split("=", 1)[1]
+            idx += 1
+            continue
+        break
+    remainder = user_argv[idx:]
+    if not remainder or remainder[0] != "resume":
+        return None
+    resume_tail = list(remainder[1:])
+    if resume_tail and resume_tail[0] == "--":
+        resume_tail = resume_tail[1:]
+    return (repo_root, resume_tail)
+
+
 def _maybe_auto_rewire_all(command: str) -> None:
     """Auto-refresh all wired repos once per installed canon-systems version."""
     if command in ("setup", "enable-repo"):
@@ -428,8 +457,23 @@ def main(argv: list[str] | None = None) -> int:
     sec_wizard.add_argument("--allow-partial", action="store_true")
     sec_wizard.add_argument("--dry-run", action="store_true")
 
-    args = parser.parse_args(argv)
     argv_for_exec = list(sys.argv) if argv is None else [sys.argv[0]] + list(argv)
+    user_argv = sys.argv[1:] if argv is None else list(argv)
+
+    resume_cli = _split_canon_resume_cli(user_argv)
+    if resume_cli is not None:
+        rr, resume_argv_tail = resume_cli
+        root = detect_repo_root(rr)
+        os.environ["CANON_SYSTEMS_REPO_ROOT"] = str(root)
+        os.environ.setdefault("CANON_MEMORY_LAYER_REPO_ROOT", str(root))
+        from .self_update import try_self_update
+
+        try_self_update(argv_for_exec)
+        _maybe_auto_rewire(root, "resume")
+        _maybe_auto_rewire_all("resume")
+        return run_resume_engine(resume_argv_tail)
+
+    args = parser.parse_args(argv)
     root = detect_repo_root(args.repo_root)
     os.environ["CANON_SYSTEMS_REPO_ROOT"] = str(root)
     # Back-compat: legacy env var name still honored downstream.

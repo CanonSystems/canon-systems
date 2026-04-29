@@ -1,0 +1,48 @@
+{
+  "schema_version": "1",
+  "generated_at": "2026-04-29T15:31:33Z",
+  "overall_status": "ok",
+  "required_set": [
+    "canonical",
+    "mempalace"
+  ],
+  "timeout_ms": 2000,
+  "backends": [
+    {
+      "name": "canonical",
+      "required": true,
+      "endpoint_ref": "https://memory.canon-systems.com/healthz",
+      "status": "ok",
+      "latency_ms": 75,
+      "version": null,
+      "last_error": null
+    },
+    {
+      "name": "mempalace",
+      "required": true,
+      "endpoint_ref": "https://memory.canon-systems.com/healthz",
+      "status": "ok",
+      "latency_ms": 57,
+      "version": null,
+      "last_error": null
+    },
+    {
+      "name": "state",
+      "required": false,
+      "endpoint_ref": "https://memory.canon-systems.com/healthz",
+      "status": "ok",
+      "latency_ms": 51,
+      "version": null,
+      "last_error": null
+    },
+    {
+      "name": "graph",
+      "required": false,
+      "endpoint_ref": "https://ksrmpdyi8h.us-east-1.awsapprunner.com/healthz",
+      "status": "ok",
+      "latency_ms": 232,
+      "version": null,
+      "last_error": null
+    }
+  ]
+}

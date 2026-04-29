@@ -471,6 +471,36 @@ def test_lanes_includes_multilane_fields(
     assert out["blocked_targets"][0]["task_id"] == "A"
 
 
+def test_canon_cli_dispatches_resume_args_without_separator(monkeypatch: pytest.MonkeyPatch) -> None:
+    from canon_systems import cli
+
+    captured: dict[str, list[str]] = {}
+
+    def fake_run(argv: list[str]) -> int:
+        captured["argv"] = list(argv)
+        return 0
+
+    monkeypatch.setattr("canon_systems.cli.run_resume_engine", fake_run)
+    expected = [
+        "--plan-id",
+        "structured-resume-task-memory",
+        "--company-id",
+        "CSC",
+        "--repository-id",
+        "canon-systems",
+        "--handoffs-dir",
+        ".cursor/handoffs/structured-resume-task-memory",
+    ]
+    rc = cli.main(
+        [
+            "resume",
+            *expected,
+        ]
+    )
+    assert rc == 0
+    assert captured["argv"] == expected
+
+
 def test_canon_cli_dispatches_resume_lanes_args(monkeypatch: pytest.MonkeyPatch) -> None:
     from canon_systems import cli
 
