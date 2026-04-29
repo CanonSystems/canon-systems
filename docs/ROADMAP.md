@@ -12,4 +12,6 @@ This file collects **future** initiatives. **Order is not priority.** Pull items
 
 - **Single “operator runbook”** for greenfield AWS: order of apply (VPC, data planes, App Runner/ECS, secrets, smoke tests) generated from the same sources as docs to avoid drift.
 
+- **Structured resume + task memory layer, with later Jira-like workflow integration:** Add first-class Canon artifacts for `session_handoff`, `plan`, `epic`, `task`, `task_update`, and `decision` so new chats can resume from durable rationale and tasks can be looked up by id. Keep this inside Canon first because it is agent execution context, crash recovery, and memory retrieval; later integrate with Jira/Linear-style systems only for portfolio workflow concerns. Detailed plan: [STRUCTURED-RESUME-TASK-MEMORY-PLAN.md](STRUCTURED-RESUME-TASK-MEMORY-PLAN.md).
+
 (Add more bullets anytime; keep them self-contained one-liners.)

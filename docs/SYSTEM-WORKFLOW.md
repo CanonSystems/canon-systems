@@ -226,6 +226,27 @@ The live architectural direction is tracked in:
 
 When changing the workflow, update this file and the backlog in the same PR.
 
+### Structured task and session memory (planned contract)
+
+> **Planned behavior (Phase 1 documentation lock onward), not shipped runtime
+> yet.** Typed **session memory** (`session_handoff`) and structured **task**
+> objects (`plan`, `epic`, `task`, `task_update`, `decision`) are the target
+> model so retrieval can answer resume and execution questions as coherent
+> records instead of only ranked transcript snippets. The full taxonomy,
+> fields, phased delivery, and operator surfaces are specified in
+> [`STRUCTURED-RESUME-TASK-MEMORY-PLAN.md`](STRUCTURED-RESUME-TASK-MEMORY-PLAN.md).
+
+**Relationship to existing planes (how the pieces compose):**
+
+| Plane | Role in the target model |
+| --- | --- |
+| **Operational state / checkpoint / resume** | Remains authoritative for concurrency and crash recovery: `canon checkpoint` plus `canon resume` continues to dictate the canonical `(task_id, phase)` to re-invoke. Typed `task` / `task_update` are planned to mirror and explain phase transitions for humans alongside that truth. |
+| **Canonical memory (`canon ask`, captures, MemPalace)** | Stays the broad snippet and artifact layer; typed objects are retrieved when intent maps to them, otherwise **retrieval precedence** falls through to existing snippet retrieval. |
+| **Graph (`canon graph query` / `impact`)** | Keeps answering structural code questions through the coder-facing **`graph → state → canonical → file`** ordering in §6; typed task/session retrieval is an additional classifier path for plan/task/resume/status/rationale intents, not a replacement for graph. |
+| **Snippet fallback** | When no typed match applies, ranked snippets and canonical search behave as today. |
+
+**Retrieval precedence (contracted intent):** select object type **before** generic text ranking—e.g. explicit `task_id` / `plan_id` / **`session_handoff`**-style resume queries / status-history queries pairing **`task`** with latest **`task_update`** / rationale queries preferring **`decision`**—then defer to snippet fallback. Canonical phrasing lives under “Retrieval Rules” in [`STRUCTURED-RESUME-TASK-MEMORY-PLAN.md`](STRUCTURED-RESUME-TASK-MEMORY-PLAN.md).
+
 ## 10) Backend monorepo layout
 
 Python backend services and the stdlib-only shared library (`canon_backend_shared`
