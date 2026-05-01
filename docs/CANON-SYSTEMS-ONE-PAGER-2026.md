@@ -2,52 +2,116 @@
 
 ## What it is
 
-**Canon-systems** is the **operator platform** for serious AI-assisted software work: a CLI and Cursor-native layer that gives your org **durable memory**, **tenant-scoped context**, and **governed agent execution** on **your** infrastructure (AWS-backed, secrets in your account, optional graph and state APIs).
+**Canon-systems** is the **memory, governance, and evidence layer** for serious AI-assisted software work.
 
-**In practice, teams get:**
+Today it ships as a **CLI + Cursor-native** operating model with AWS-backed memory and optional backend planes. As of **May 1, 2026**, Canon has also validated an AWS-hosted remote execution path that invokes the **Cursor SDK cloud runtime** against the Canon repo and can create a branch, commit, and PR.
 
-- **Memory that survives the chat window** — preflight and capture on every turn, company + repo scoping, hybrid search across canonical events and MemPalace.
-- **A disciplined agent chain** — scoper → cursor-pilot → implementer → qa-gate → release-orchestrator, with **file-backed handoffs** (not chat-only “done”), DoR and QA telemetry, and merge gates you can prove in audit.
-- **Cross-repo coherence** — the same `company_id` can span many repositories so decisions and captures aren’t trapped in a single clone.
-- **Optional planes when you wire them** — structural retrieval (Axon-style graph), operational checkpoints (state-api), stable HTTPS endpoints for knowledge and memory health.
+Strategically, Canon should be understood as a product with **three layers**:
 
-Canon is **not** trying to be a generic “autonomous engineer in a browser” product. It’s the **governance, memory, and evidence layer** that makes AI coding **repeatable and accountable** inside real enterprises.
+1. **Memory plane** — durable org-scoped context across sessions and repos
+2. **Governance / evidence plane** — required handoffs, checkpoints, QA gates, merge gates, audit trail
+3. **Execution plane** — where agent work runs: local IDE agent, container, remote worker, or hosted workspace
+
+The first two are Canon’s real moat. The third is partly replaceable, and Cursor SDK is now the first proven external execution substrate for that layer.
+
+## In practice, teams get
+
+- **Memory that survives the chat window** — preflight and capture on every turn, company + repo scoping, hybrid retrieval across canonical events and MemPalace.
+- **Governed delivery, not chat-only claims** — file-backed handoffs, DoR enforcement, checkpoints, QA gates, merge/release gates, and audit-proof evidence.
+- **Cross-repo coherence** — the same `company_id` can span many repositories so decisions and captures are not trapped in one clone.
+- **Optional execution and data planes** — code graph, operational state, synthesis vault, stable HTTPS APIs, and a validated Cursor SDK remote-execution path that can mature into remote workers.
+
+Canon is **not** trying to be a generic “autonomous engineer in a browser.” It is the layer that makes AI coding **repeatable, governable, and inspectable** inside real organizations.
+
+## Two ways to adopt Canon
+
+### 1. Full Canon workflow
+
+Canon owns the working model end-to-end:
+
+- hooks and rules in Cursor
+- the agent chain
+- packets and checkpoints
+- QA and release discipline
+
+This is the strongest expression of Canon today.
+
+### 2. Governance-over-external-agents
+
+Teams keep their own models, tools, prompts, or agent runtime, and Canon sits **above** them as the control plane. The first validated version of this is Canon infrastructure dispatching work to Cursor SDK cloud execution, then treating branch/commit/PR output and runtime events as evidence inputs.
+
+Canon does not have to own every agent’s inner loop. It can still enforce:
+
+- required task handoffs
+- checkpoint / state updates
+- evidence capture
+- PR / merge / release gates
+- audit trail and policy compliance
+
+This is the strategic expansion that makes Canon more than a Cursor-native workflow.
 
 ## How others compare (honestly)
 
-Products like **Devin.ai** (2026) excel at **high autonomy** in a managed sandbox: long runs, swarms, knowledge base UX, and enterprise SaaS polish. **IDE assistants** (Copilot, Cursor’s own features) win on **immediacy in the editor**. **Open orchestration frameworks** win on **flexibility** for builders who will glue everything themselves.
+**Devin.ai** wins on high-autonomy managed execution, polished SaaS UX, and “fire-and-forget” feel. **Sandcastle** wins on clean runtime abstractions for sandboxed agent execution. **Open orchestration frameworks** win on flexibility for builders.
 
-**Canon’s edge** is the combination of **organizational memory across repos**, **strict packet and QA discipline**, **IDE-in-the-loop** (hooks, rules, subagents), and **data ownership** (you hold the keys and the audit trail). **Where we don’t lead** out of the box: the most **polished** end-user knowledge UI, the **loosest** “set and forget” autonomy, and the **broadest** off-the-shelf enterprise admin console—those are the gaps we’re **deliberately** closing in the product plan, not reasons to become a clone of Devin.
+**Canon’s edge** is different:
+
+- organizational memory across repos
+- strict delivery governance
+- evidence-backed software flow
+- tenant correctness and data sovereignty
+
+Canon should not try to become a clone of Devin or a thinner Sandcastle. It should be the **system of record for agentic software delivery**.
 
 ## Where we’re taking it
 
-**North star:** Canon is the **default memory and workflow OS** for teams that care about **why a decision was made, in which repo, for which tenant, with what evidence**—while still allowing **stronger autonomous runs** when product and policy allow.
+**North star:** Canon is the **default memory and governance OS** for teams that care about **why a decision was made, in which repo, for which tenant, with what evidence** — while still allowing stronger autonomous execution when product and policy allow.
 
-**Near term (themes):**
+**Near-term roadmap themes:**
 
-1. **Knowledge and UX** — make org knowledge as easy to use as it is to store: triggers, playbooks, macros, and a “magical” `canon ask` / Cursor experience without weakening boundaries.
-2. **Enterprise** — Cognito/OIDC-style SSO, admin visibility, event-driven hooks (tickets, CI, Slack), audit-friendly exports.
-3. **Autonomy with teeth** — longer runs and parallel implementer lanes **only** where checkpoint and QA contracts still hold; no race to the bottom on merge discipline.
-4. **Optional managed path** — for buyers who need hosted Canon with predictable commercial terms, not a rewrite of the open CLI story.
+1. **Knowledge and operator UX** — make org knowledge as easy to use as it is to store: triggers, playbooks, macros, and a stronger `canon ask` / preflight experience.
+2. **Enterprise governance surfaces** — SSO, policy visibility, admin/audit surfaces, and event-driven enterprise hooks.
+3. **Cursor SDK evidence envelope + runtime abstraction** — turn the validated AWS -> Cursor SDK path into a Canon-native adapter with canonical evidence, policy checks, and negative tests.
+4. **Governed autonomy + remote workers** — keep Cursor as the shell if useful, but move real execution to Canon-controlled workers or Cursor SDK cloud agents where governance, hidden orchestration, and evidence are consistent.
+5. **Managed Canon** — hosted memory, ingress, dashboards, and remote execution for teams that want Canon without running the full stack themselves.
 
-## Longer arc — our own “Cursor,” with the machinery hidden (and maybe cloud)
+## Longer arc
 
-Today, Canon meets developers **inside Cursor**: hooks, rules, and especially `**.cursor/agents/*.md`** expose the agent chain as **readable prompts**—great for transparency, audits, and power users who edit handoffs, but **not** how most enterprises want to **buy** software. They want **stages**, **status**, and **approvals**, not a folder of markdown roles.
+Today Canon meets developers **inside Cursor**. Over time, Canon can grow in two directions at once:
 
-**If we separated from Cursor** and shipped a **Canon-native client**—our own editor shell or fork-class experience—we could **productize the same pipeline** without surfacing implementation detail:
+- **Horizontally** into a governance/control plane above many execution environments
+- **Vertically** into a Canon-native client or hosted shell that hides internal machinery while preserving evidence and policy
+- **Pragmatically** into Cursor SDK-backed remote execution before Canon needs to own every part of the coding runtime itself
 
-- **What users would see:** phases such as **Plan → Scope → Implement → Verify → Ship**, each with clear state (queued / running / blocked / done), links to **evidence** (QA packet, memory-health, diff summary), and **human gates** where policy requires them. “Agents” become **capabilities**, not files named `scoper.md`.
-- **What we’d hide by default:** raw subagent templates, internal prompt drift, and the filesystem layout under `.cursor/agents`. Advanced mode or export could still reveal packets for regulated customers who require prompt inspectability.
-- **What would not change under the hood:** the same **canonical IDs**, **event envelope**, **handoff packets on disk** (or object storage), **tenant boundaries**, **Secrets Manager** wiring, **checkpoint lease semantics**, and **merge gates**. The shell becomes a **presentation and orchestration UI** over contracts we already enforce—not a second truth.
+That means a future Canon experience could look like:
 
-**Cloud-based Canon** would stack naturally on that separation: a **thin client** (browser or lightweight desktop) talking to **hosted workspaces** (VM or container per session or per tenant tier), with **memory and state** in the region and account model customers already expect from [CANON-PRIORITIZED-ROADMAP-2026.md](CANON-PRIORITIZED-ROADMAP-2026.md) Phase 4. The experience would resemble **Devin-style** “open your session, watch progress”—except progress would still be **evidence-backed** (QA PASS, audit events), not an opaque black box.
+- **Plan → Scope → Implement → Verify → Ship**
+- clear status per phase
+- explicit evidence links
+- human gates where policy requires them
+- optional hidden orchestration under the hood
 
-**Tradeoffs we’d accept:** building and maintaining a client (release cadence, accessibility, editor parity), choosing **how much** of VS Code / Monaco / LSP to bundle versus integrate, and deciding whether **Cursor compatibility** remains a first-class path for developers who want raw agent files. **Tradeoffs we’d refuse:** dropping multi-tenant correctness, dropping packet or QA history for convenience, or hiding failures instead of surfacing them as structured blockers.
+What would stay constant:
 
-That future is **optional** and **additive**: the CLI and Cursor integration remain the **open, inspectable** spine; a Canon shell would be the **enterprise-grade skin** for teams who pay for polish and isolation—including **cloud** when they don’t want to run the IDE glue themselves.
+- canonical IDs
+- event envelope
+- packet/evidence model
+- tenant boundaries
+- checkpoint lease semantics
+- merge and release gates
 
-**Principle we won’t trade away:** memory and shipping **evidence** beat raw model cleverness for organizations that ship under compliance, on-call pressure, and multiple codebases. A prettier shell doesn’t replace that—it **surfaces** it. **That** is what Canon-systems is for—and that is where we’re taking it.
+The shell can change. The governance and evidence model should not.
+
+## Principle we won’t trade away
+
+Memory and shipping **evidence** beat raw model cleverness for organizations shipping under compliance pressure, on-call pressure, and across multiple codebases.
+
+A prettier shell does not replace that. More autonomy does not replace that. A nicer runtime abstraction does not replace that.
+
+They only matter if they still surface the same truth.
+
+That is what Canon-systems is for.
 
 ---
 
-*For detail: [CANON-VS-DEVIN-STRATEGY-2026.md](CANON-VS-DEVIN-STRATEGY-2026.md), [CANON-PRIORITIZED-ROADMAP-2026.md](CANON-PRIORITIZED-ROADMAP-2026.md). Living document — adjust as the product ships.*
+*For detail: [CANON-PRIORITIZED-ROADMAP-2026.md](CANON-PRIORITIZED-ROADMAP-2026.md), [CANON-VS-DEVIN-STRATEGY-2026.md](CANON-VS-DEVIN-STRATEGY-2026.md), [CANON-VS-SANDCASTLE-STRATEGY-2026.md](CANON-VS-SANDCASTLE-STRATEGY-2026.md). Living document — adjust as the product ships.*

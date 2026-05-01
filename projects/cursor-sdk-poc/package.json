@@ -1,0 +1,14 @@
+{
+  "name": "cursor-sdk-poc",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Proof-of-concept for invoking Cursor SDK runs from a Canon-controlled service.",
+  "scripts": {
+    "probe": "node probe.mjs",
+    "check": "node --check probe.mjs"
+  },
+  "dependencies": {
+    "@cursor/sdk": "latest"
+  }
+}
