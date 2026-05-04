@@ -16,4 +16,6 @@ This file collects **future** initiatives. **Order is not priority.** Pull items
 
 - **Structured resume + task memory layer, with later Jira-like workflow integration:** Add first-class Canon artifacts for `session_handoff`, `plan`, `epic`, `task`, `task_update`, and `decision` so new chats can resume from durable rationale and tasks can be looked up by id. Keep this inside Canon first because it is agent execution context, crash recovery, and memory retrieval; later integrate with Jira/Linear-style systems only for portfolio workflow concerns. Detailed plan: [STRUCTURED-RESUME-TASK-MEMORY-PLAN.md](STRUCTURED-RESUME-TASK-MEMORY-PLAN.md).
 
+- **Operator adoption + policy for packet archive + run ledger:** **`canon packet-archive`**, **`canon run-ledger`**, **`POST /state/archive`**, and **`/state/run-ledger`** on **`state-api`** are shipped (see `CHANGELOG.md` Unreleased, `docs/SYSTEM-WORKFLOW.md` §3). Remaining work is wiring this into every team's habits (when to archive, how merge gates consume **`archive_refs`**, automation around **`canon readiness check`**) and any product surfaces beyond the CLI.
+
 (Add more bullets anytime; keep them self-contained one-liners.)

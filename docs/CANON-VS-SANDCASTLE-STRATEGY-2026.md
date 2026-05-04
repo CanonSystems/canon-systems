@@ -31,6 +31,8 @@ Canon already implements a much larger opinionated system:
 - **memory capture and retrieval** tied to `company_id` + `repository_id`
 - a **fixed agent chain** (`project-planner -> scoper -> cursor-pilot -> implementer -> qa-gate -> release-orchestrator`)
 - **file-backed packets** as evidence, not chat-only status
+- planned **S3-retained packet/evidence archive** plus **DynamoDB run ledger** so
+  packet history survives local cleanup and remains queryable by Canon
 - **checkpoint + lease + versioning** semantics via `state-api`
 - **graph retrieval** and retrieval-source telemetry
 - **release gates**, **flow audit**, **DoR telemetry**, **reporting**, and **vault publication**
@@ -109,6 +111,7 @@ Canon should consider a supported API surface for:
 - reading and writing checkpoints
 - querying memory and graph state
 - retrieving packet/evidence status
+- retrieving archived packet bodies and run-ledger relationships
 - invoking gated execution phases
 
 This would let partners or internal teams use Canon as a **control plane**, not only as a CLI installed into Cursor workflows.

@@ -291,6 +291,14 @@ class RepoContext:
 _CACHED_REPO_ROOT: Path | None = None
 _LAYERED_MEMORY_ENV_APPLIED = False
 
+# Keys where process `os.environ` wins via :func:`setdefault` and can shadow repo-local files.
+_TRACKED_ENV_PRECEDENCE_KEYS: tuple[str, ...] = (
+    "AWS_PROFILE",
+    "AWS_REGION",
+    "AWS_DEFAULT_REGION",
+)
+_LAST_ENV_PRECEDENCE_ATTESTATION: dict[str, Any] | None = None
+
 
 def _git_toplevel_from_cwd() -> Path | None:
     try:
@@ -516,6 +524,7 @@ def apply_layered_canon_env_for_repo(root: Path) -> None:
     Hooks still use :func:`ensure_layered_memory_env` (one-shot per process) for
     performance; this function has no global guard.
     """
+    global _LAST_ENV_PRECEDENCE_ATTESTATION
     merged = merge_canon_systems_env_files(
         [
             Path.home() / ".canon" / "canon-systems.env",
@@ -527,9 +536,30 @@ def apply_layered_canon_env_for_repo(root: Path) -> None:
             root / ".canon" / "memory-layer.secrets.env",
         ]
     )
+    before_env = {k: (os.environ.get(k) or "").strip() for k in _TRACKED_ENV_PRECEDENCE_KEYS}
     for key, value in merged.items():
         if key.strip():
             os.environ.setdefault(key.strip(), value)
+    mismatches: list[dict[str, str]] = []
+    for key in _TRACKED_ENV_PRECEDENCE_KEYS:
+        layered = (merged.get(key) or "").strip()
+        proc = before_env.get(key, "").strip()
+        effective = (os.environ.get(key) or "").strip()
+        if layered and proc and layered != proc and effective == proc:
+            mismatches.append(
+                {
+                    "env_key": key,
+                    "process_env_value": proc,
+                    "layered_file_value": layered,
+                    "effective_value": effective,
+                    "reason": "process_env_shadows_layered_file",
+                }
+            )
+    _LAST_ENV_PRECEDENCE_ATTESTATION = {
+        "tracked_keys": list(_TRACKED_ENV_PRECEDENCE_KEYS),
+        "mismatches": mismatches,
+        "credential_resolution_degraded": bool(mismatches),
+    }
     from .aws_secrets import apply_canon_systems_secrets_from_aws
 
     apply_canon_systems_secrets_from_aws()
@@ -542,6 +572,37 @@ def ensure_layered_memory_env() -> None:
         return
     apply_layered_canon_env_for_repo(repo_root())
     _LAYERED_MEMORY_ENV_APPLIED = True
+
+
+def get_credential_attestation() -> dict[str, Any]:
+    """Combined non-secret credential attestation (Secrets Manager resolution + env precedence).
+
+    The env-precedence block is populated after :func:`apply_layered_canon_env_for_repo` /
+    :func:`ensure_layered_memory_env` runs in this process; otherwise mismatches are empty.
+    """
+    from .aws_secrets import build_aws_secrets_resolution_attestation
+
+    secrets_block = build_aws_secrets_resolution_attestation()
+    if _LAST_ENV_PRECEDENCE_ATTESTATION is None:
+        env_block: dict[str, Any] = {
+            "tracked_keys": list(_TRACKED_ENV_PRECEDENCE_KEYS),
+            "mismatches": [],
+            "credential_resolution_degraded": False,
+            "layered_env_apply_observed": False,
+        }
+    else:
+        env_block = {
+            **_LAST_ENV_PRECEDENCE_ATTESTATION,
+            "layered_env_apply_observed": True,
+        }
+    degraded = bool(env_block.get("credential_resolution_degraded")) or bool(
+        secrets_block.get("credential_resolution_degraded")
+    )
+    return {
+        "aws_secrets_resolution": secrets_block,
+        "env_precedence": env_block,
+        "credential_resolution_degraded": degraded,
+    }
 
 
 def resolve_auth_bearer(auth_profile: str) -> str:

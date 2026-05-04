@@ -39,6 +39,101 @@ def test_doctor_json_ok_when_wired_no_hits(tmp_path: Path, monkeypatch: pytest.M
         "MEMORY_ADAPTER_URL",
         "CANON_STATE_API_URL",
     ]
+    ca = o["credential_attestation"]
+    assert ca["schema_version"] == 1
+    assert "aws_secrets_resolution" in ca
+    assert ca["env_precedence"]["layered_env_source"] == "memory-layer.local.env"
+    assert ca["env_precedence"]["mismatches"] == []
+
+
+def test_doctor_json_includes_credential_attestation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(tmp_path))
+    (tmp_path / ".canon").mkdir(parents=True)
+    (tmp_path / ".canon" / "memory-layer.local.env").write_text(
+        "COMPANY_ID=ACME\nREPOSITORY_ID=demo\nAWS_PROFILE=file-profile\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(dr, "repo_root", lambda: tmp_path)
+    monkeypatch.delenv("AWS_PROFILE", raising=False)
+    buf = io.StringIO()
+    monkeypatch.setattr(dr.sys, "stdout", buf)
+    assert dr.run(["--json"]) == 0
+    o = json.loads(buf.getvalue())
+    sec = o["credential_attestation"]["aws_secrets_resolution"]
+    assert "resolved_secret_id" in sec
+    assert "cache_path" in sec
+    assert "cache_exists" in sec
+    assert "resolution" in sec
+    assert "effective_aws_profile" in sec
+    prec = o["credential_attestation"]["env_precedence"]
+    assert prec["schema_version"] == 1
+    assert prec["tracked_keys"] == ["AWS_PROFILE", "AWS_REGION", "AWS_DEFAULT_REGION"]
+    assert sec["effective_aws_profile"] == "file-profile"
+    dump = json.dumps(o)
+    assert "CANON_HTTP_BEARER_TOKEN" not in dump
+    assert "MEMORY_ADAPTER_BEARER" not in dump
+
+
+def test_doctor_human_output_warns_on_aws_profile_mismatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(tmp_path))
+    (tmp_path / ".canon").mkdir(parents=True)
+    (tmp_path / ".canon" / "memory-layer.local.env").write_text(
+        "COMPANY_ID=ACME\nREPOSITORY_ID=demo\nAWS_PROFILE=canon-systems-v2\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(dr, "repo_root", lambda: tmp_path)
+    monkeypatch.setenv("AWS_PROFILE", "canon-systems")
+    err = io.StringIO()
+    monkeypatch.setattr(dr.sys, "stderr", err)
+    assert dr.run([]) == 0
+    err_s = err.getvalue()
+    assert "shadows repo-local" in err_s
+    assert "canon-systems-v2" in err_s
+    assert "canon-systems" in err_s
+
+
+def test_doctor_existing_dns_and_tenant_diagnostics_remain(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(tmp_path))
+    (tmp_path / ".canon").mkdir(parents=True)
+    (tmp_path / ".canon" / "memory-layer.local.env").write_text(
+        "COMPANY_ID=ACME\n"
+        "REPOSITORY_ID=demo\n"
+        "KNOWLEDGE_API_URL=https://memory.example.com\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(dr, "repo_root", lambda: tmp_path)
+
+    def boom(*_a, **_kw):
+        raise OSError(8, "nodename nor servname provided, or not known")
+
+    monkeypatch.setattr(dr.socket, "getaddrinfo", boom)
+    monkeypatch.setattr(dr, "_resolve_ipv4_via_dig", lambda _h: "203.0.113.1")
+
+    buf = io.StringIO()
+    monkeypatch.setattr(dr.sys, "stdout", buf)
+    assert dr.run(["--json"]) == 0
+    o = json.loads(buf.getvalue())
+    assert o["dns"]["likely_split_dns_cloudflare_warp"] is True
+    assert o["tenant_context_mismatch"] is False
+    assert "credential_attestation" in o
+    assert isinstance(o["credential_attestation"]["aws_secrets_resolution"], dict)
+
+    (tmp_path / ".canon" / "memory").mkdir(parents=True)
+    (tmp_path / ".canon" / "memory" / "context-latest.md").write_text(
+        "# Session Memory Context\n\n- company_id: `OTHER`\n- repository_id: `demo`\n",
+        encoding="utf-8",
+    )
+    buf2 = io.StringIO()
+    monkeypatch.setattr(dr.sys, "stdout", buf2)
+    assert dr.run(["--json"]) == 1
+    o2 = json.loads(buf2.getvalue())
+    assert o2["tenant_context_mismatch"] is True
+    assert o2["dns"]["likely_split_dns_cloudflare_warp"] is True
+    assert "credential_attestation" in o2
 
 
 def test_doctor_warns_literal_ip_in_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

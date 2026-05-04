@@ -8,7 +8,81 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
+
+
+def _boto3_available() -> bool:
+    try:
+        import boto3  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def build_aws_secrets_resolution_attestation() -> dict[str, Any]:
+    """Structured, non-secret diagnostics for Secrets Manager resolution and cache state.
+
+    Safe for JSON logs: no secret values, no bearer tokens.
+    """
+    secret_id = resolve_canon_systems_secret_id()
+    explicit_secret_id_env = bool((os.environ.get("MEMORY_LAYER_AWS_SECRET_ID") or "").strip())
+    profile = (os.environ.get("AWS_PROFILE") or "").strip()
+    region = (os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "").strip()
+    region_tag = region if region else "default"
+    cache_path = _cache_file_path()
+    cache_exists = cache_path.exists()
+    disable_cache = os.environ.get("MEMORY_LAYER_AWS_DISABLE_CACHE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+    cache_hit: bool | None = None
+    resolution_status: Literal[
+        "no_secret_id",
+        "cache_disabled",
+        "cache_hit",
+        "cache_miss",
+    ] = "no_secret_id"
+
+    if not secret_id:
+        cache_hit = None
+        resolution_status = "no_secret_id"
+        requires_boto_fetch = False
+    elif disable_cache:
+        cache_hit = False
+        resolution_status = "cache_disabled"
+        requires_boto_fetch = True
+    else:
+        cached_payload = _read_cache(secret_id, region_tag)
+        if cached_payload is not None:
+            cache_hit = True
+            resolution_status = "cache_hit"
+            requires_boto_fetch = False
+        else:
+            cache_hit = False
+            resolution_status = "cache_miss"
+            requires_boto_fetch = True
+
+    boto3_ok = _boto3_available()
+    secrets_resolution_degraded = bool(requires_boto_fetch and not boto3_ok)
+
+    return {
+        "effective_aws_profile": profile,
+        "effective_aws_region": region,
+        "resolved_secret_id": secret_id,
+        "memory_layer_aws_secret_id_from_explicit_env": explicit_secret_id_env,
+        "cache_path": str(cache_path.expanduser().resolve()),
+        "cache_exists": cache_exists,
+        "cache_disabled": disable_cache,
+        "cache_hit_when_known": cache_hit,
+        "resolution": {
+            "status": resolution_status,
+            "boto3_available": boto3_ok,
+        },
+        "credential_resolution_degraded": secrets_resolution_degraded,
+    }
 
 
 def slug_canon_systems_segment(value: str) -> str:

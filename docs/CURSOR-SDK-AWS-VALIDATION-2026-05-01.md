@@ -41,6 +41,9 @@ Canon can now treat Cursor SDK cloud execution as the first reference `remote_wo
 The next product milestone is therefore **not** "can Canon run Cursor remotely?" That is now answered. The next milestone is:
 
 - create a Canon evidence envelope for Cursor SDK runs
+- archive the envelope and relevant phase packets/evidence to S3, then write
+  DynamoDB run-ledger records connecting Cursor `agentId` / `runId`, branch,
+  commit, PR, packet URIs, validation outcomes, and release status
 - persist Cursor `agentId`, `runId`, ECS task ARN, GitHub branch/commit/PR, prompt hash, model, duration, and event summary
 - add negative tests for missing evidence, failed runs, timeout, skipped QA, and unauthorized merge
 - add cleanup/rotation tooling for Cursor API keys, ECR images, ECS task definitions, CloudWatch logs, and IAM policy attachments
@@ -215,6 +218,7 @@ docker build --platform linux/amd64 ...
 ## Next validation after AWS execution
 
 1. Wrap the Cursor result in a first-class Canon evidence artifact rather than relying on CloudWatch logs alone.
-2. Add a controlled cleanup path for PoC ECR/task-definition/IAM artifacts.
-3. Decide whether PR #9 should remain open as evidence or be closed after review.
-4. Add a merge/release negative test proving a Cursor SDK-created PR without Canon evidence cannot pass Canon policy.
+2. Store that artifact through the durable packet/evidence archive and connect it to the task through the DynamoDB run ledger.
+3. Add a controlled cleanup path for PoC ECR/task-definition/IAM artifacts.
+4. Decide whether PR #9 should remain open as evidence or be closed after review.
+5. Add a merge/release negative test proving a Cursor SDK-created PR without Canon evidence cannot pass Canon policy.

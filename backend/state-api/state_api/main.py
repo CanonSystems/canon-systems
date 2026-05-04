@@ -8,10 +8,15 @@ from fastapi.responses import JSONResponse
 from state_api.checkpoints import router as checkpoint_router
 from state_api.config import Settings, get_settings
 from state_api.leases import router as lease_router
+from state_api.packet_archive import router as archive_router
+from state_api.run_ledger import router as run_ledger_router
 
 app = FastAPI(title="state-api", version="1.0.0")
 app.include_router(checkpoint_router)
 app.include_router(lease_router)
+app.include_router(archive_router)
+# Run-ledger GET is read-only for readiness queries; ledger rows are written via PUT only.
+app.include_router(run_ledger_router)
 
 
 @app.get("/healthz", response_model=None)

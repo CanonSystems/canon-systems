@@ -48,6 +48,51 @@ Plan state file:
 
 - `.cursor/plans/<plan-id>.plan.md` updated on every task status transition.
 
+Planned retention extension (not a replacement for local packets):
+
+- Local `.cursor/handoffs/...` files remain required working-copy and git-review
+  artifacts.
+- **Packet/evidence archive (S3, v1):** `POST /state/archive` on `state-api`
+  stores explicit packet/evidence bodies in `STATE_ARTIFACT_BUCKET` using a
+  deterministic, tenant-scoped, SHA-256-addressed object key
+  (`STATE_ARCHIVE_KEY_PREFIX`, default `canon/packets`). Successful uploads emit
+  one `packet_archived` canonical event (metadata only—never raw bodies, bearer
+  tokens, or ad-hoc secret fields; implementations use a fixed metadata key allowlist).
+  Operators run `canon packet-archive --file ...` (or call the JSON API) for a
+  durable copy; this does **not** replace local merge-review packets.
+- **Run ledger (`STATE_RUN_LEDGER_TABLE_NAME`, v1 schema):** `PUT` / `GET`
+  `/state/run-ledger` on `state-api` persists **durable, queryable** rows that
+  tie `plan_id`, `task_id`, `workstream_id`, `handoff_id`, `phase`, outcomes,
+  **`archive_refs`** (S3 URI / key / digest / kind / phase / status—**no**
+  packet bodies), evidence refs, **validation outcome** slots reserved for
+  gates (`qa_validate`, `flow_audit`, `memory_health`, `ci`,
+  `deployment_smoke`, `merge_readiness`), commits, PR URL, deployment metadata,
+  and optional agent/event ids. Keys are **disjoint** from checkpoint `pk`/`sk`
+  (ledger `pk` ends with `#run_ledger`); the ledger store **never** mutates
+  `lease_*` attributes. Operators use **`canon run-ledger`** for dry-run
+  normalization, optional merge of archive metadata JSON into `archive_refs`,
+  and **`PUT`** to `state-api` (same URL family as `canon checkpoint` /
+  `canon packet-archive`: `CANON_STATE_API_URL`).
+- **Readiness (`canon readiness check`, v1):** queries **`GET` `/state/run-ledger`**
+  (scoped **latest** rows or an explicit **`ledger_run_id`**) and prints a stable
+  JSON snapshot; optional **`--output`** writes the same object (for example
+  `.cursor/handoffs/<handoff_id>/<task_id>/readiness.json`). The evaluator uses
+  **ledger fields and `archive_refs` metadata only**: it checks that required phase
+  archive pointers exist (**`scoper`**, **`cursor-pilot`**, **`qa-gate`**,
+  **`release-status`**, plus **implementer** or implementer-shard pointers when the
+  run record implies them) and **never** reads archived bodies or embeds bodies in
+  the snapshot. Existing **`validation_outcomes`** slots on the row
+  (**`qa_validate`**, **`flow_audit`**, **`memory_health`**, **`ci`**,
+  **`deployment_smoke`**, **`merge_readiness`**) plus commit / PR / deployment
+  fields are **summarized when present**; this command deliberately does **not**
+  implement QA evidence normalization, shared DoR validation, credential
+  attestation, or deploy attestation rules beyond those persisted fields.
+  **`canon qa-validate`** / **`canon flow-audit`** / release templates remain the
+  **policy** surfaces; readiness is operator diagnosis. **`GET` does not mutate**
+  checkpoint or archive state; **`canon readiness check`** exit codes stay **`0`**
+  (ready after evaluation), **`1`** (evaluated but not ready), **`2`** (usage /
+  ledger query failure).
+
 - **Resume engine (`canon resume`)**: Read-only, idempotent scanner over state-api checkpoints. Given a `--plan-id` + tenant scope and a task list (via `--tasks-file` or `--handoffs-dir`), it returns a JSON envelope identifying the first incomplete `(task_id, phase)` pair per the canonical 5-phase order (`scoper → cursor-pilot → implementer → qa-gate → release-orchestrator`). The engine emits zero canonical events — operators (or the parent agent) use the output to decide which agent to re-invoke; the re-invocation itself happens elsewhere. Running `canon resume` twice on unchanged plan state yields byte-identical stdout. **Experimental:** with **`CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION=1`** and **`canon resume --tasks-file ... --lanes`**, the same checkpoints plus optional manifest metadata (`depends_on`, `parallel_group`, `can_run_parallel`) add `runnable_targets` / `active_targets` / `blocked_targets` / `task_threads` for parent scheduling visibility only; merge-gate serial checks remain artifact-backed per task (see `docs/runbooks/RESUME.md` and `memory-platform-build-discipline.mdc` §11).
 - **E4-T2 lease + versioning enforcement (CLI):** every `canon checkpoint` mutating command (`write`, `lease-acquire`, `lease-renew`, `lease-release`) now emits an additive `resolution: {message, command}` object on 409 stderr envelopes, carrying the exact `canon checkpoint ...` recovery invocation. Exit codes remain `1` (version conflict) and `2` (lease denied). Operators (and orchestrator agents) can parse `resolution.command` to drive automated recovery. See `src/canon_systems/templates/agents/implementer.md § Conflict recovery (E4-T2)`.
 - **E4-T3 stall watchdog (`canon stall-watchdog scan`):** Read-only GET-probe scanner that detects stalled leases (`lease.expires_at <= now_epoch`) and emits one `lease_stall_detected` canonical event per stall (default target `.canon/memory/events.ndjson`; `--dry-run` routes to stderr). Event payload embeds a `suggested_next_step` copy-pasteable `canon checkpoint lease-acquire` command imported verbatim from `checkpoint_cli._resolution_hint("lease_held")`. Deliberately uses GET (not `POST /state/lease/acquire`) because the state-api silently steals expired leases on acquire, destroying stall evidence. Exit 5 on any degraded probe.
@@ -184,12 +229,15 @@ See rule §§9-10 for authoritative wording.
 - QA packet validator:
   - `canon qa-validate --file <qa-gate.md> --require-pass`
 - Process audit validator:
-  - `canon flow-audit --handoff-id <id> --task-id <id> --plan-file <plan>`
+  - `canon flow-audit --handoff-id <id> --task-id <id> --plan-file <plan>` (optional **`--require-checkpoints`**, **`--require-memory-health`**, **`--require-deploy-attestation`** for `deployment-smoke.json` — see §3 persistence contract)
+- Run ledger writer (state plane): `canon run-ledger --record-file| --record-json ... [--dry-run]` — **`PUT`** `/state/run-ledger`; **`archive_refs`** stay pointer metadata only (no bodies in DynamoDB).
+- Readiness snapshot (read-only): `canon readiness check` — **`GET`** `/state/run-ledger`; does not mutate checkpoint, archive, or ledger; see §3.
 - Memory health probe: `canon memory-health [--required <csv>] [--timeout-ms <int>]`
 - Graph retrieval plane: [`backend/axon-service`](../backend/axon-service/README.md) exposes `/axon/{company_id}/{repository_id}/index`, `/query`, `/impact`, and `/healthz`. `canon memory-health` treats **graph** as optional by default; it probes the axon service at **`AXON_SERVICE_URL`** (append `/healthz`) when that env is set.
 - Graph indexer pipeline: `canon graph index` (pre-push hook or CI workflow_dispatch) is the ONLY write path to axon-service; `canon graph query` / `impact` (E3-T3) and `/axon/.../query`,`/impact` are pure RPC reads and never index at query time. `canon graph reindex-status --commit-sha=<sha>` surfaces the snapshot state (`ready`/`missing`/`error`).
 - **Graph reads**: `canon graph query` and `canon graph impact` are pure-RPC clients over `backend/axon-service` `GET /query` and `GET /impact`. They inherit `AXON_SERVICE_URL`/`AXON_SERVICE_TOKEN` env layering (flag > env > error-with-exit-2) and never touch the repo filesystem. `query` returns a body with `results[].source_spans` so agents can cite graph-backed evidence; `impact` returns `upstream`/`downstream` lists keyed by symbol. Writes remain sole-domain of `canon graph index` (E3-T2).
 - State checkpoint/lease: `canon checkpoint ...` (read/write/lease) against a deployed `state-api` (JSON over HTTP; use `--base-url` or `CANON_STATE_API_URL`)
+- **Packet/evidence archive:** `canon packet-archive --file <path> ...` posts to **`POST /state/archive`** (server **`STATE_ARTIFACT_BUCKET`**). **`--dry-run`** resolves key + record JSON without network. Local `.cursor/handoffs/...` files remain mandatory for review.
 - Phase-boundary hydration: agents run `canon checkpoint read` before their phase work and `canon checkpoint write` after, via `state-api`; when `CANON_STATE_API_URL` is unset, skip checkpoint HTTP gracefully (local dev, sandbox, or CI without a reachable state plane).
 - DoR telemetry sender (with queue fallback):
   - `canon dor-log --event-file <event.json>`

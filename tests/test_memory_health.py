@@ -243,9 +243,14 @@ def test_json_shape(
         "overall_status",
         "required_set",
         "timeout_ms",
+        "credential_attestation",
         "backends",
     ):
         assert k in o, k
+    ca = o["credential_attestation"]
+    assert isinstance(ca, dict)
+    for ck in ("aws_secrets_resolution", "env_precedence", "credential_resolution_degraded"):
+        assert ck in ca, ck
     for b in o["backends"]:
         for k2 in (
             "name",
@@ -314,6 +319,59 @@ def test_verbose_routes_logs_to_stderr(
     err = capsys.readouterr().err
     assert code == 0
     assert "memory-health:" in err
+
+
+def test_ac5_json_includes_credential_attestation_non_secret_shape(
+    four_urls_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AC5: memory-health JSON carries credential/Secrets Manager attestation beside backends."""
+    monkeypatch.setattr(mh, "_probe", lambda _u, _t: _ok_200())
+    fake_att = {
+        "aws_secrets_resolution": {
+            "effective_aws_profile": "",
+            "effective_aws_region": "",
+            "resolved_secret_id": "",
+            "memory_layer_aws_secret_id_from_explicit_env": False,
+            "cache_path": "/tmp/x",
+            "cache_exists": False,
+            "cache_disabled": False,
+            "cache_hit_when_known": None,
+            "resolution": {"status": "no_secret_id", "boto3_available": True},
+            "credential_resolution_degraded": False,
+        },
+        "env_precedence": {
+            "tracked_keys": [],
+            "mismatches": [],
+            "credential_resolution_degraded": False,
+            "layered_env_apply_observed": True,
+        },
+        "credential_resolution_degraded": False,
+    }
+    monkeypatch.setattr(mh, "get_credential_attestation", lambda: fake_att)
+    c, s = _run_captured(argv=["--json"], monkeypatch=monkeypatch)
+    o = json.loads(s)
+    assert c == 0
+    assert o["credential_attestation"] == fake_att
+    assert len(o["backends"]) == 4
+
+
+def test_ac6_exit_code_backend_driven_when_credential_reports_degraded(
+    four_urls_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AC6: credential attestation does not alter memory-health exit semantics."""
+    monkeypatch.setattr(mh, "_probe", lambda _u, _t: _ok_200())
+    monkeypatch.setattr(
+        mh,
+        "get_credential_attestation",
+        lambda: {
+            "aws_secrets_resolution": {},
+            "env_precedence": {},
+            "credential_resolution_degraded": True,
+        },
+    )
+    c, s = _run_captured(argv=[], monkeypatch=monkeypatch)
+    assert c == 0
+    assert json.loads(s)["overall_status"] == "ok"
 
 
 @pytest.mark.parametrize(

@@ -62,7 +62,7 @@ No individual factual claims — serves as navigation only.
 | Claim | Evidence |
 |-------|----------|
 | **Plane A** — "axon-service / S3 + DynamoDB / canon graph index\|query\|impact" | `infra/terraform/modules/axon-snapshots/main.tf` — S3 SSE config; `src/canon_systems/graph_indexer.py` L144 `_cmd_index()`, L226 `_cmd_query()`, L242 `_cmd_impact()` — all three CLI subcommands present |
-| **Plane B** — "state-api / DynamoDB (canon-state, PITR+SSE) / canon checkpoint read\|write\|lease-*" | `infra/terraform/modules/dynamodb-canon-state/main.tf` L18 `lease_expires_at`, L22 `point_in_time_recovery { enabled = true }`, L26 `server_side_encryption`; `src/canon_systems/checkpoint_cli.py` |
+| **Plane B** — "state-api / DynamoDB (canon-state, PITR+SSE) / canon checkpoint read\|write\|lease-*" | `infra/terraform/modules/dynamodb-canon-state/main.tf` L18 `lease_expires_at`, L22 `point_in_time_recovery { enabled = true }`, L26 `server_side_encryption`; `src/canon_systems/checkpoint_cli.py`; **same module adds** run-ledger table + S3 archive wiring — **`canon packet-archive`**, **`canon run-ledger`**, **`canon readiness check`** (`src/canon_systems/packet_archive_cli.py`, `run_ledger_cli.py`, `readiness_cli.py`) |
 | **Plane C** — "knowledge-api + memory-adapter / PostgreSQL + MemPalace / canon ask \| preflight \| capture" | `infra/terraform/modules/rds-postgres/` — PostgreSQL module; `src/canon_systems/ask_hybrid.py` L1: "Hybrid memory retrieval: canonical artifacts first, MemPalace second"; `src/canon_systems/context_preload.py` |
 | **Plane D** — "synthesis + synthesis-web / S3 Vault (Obsidian-compatible)" | `infra/terraform/modules/synthesis-vault/main.tf` — S3 SSE; `infra/terraform/modules/synthesis-web/` — CloudFront CDN for SSR reader; `src/canon_systems/release_publish.py` |
 | "CLI: canon synth publish\|show \| vault sync" | `src/canon_systems/cli.py` — synth and vault subcommands wired; `src/canon_systems/vault_sync.py` |
@@ -113,6 +113,11 @@ No individual factual claims — serves as navigation only.
 | `schema_version` always 1 | `events.py` L34–35: `if self.schema_version != 1: raise ValueError("schema_version must be 1…")` |
 | Event types: retrieval_breakdown, checkpoint_write, lease_stall_detected, task_outcome, synth_publish | `src/canon_systems/retrieval_telemetry.py` L131, L210; `src/canon_systems/stall_watchdog.py` L52; `src/canon_systems/release_publish.py` L307 |
 | "Canon was built using Canon. 7 waves of handoff history on disk — .cursor/handoffs/canon-memory-v1/" | `.cursor/handoffs/canon-memory-v1/` exists and contains build history. ⚠️ **Minor discrepancy**: `ls` shows 8 epic prefixes (E0–E7), not 7. The claim of "7 waves" is one short. The underlying fact — Canon was built using Canon with extensive handoff history on disk — is fully verified. |
+
+Planning note: **v1** durable retention is implemented — **`POST /state/archive`** +
+**`canon packet-archive`**, **`PUT`/`GET` `/state/run-ledger`** + **`canon run-ledger`**,
+and read-only **`canon readiness check`**. Deck copy should still stress that **local
+`.cursor/handoffs/...` quartet files remain required** for merge review; archive/ledger add server-side history and diagnostics without replacing disk packets.
 
 ---
 

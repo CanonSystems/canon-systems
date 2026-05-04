@@ -61,3 +61,12 @@ Yes, that part could absolutely be extracted.
 The governance layer does not have to own the whole agent runtime. In principle, teams could keep their own models, tools, prompts, and agent flow, and Canon would sit above it as the enforcement/evidence layer: required steps, policy checks, memory grounding, checkpointing, QA gates, and audit trail.
 
 So Canon does not have to start as a full workflow replacement. The governance piece could stand alone first, then expand into the broader workflow/memory system later. The risk is that if it’s too thin, it becomes hard to enforce consistently, so it needs strong integration points at the handoff, checkpoint, and merge/release boundaries.
+
+## May 4 planning addendum
+
+The governance layer should also own durable packet/evidence retention. Local
+`.cursor/handoffs/...` files are useful working-copy artifacts, but Canon should
+archive phase packets and evidence bodies to S3 and store the connective
+metadata in a DynamoDB run ledger. That makes Canon the system of record for
+what happened, what evidence backed it, and whether it passed, even when the
+execution runtime is external.

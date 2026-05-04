@@ -1,0 +1,32 @@
+RELEASE_STATUS
+  initiative: "Canon Readiness Gates"
+  task_id: "docs-tests-rollout"
+  verdict: "READY_TO_MERGE"
+  branch: "feature/canon-run-ledger-readiness"
+  head_sha: "d3528041e391dc930c7634ff906a70eaa7561a14"
+  pr_url: "pending"
+  qa_gate: "PASS"
+  ci_gate: "PASS"
+  merge_gate: "PASS"
+  environment: "none"
+  deploy_gate: "PENDING"
+  rollback_ref: "d3528041e391dc930c7634ff906a70eaa7561a14"
+  checked_at: "2026-05-04T17:56:16Z"
+  evidence:
+    - "qa-gate.md verdict PASS with 5/5 acceptance criteria passing"
+    - "canon qa-validate --file .cursor/handoffs/canon-readiness-gates/docs-tests-rollout/qa-gate.md --require-pass -> PASS"
+    - "canon qa-validate --file .cursor/handoffs/canon-readiness-gates/docs-tests-rollout/qa-gate.md --require-pass --handoff-id canon-readiness-gates --task-id docs-tests-rollout --require-dor-telemetry -> PASS"
+    - "canon flow-audit --handoff-id canon-readiness-gates --task-id docs-tests-rollout --plan-file .cursor/plans/canon_readiness_gates_c389cad8.plan.md --sample-rate 0.2 -> SKIPPED (not selected by sample)"
+    - "canon flow-audit --handoff-id canon-readiness-gates --task-id docs-tests-rollout --plan-file .cursor/plans/canon_readiness_gates_c389cad8.plan.md --sample-rate 1.0 -> PASS"
+    - "python3 -m pytest tests/test_agent_templates.py tests/test_qa_validate.py tests/test_flow_audit.py tests/test_readiness_cli.py tests/test_run_ledger_cli.py tests/test_packet_archive_cli.py tests/test_memory_health.py tests/test_readiness.py tests/test_run_ledger.py tests/test_packet_archive.py -q --tb=short -> 200 passed in 0.38s"
+    - "AWS_PROFILE=canon-systems-v2 canon memory-health --output .cursor/handoffs/canon-readiness-gates/docs-tests-rollout/memory-health.json -> overall_status ok"
+    - "canon flow-audit --handoff-id canon-readiness-gates --task-id docs-tests-rollout --plan-file .cursor/plans/canon_readiness_gates_c389cad8.plan.md --sample-rate 1.0 --require-memory-health -> PASS"
+    - "canon resume --plan-id canon_readiness_gates_c389cad8 --company-id CSC --repository-id canon-systems --handoffs-dir .cursor/handoffs/canon-readiness-gates -> resume_target null, resume_available false, degraded_tasks []"
+  notes:
+    - "CANON_STATE_API_URL was unset in the parent shell, so checkpoint read was skipped per the release-orchestrator sandbox skip rule."
+    - "The initial memory-health run inherited AWS_PROFILE=canon-systems and produced unhealthy evidence; rerunning with the repo-layered AWS_PROFILE=canon-systems-v2 resolved Secrets Manager credentials and overwrote memory-health.json with overall_status ok."
+    - "DoR telemetry-aware validation was enforced through qa-validate."
+    - "No push, PR creation, deployment promotion, or plan-file edit was performed."
+  blockers: []
+  next_action: "Stage and commit docs-tests-rollout artifacts when the parent orchestrator is ready."
+END_RELEASE_STATUS

@@ -26,7 +26,8 @@ Canon has three layers:
 1. **Memory plane**
    Durable company/repo knowledge, decisions, prior work, canonical events, and retrieval evidence.
 2. **Governance / evidence plane**
-   Handoffs, checkpoints, DoR, QA gates, release gates, policy compliance, and audit trail.
+   Handoffs, checkpoints, DoR, QA gates, release gates, policy compliance,
+   audit trail, durable packet/evidence archive, and run ledger.
 3. **Execution plane**
    Local Cursor, Cursor SDK cloud agents, remote workers, containers, or future hosted workspaces.
 
@@ -109,6 +110,7 @@ Must show:
 - Canon compliance result: PASS / BLOCKED / WARNING.
 - Evidence checklist:
   - handoff exists
+  - archived packet URI + content hash exists
   - checkpoint exists
   - memory/retrieval evidence exists
   - changed files cited
@@ -117,6 +119,8 @@ Must show:
   - CI result
   - release/merge gate result
 - Timeline of canonical events.
+- Run ledger view connecting phase packets, evidence refs, validations, commits,
+  deployments, and final outcome.
 - Cursor SDK metadata when relevant:
   - agentId
   - runId

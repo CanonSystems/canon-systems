@@ -9,6 +9,7 @@ from canon_systems.shared import (
     apply_layered_canon_env_for_repo,
     canon_urlopen,
     ensure_layered_memory_env,
+    get_credential_attestation,
     merge_canon_systems_env_files,
     repo_root,
     resolve_auth_bearer,
@@ -137,6 +138,54 @@ def test_canon_urlopen_dns_dig_fallback_disabled(monkeypatch) -> None:
     except urllib.error.URLError:
         return
     raise AssertionError("expected URLError")
+
+
+def test_get_credential_attestation_env_precedence_profile_mismatch(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.delenv("MEMORY_LAYER_AWS_SECRET_ID", raising=False)
+    monkeypatch.delenv("MEMORY_LAYER_AWS_SECRET_NAME_PREFIX", raising=False)
+    monkeypatch.delenv("COMPANY_ID", raising=False)
+    monkeypatch.delenv("REPOSITORY_ID", raising=False)
+    (tmp_path / ".canon").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".canon" / "memory-layer.local.env").write_text(
+        "AWS_PROFILE=canon-systems-v2\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("canon_systems.shared.Path.home", lambda: tmp_path)
+    monkeypatch.setenv("AWS_PROFILE", "canon-systems")
+    monkeypatch.delenv("AWS_REGION", raising=False)
+    monkeypatch.delenv("AWS_DEFAULT_REGION", raising=False)
+    monkeypatch.setattr("canon_systems.aws_secrets.apply_canon_systems_secrets_from_aws", lambda: None)
+
+    apply_layered_canon_env_for_repo(tmp_path)
+    assert os.environ.get("AWS_PROFILE") == "canon-systems"
+    att = get_credential_attestation()
+    assert att["credential_resolution_degraded"] is True
+    prec = att["env_precedence"]
+    assert prec["credential_resolution_degraded"] is True
+    assert prec["layered_env_apply_observed"] is True
+    assert any(m["env_key"] == "AWS_PROFILE" for m in prec["mismatches"])
+    assert not any("BEARER" in str(m).upper() for m in prec["mismatches"])
+
+
+def test_apply_layered_env_no_precedence_false_positive_when_files_align(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.delenv("MEMORY_LAYER_AWS_SECRET_ID", raising=False)
+    monkeypatch.delenv("MEMORY_LAYER_AWS_SECRET_NAME_PREFIX", raising=False)
+    monkeypatch.delenv("COMPANY_ID", raising=False)
+    monkeypatch.delenv("REPOSITORY_ID", raising=False)
+    (tmp_path / ".canon").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".canon" / "memory-layer.local.env").write_text(
+        "AWS_PROFILE=canon-systems-v2\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("canon_systems.shared.Path.home", lambda: tmp_path)
+    monkeypatch.delenv("AWS_PROFILE", raising=False)
+    monkeypatch.setattr("canon_systems.aws_secrets.apply_canon_systems_secrets_from_aws", lambda: None)
+
+    apply_layered_canon_env_for_repo(tmp_path)
+    att = get_credential_attestation()
+    assert att["env_precedence"]["mismatches"] == []
+    assert att["env_precedence"]["credential_resolution_degraded"] is False
+    assert os.environ.get("AWS_PROFILE") == "canon-systems-v2"
 
 
 def test_resolve_ipv4_via_dig_parses_first_a_record(monkeypatch) -> None:

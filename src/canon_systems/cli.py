@@ -14,6 +14,9 @@ from .auth_migration import run as run_auth_migration
 from .ask_hybrid import run as run_ask
 from .capture_session import run as run_capture
 from .checkpoint_cli import run as run_checkpoint_cli
+from .packet_archive_cli import run as run_packet_archive_cli
+from .run_ledger_cli import run as run_run_ledger_cli
+from .readiness_cli import run as run_readiness_cli
 from .graph_indexer import run as run_graph_cli
 from .report_cli import run as run_report_cli
 from .resume_engine import run as run_resume_engine
@@ -337,6 +340,11 @@ def main(argv: list[str] | None = None) -> int:
     qv.add_argument("--handoff-id", default="")
     qv.add_argument("--task-id", default="")
     qv.add_argument("--require-dor-telemetry", action="store_true")
+    qv.add_argument(
+        "--require-checkpoints",
+        action="store_true",
+        help="Require valid per-phase checkpoint JSON (needs --handoff-id and --task-id).",
+    )
 
     fa = sub.add_parser(
         "flow-audit",
@@ -348,6 +356,16 @@ def main(argv: list[str] | None = None) -> int:
     fa.add_argument("--sample-rate", type=float, default=1.0)
     fa.add_argument("--require-release-status", action="store_true")
     fa.add_argument("--require-memory-health", action="store_true")
+    fa.add_argument(
+        "--require-checkpoints",
+        action="store_true",
+        help="Require per-phase checkpoint JSON under checkpoints/ (all five agent phases).",
+    )
+    fa.add_argument(
+        "--require-deploy-attestation",
+        action="store_true",
+        help="Require deployment-smoke.json (branch/deploy proof) under the task handoff directory.",
+    )
 
     mh = sub.add_parser(
         "memory-health",
@@ -387,6 +405,77 @@ def main(argv: list[str] | None = None) -> int:
         default=[],
         help=argparse.SUPPRESS,
     )
+
+    pa = sub.add_parser(
+        "packet-archive",
+        help="Archive a packet/evidence file to S3 via state-api (POST /state/archive).",
+        description=(
+            "Copies an explicit file to the tenant artifact bucket while preserving required "
+            "local ``.cursor/handoffs/...`` packets. Use ``--dry-run`` for no-network resolution."
+        ),
+    )
+    pa.add_argument("--file", default="", help="Path to packet or evidence file.")
+    pa.add_argument("--body-file", default="")
+    pa.add_argument("--company-id", required=True)
+    pa.add_argument("--repository-id", required=True)
+    pa.add_argument("--plan-id", required=True)
+    pa.add_argument("--task-id", required=True)
+    pa.add_argument("--workstream-id", required=True)
+    pa.add_argument("--handoff-id", required=True)
+    pa.add_argument("--phase", required=True)
+    pa.add_argument("--artifact-kind", required=True)
+    pa.add_argument("--source-label", default="")
+    pa.add_argument("--content-type", default="")
+    pa.add_argument("--evidence-subtype", default="")
+    pa.add_argument("--agent-run-id", default="")
+    pa.add_argument("--actor-id", default="")
+    pa.add_argument("--outcome", default="")
+    pa.add_argument("--status", default="")
+    pa.add_argument("--dry-run", action="store_true")
+    pa.add_argument("--dry-run-bucket", default="")
+    pa.add_argument("--dry-run-prefix", default="")
+    pa.add_argument("--state-api-url", default="")
+    pa.add_argument("--timeout-seconds", type=float, default=60.0)
+    pa.add_argument("--quiet", action="store_true")
+
+    rl = sub.add_parser(
+        "run-ledger",
+        help="Validate / merge archive refs into a run-ledger record; dry-run or PUT to state-api.",
+        description=(
+            "Load a ledger record JSON, optionally merge archive metadata snapshots into "
+            "``archive_refs`` (by reference only). Use ``--dry-run`` for no network I/O."
+        ),
+    )
+    rlsrc = rl.add_mutually_exclusive_group(required=True)
+    rlsrc.add_argument("--record-file", default="", metavar="PATH")
+    rlsrc.add_argument("--record-json", default="", metavar="JSON")
+    rl.add_argument("--merge-archive-json", default="", metavar="PATH")
+    rl.add_argument("--dry-run", action="store_true")
+    rl.add_argument("--state-api-url", default="")
+    rl.add_argument("--timeout-seconds", type=float, default=60.0)
+    rl.add_argument("--quiet", action="store_true")
+
+    rd = sub.add_parser(
+        "readiness",
+        help="Run-ledger-backed readiness snapshot (GET /state/run-ledger; read-only).",
+    )
+    rd_sub = rd.add_subparsers(dest="readiness_command", required=True)
+    rd_check = rd_sub.add_parser(
+        "check",
+        help="Emit readiness JSON from scoped run-ledger query.",
+    )
+    rd_check.add_argument("--company-id", required=True, dest="readiness_company_id")
+    rd_check.add_argument("--repository-id", required=True, dest="readiness_repository_id")
+    rd_check.add_argument("--plan-id", required=True, dest="readiness_plan_id")
+    rd_check.add_argument("--task-id", required=True, dest="readiness_task_id")
+    rd_check.add_argument("--workstream-id", required=True, dest="readiness_workstream_id")
+    rd_check.add_argument("--handoff-id", required=True, dest="readiness_handoff_id")
+    rd_check.add_argument("--ledger-run-id", default="", dest="readiness_ledger_run_id")
+    rd_check.add_argument("--state-api-url", default="", dest="readiness_state_api_url")
+    rd_check.add_argument("--limit", type=int, default=50, dest="readiness_limit")
+    rd_check.add_argument("--output", default="", dest="readiness_output")
+    rd_check.add_argument("--timeout-seconds", type=float, default=60.0, dest="readiness_timeout_seconds")
+    rd_check.add_argument("--quiet", action="store_true", dest="readiness_quiet")
 
     graph_parser = sub.add_parser("graph", help="Graph retrieval plane CLI")
     graph_parser.add_argument("args", nargs=argparse.REMAINDER)
@@ -613,6 +702,8 @@ def main(argv: list[str] | None = None) -> int:
             qv_args += ["--task-id", args.task_id]
         if args.require_dor_telemetry:
             qv_args.append("--require-dor-telemetry")
+        if getattr(args, "require_checkpoints", False):
+            qv_args.append("--require-checkpoints")
         return run_qa_validate(qv_args)
 
     if args.command == "flow-audit":
@@ -630,6 +721,10 @@ def main(argv: list[str] | None = None) -> int:
             fa_args.append("--require-release-status")
         if args.require_memory_health:
             fa_args.append("--require-memory-health")
+        if getattr(args, "require_checkpoints", False):
+            fa_args.append("--require-checkpoints")
+        if args.require_deploy_attestation:
+            fa_args.append("--require-deploy-attestation")
         return run_flow_audit(fa_args)
 
     if args.command == "e2e-check":
@@ -664,6 +759,94 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "checkpoint":
         return run_checkpoint_cli(list(getattr(args, "checkpoint_tail", [])))
+
+    if args.command == "packet-archive":
+        pa_args: list[str] = []
+        if getattr(args, "file", ""):
+            pa_args += ["--file", args.file]
+        if getattr(args, "body_file", ""):
+            pa_args += ["--body-file", args.body_file]
+        for fld in (
+            "company_id",
+            "repository_id",
+            "plan_id",
+            "task_id",
+            "workstream_id",
+            "handoff_id",
+            "phase",
+            "artifact_kind",
+            "source_label",
+            "content_type",
+            "evidence_subtype",
+            "agent_run_id",
+            "actor_id",
+            "outcome",
+            "status",
+            "dry_run_bucket",
+            "dry_run_prefix",
+            "state_api_url",
+        ):
+            v = getattr(args, fld, "") or ""
+            if isinstance(v, bool):
+                continue
+            if v:
+                pa_args += [f"--{fld.replace('_', '-')}", str(v)]
+        if getattr(args, "dry_run", False):
+            pa_args.append("--dry-run")
+        if getattr(args, "quiet", False):
+            pa_args.append("--quiet")
+        ts = getattr(args, "timeout_seconds", None)
+        if ts is not None and ts != 60.0:
+            pa_args += ["--timeout-seconds", str(ts)]
+        return run_packet_archive_cli(pa_args)
+
+    if args.command == "run-ledger":
+        rl_args: list[str] = []
+        if getattr(args, "record_file", ""):
+            rl_args += ["--record-file", args.record_file]
+        if getattr(args, "record_json", ""):
+            rl_args += ["--record-json", args.record_json]
+        maj = getattr(args, "merge_archive_json", "") or ""
+        if maj:
+            rl_args += ["--merge-archive-json", maj]
+        if getattr(args, "dry_run", False):
+            rl_args.append("--dry-run")
+        surl = getattr(args, "state_api_url", "") or ""
+        if surl:
+            rl_args += ["--state-api-url", surl]
+        ts_rl = getattr(args, "timeout_seconds", None)
+        if ts_rl is not None and ts_rl != 60.0:
+            rl_args += ["--timeout-seconds", str(ts_rl)]
+        if getattr(args, "quiet", False):
+            rl_args.append("--quiet")
+        return run_run_ledger_cli(rl_args)
+
+    if args.command == "readiness":
+        rc: list[str] = ["check"]
+        rc += ["--company-id", getattr(args, "readiness_company_id", "")]
+        rc += ["--repository-id", getattr(args, "readiness_repository_id", "")]
+        rc += ["--plan-id", getattr(args, "readiness_plan_id", "")]
+        rc += ["--task-id", getattr(args, "readiness_task_id", "")]
+        rc += ["--workstream-id", getattr(args, "readiness_workstream_id", "")]
+        rc += ["--handoff-id", getattr(args, "readiness_handoff_id", "")]
+        rlr = str(getattr(args, "readiness_ledger_run_id", "") or "").strip()
+        if rlr:
+            rc += ["--ledger-run-id", rlr]
+        rsu = str(getattr(args, "readiness_state_api_url", "") or "").strip()
+        if rsu:
+            rc += ["--state-api-url", rsu]
+        rlim = getattr(args, "readiness_limit", 50)
+        if rlim != 50:
+            rc += ["--limit", str(rlim)]
+        rout = str(getattr(args, "readiness_output", "") or "").strip()
+        if rout:
+            rc += ["--output", rout]
+        rts = getattr(args, "readiness_timeout_seconds", 60.0)
+        if rts != 60.0:
+            rc += ["--timeout-seconds", str(rts)]
+        if getattr(args, "readiness_quiet", False):
+            rc.append("--quiet")
+        return run_readiness_cli(rc)
 
     if args.command == "graph":
         return run_graph_cli(list(getattr(args, "args", [])))

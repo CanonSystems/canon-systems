@@ -9,6 +9,22 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Readiness:** CLI **`canon readiness check`** — **`GET`** `/state/run-ledger`-backed JSON snapshot (`src/canon_systems/readiness.py`, **`tests/test_readiness.py`**, **`tests/test_readiness_cli.py`**). Uses ledger + **`archive_refs`** metadata only (no archived body reads); passes through **`validation_outcomes`** / commit / PR / deployment fields already on rows; deterministic exits **`0`**/**`1`**/**`2`**. **`canon flow-audit --require-deploy-attestation`** enforces on-disk **`deployment-smoke.json`** separately. **`canon doctor --json`** includes redacted **`credential_attestation`** (wiring diagnostics, not secret values). Still deferred in **`readiness`**: QA evidence normalization, shared DoR validation, and new attestation rules beyond fields already persisted on ledger rows.
+- **Run ledger:** DynamoDB-backed durable run records on **`state-api`**
+  (**`PUT`/`GET` `/state/run-ledger`**, table **`STATE_RUN_LEDGER_TABLE_NAME`**,
+  Terraform module output **`state_run_ledger_table_*`**), shared schema in
+  **`canon_backend_shared.run_ledger`**, and CLI **`canon run-ledger`**
+  (dry-run, archive-ref merge, **`PUT`** to state-api). Ledger keys and
+  storage are isolated from checkpoint/lease items; **`archive_refs`** are
+  by-reference only (no packet bodies in DynamoDB). Tests:
+  **`tests/test_run_ledger.py`**, **`tests/test_run_ledger_cli.py`**,
+  **`backend/state-api/tests/test_run_ledger.py`**.
+- **Packet/evidence archive:** shared v1 schema + deterministic S3 keys in
+  `canon_backend_shared.packet_archive`, CLI **`canon packet-archive`**, and
+  **`POST /state/archive`** on **`state-api`** (`STATE_ARTIFACT_BUCKET`,
+  `STATE_ARCHIVE_KEY_PREFIX`). Successful uploads emit **`packet_archived`**
+  canonical events (metadata only). Tests: `tests/test_packet_archive*.py`,
+  `backend/state-api/tests/test_packet_archive.py`.
 - **Docs:** `docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md` — full runtime checklist
   (layered env, secret keys, state defaulting, graph health vs index usefulness),
   global retrieval rule pointer, per-agent matrix, and living-update cross-links.
@@ -20,6 +36,8 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 ### Fixed
+
+- **CLI:** restore the **`graph`** sub-parser registration (was omitted beside **`packet-archive`**, causing **`NameError: graph_parser`** on startup).
 
 ## [3.5.5] - 2026-04-24
 

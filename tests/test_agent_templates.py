@@ -53,6 +53,40 @@ def test_release_orchestrator_template_has_merge_and_deploy_gates() -> None:
     assert "handoff-not-ready/<stage>-<timestamp>.md" in body
     assert "dor-failure/<stage>-<timestamp>.json" in body
     assert "canon dor-log --event-file" in body
+    assert "## Deploy smoke evidence (deploy attestation)" in body
+    assert "Structured schema (JSON, non-secret)" in body
+    assert "`expected_head_sha`" in body
+    assert "`deployed_commit_sha`" in body
+    assert "`deployed_build_id`" in body
+    assert "`smoke_verdict`" in body
+    assert "`checked_at`" in body
+    assert "`evidence_refs`" in body
+    assert "`base_url`" in body
+    assert "`expected_branch`" in body
+    assert "environment_smoke_not_proof_of_branch" in body
+    assert "Promotion comparison checklist" in body
+    assert "Deploy attestation:" in body
+    assert "older" in body
+
+
+def test_release_orchestrator_template_cross_repo_rollout_expectations() -> None:
+    body = resources.files("canon_systems.templates.agents").joinpath("release-orchestrator.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Cross-repo rollout expectations (additive)" in body
+    assert "without replacing merge gates" in body
+    assert ".cursor/handoffs/<handoff_id>/<task_id>/" in body
+    assert "canon packet-archive" in body
+    assert "canon run-ledger" in body
+    assert "canon readiness check" in body
+    assert "GET /state/run-ledger" in body
+    assert "read-only" in body
+    assert "DoR rejection telemetry contract" in body
+    assert "canon dor-log --event-file" in body
+    assert "**Credential recovery**" in body
+    assert "canon secrets" in body
+    assert "MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md" in body
+    assert "Deploy smoke evidence (deploy attestation)" in body
 
 
 def test_workspace_release_orchestrator_template_stays_in_sync() -> None:

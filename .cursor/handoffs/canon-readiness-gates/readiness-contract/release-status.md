@@ -1,0 +1,27 @@
+RELEASE_STATUS
+  initiative: "Canon readiness gates"
+  task_id: "readiness-contract"
+  verdict: "READY_TO_MERGE"
+  branch: "feature/canon-run-ledger-readiness"
+  pr_url: "pending"
+  qa_gate: "PASS"
+  ci_gate: "PENDING"
+  merge_gate: "READY_TO_MERGE"
+  environment: "none"
+  deploy_gate: "PENDING"
+  rollback_ref: "d3528041e391dc930c7634ff906a70eaa7561a14"
+  blockers:
+    - "Plan-level PR/CI/deploy gates intentionally deferred; no task-level local release blocker."
+  evidence:
+    - "qa-gate: PASS; 8/8 acceptance criteria passed."
+    - "qa-validate: PASS with --require-pass, handoff/task ids, and --require-dor-telemetry."
+    - "flow-audit --require-memory-health: PASS for canon-readiness-gates / readiness-contract."
+    - "flow-audit --sample-rate 0.2: SKIPPED by sampling, not a failure."
+    - "memory-health: overall_status ok for required canonical/mempalace and optional state/graph."
+    - "pytest: full suite 636 passed."
+    - "smoke-test: all stages passed."
+    - "checkpoint: CANON_STATE_API_URL unset, so checkpoint HTTP skipped per policy."
+    - "resume: no resume target and no degraded tasks reported; CLI scanned zero tasks for this handoffs-dir, so plan-level completion remains deferred."
+    - "CI/PR: deferred by instruction; no push or PR created for this task-level pass."
+  next_action: "Stage and commit readiness-contract artifacts plus packet quartet; defer push/PR/CI to the larger plan."
+END_RELEASE_STATUS

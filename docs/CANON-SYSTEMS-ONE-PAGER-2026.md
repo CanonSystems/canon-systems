@@ -17,7 +17,7 @@ The first two are Canon’s real moat. The third is partly replaceable, and Curs
 ## In practice, teams get
 
 - **Memory that survives the chat window** — preflight and capture on every turn, company + repo scoping, hybrid retrieval across canonical events and MemPalace.
-- **Governed delivery, not chat-only claims** — file-backed handoffs, DoR enforcement, checkpoints, QA gates, merge/release gates, and audit-proof evidence.
+- **Governed delivery, not chat-only claims** — file-backed handoffs, DoR enforcement, checkpoints, QA gates, merge/release gates, audit-proof evidence, plus **v1** server-side **packet archive** + **run ledger** on **`state-api`** (local `.cursor/handoffs/...` still required; **`canon readiness check`** is read-only diagnostics over the ledger).
 - **Cross-repo coherence** — the same `company_id` can span many repositories so decisions and captures are not trapped in one clone.
 - **Optional execution and data planes** — code graph, operational state, synthesis vault, stable HTTPS APIs, and a validated Cursor SDK remote-execution path that can mature into remote workers.
 
@@ -96,6 +96,7 @@ What would stay constant:
 - canonical IDs
 - event envelope
 - packet/evidence model
+- durable packet archive + run ledger
 - tenant boundaries
 - checkpoint lease semantics
 - merge and release gates

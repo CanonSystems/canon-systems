@@ -99,6 +99,16 @@ output "state_table_arn" {
   value       = module.state_table.table_arn
 }
 
+output "state_run_ledger_table_name" {
+  description = "DynamoDB run-ledger table (durable readiness/run records; separate from checkpoint items)."
+  value       = module.state_table.run_ledger_table_name
+}
+
+output "state_run_ledger_table_arn" {
+  description = "ARN of the DynamoDB run-ledger table."
+  value       = module.state_table.run_ledger_table_arn
+}
+
 output "snapshots_bucket_name" {
   description = "S3 bucket for Axon per-commit graph snapshots (gzip JSON)."
   value       = module.axon_snapshots.snapshots_bucket_name
