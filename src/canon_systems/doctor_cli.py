@@ -13,7 +13,7 @@ import time
 import urllib.parse
 from pathlib import Path
 
-from .aws_secrets import _cache_file_path, resolve_canon_systems_secret_id
+from .aws_secrets import _cache_file_path, build_aws_secrets_resolution_attestation
 from .shared import _resolve_ipv4_via_dig, _runtime_canon_version_string, load_env_file, repo_root
 
 _IPV4_IN_URL = re.compile(r"https?://\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?")
@@ -24,6 +24,13 @@ CANONICAL_MEMORY_HTTPS_KEYS: tuple[str, ...] = (
     "KNOWLEDGE_WORKER_URL",
     "MEMORY_ADAPTER_URL",
     "CANON_STATE_API_URL",
+)
+
+# Same keys as layered merge: process env wins via ``setdefault`` over repo-local file values.
+_DOCTOR_ENV_PRECEDENCE_KEYS: tuple[str, ...] = (
+    "AWS_PROFILE",
+    "AWS_REGION",
+    "AWS_DEFAULT_REGION",
 )
 
 
@@ -155,6 +162,52 @@ def _dns_warp_check(local: dict[str, str]) -> dict[str, object]:
     }
 
 
+def _doctor_env_precedence_attestation(
+    local: dict[str, str], before_tracked: dict[str, str]
+) -> dict[str, object]:
+    """Detect process-env vs repo-local `memory-layer.local.env` shadowing (same rules as layered setdefault)."""
+    mismatches: list[dict[str, str]] = []
+    for key in _DOCTOR_ENV_PRECEDENCE_KEYS:
+        layered = (local.get(key) or "").strip()
+        proc = (before_tracked.get(key) or "").strip()
+        effective = (os.environ.get(key) or "").strip()
+        if layered and proc and layered != proc and effective == proc:
+            mismatches.append(
+                {
+                    "env_key": key,
+                    "process_env_value": proc,
+                    "layered_file_value": layered,
+                    "effective_value": effective,
+                    "reason": "process_env_shadows_layered_file",
+                }
+            )
+    return {
+        "schema_version": 1,
+        "tracked_keys": list(_DOCTOR_ENV_PRECEDENCE_KEYS),
+        "mismatches": mismatches,
+        "credential_resolution_degraded": bool(mismatches),
+        "layered_env_source": "memory-layer.local.env",
+        "layered_env_apply_observed": True,
+    }
+
+
+def _build_doctor_credential_attestation(
+    local: dict[str, str], before_tracked: dict[str, str]
+) -> dict[str, object]:
+    """Non-secret credential + Secrets Manager attestation aligned with doctor's env merge."""
+    aws_block = build_aws_secrets_resolution_attestation()
+    env_block = _doctor_env_precedence_attestation(local, before_tracked)
+    degraded = bool(env_block.get("credential_resolution_degraded")) or bool(
+        aws_block.get("credential_resolution_degraded")
+    )
+    return {
+        "schema_version": 1,
+        "aws_secrets_resolution": aws_block,
+        "env_precedence": env_block,
+        "credential_resolution_degraded": degraded,
+    }
+
+
 def _cache_status() -> dict[str, object]:
     path = _cache_file_path()
     out: dict[str, object] = {"path": str(path), "exists": path.is_file()}
@@ -225,7 +278,7 @@ def run(argv: list[str] | None = None) -> int:
     if repo_env and ctx_repo and repo_env != ctx_repo:
         mismatch = True
 
-    secret_id = ""
+    before_tracked = {k: (os.environ.get(k) or "").strip() for k in _DOCTOR_ENV_PRECEDENCE_KEYS}
     for k, v in local.items():
         ks, vs = k.strip(), (v or "").strip()
         if ks and vs:
@@ -234,10 +287,12 @@ def run(argv: list[str] | None = None) -> int:
         os.environ.setdefault("COMPANY_ID", company_env)
     if repo_env:
         os.environ.setdefault("REPOSITORY_ID", repo_env)
-    try:
-        secret_id = resolve_canon_systems_secret_id()
-    except Exception:
-        secret_id = ""
+    credential_attestation = _build_doctor_credential_attestation(local, before_tracked)
+    aws_res = credential_attestation.get("aws_secrets_resolution")
+    secret_id = ""
+    if isinstance(aws_res, dict):
+        sid = aws_res.get("resolved_secret_id", "")
+        secret_id = sid if isinstance(sid, str) else ""
 
     if args.fix_cache:
         cpath = _cache_file_path()
@@ -267,6 +322,7 @@ def run(argv: list[str] | None = None) -> int:
         "context_latest_company_id": ctx_company,
         "context_latest_repository_id": ctx_repo,
         "tenant_context_mismatch": mismatch,
+        "credential_attestation": credential_attestation,
         "resolved_secret_id": secret_id,
         "aws_secret_cache": cache,
         "canonical_memory_https_url_keys": list(CANONICAL_MEMORY_HTTPS_KEYS),
@@ -280,12 +336,52 @@ def run(argv: list[str] | None = None) -> int:
         print(json.dumps(out, indent=2, ensure_ascii=True))
         return 1 if mismatch or ip_hits else 0
 
+    aws_att = credential_attestation["aws_secrets_resolution"]
+    if not isinstance(aws_att, dict):
+        aws_att = {}
+    env_prec = credential_attestation["env_precedence"]
+    if not isinstance(env_prec, dict):
+        env_prec = {}
+    eff_prof = (aws_att.get("effective_aws_profile") or "").strip() or "(unset)"
+    repo_prof = (local.get("AWS_PROFILE") or "").strip() or "(unset)"
+    res_status = ""
+    res_obj = aws_att.get("resolution")
+    if isinstance(res_obj, dict):
+        res_status = str(res_obj.get("status", "") or "")
+    cache_hit = aws_att.get("cache_hit_when_known")
+    if cache_hit is True:
+        cache_hit_s = "hit"
+    elif cache_hit is False:
+        cache_hit_s = "miss"
+    else:
+        cache_hit_s = "n/a"
+
     print(f"repo_root: {root}")
     print(f"wiring: {env_path} ({'ok' if env_path.is_file() else 'MISSING'})")
     print(f"COMPANY_ID (file/env): {company_env or '(unset)'}")
     print(f"REPOSITORY_ID (file/env): {repo_env or '(unset)'}")
+    print(
+        "credential resolution: "
+        f"effective AWS_PROFILE={eff_prof!r} | "
+        f"repo-local AWS_PROFILE (file)={repo_prof!r} | "
+        f"resolution={res_status or '(n/a)'} | "
+        f"cache_hit={cache_hit_s}"
+    )
     if secret_id:
         print(f"resolved Secrets Manager id: {secret_id}")
+    mismatches = env_prec.get("mismatches") if isinstance(env_prec.get("mismatches"), list) else []
+    if mismatches:
+        for m in mismatches:
+            if not isinstance(m, dict):
+                continue
+            key = m.get("env_key", "env")
+            proc_v = m.get("process_env_value", "")
+            file_v = m.get("layered_file_value", "")
+            print(
+                f"WARNING: process {key}={proc_v!r} shadows repo-local memory-layer.local.env "
+                f"({key}={file_v!r}) — unset {key} in your shell or align values so Canon uses the intended profile.",
+                file=sys.stderr,
+            )
     print(f"context-latest.md: company_id={ctx_company or '(none)'} repository_id={ctx_repo or '(none)'}")
     if mismatch:
         print(

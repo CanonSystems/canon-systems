@@ -15,6 +15,26 @@ You manage release operations; you do not author feature code.
 - Task-level `GATE_RESULTS` from `qa-gate`
 - Repository CI status and branch protection outcomes
 
+## Cross-repo rollout expectations (additive)
+
+Cross-repo Canon rollouts MUST satisfy **Required governance** below unchanged—this section names companion durable-plane expectations that **add** operational discipline without replacing merge gates, memory-health checks, DoR telemetry, credential handling, deploy attestation, or CI requirements.
+
+1. **Local packet persistence** — The **Artifact persistence contract** quartet on disk (`scoper.md`, `cursor-pilot.md`, `qa-gate.md`, `release-status.md` under `.cursor/handoffs/<handoff_id>/<task_id>/`) remains mandatory; chat-only packets are invalid.
+
+2. **S3 packet archive** — After local persistence, archive packets/evidence to the tenant vault with **`canon packet-archive`** so auditors and downstream repos can reconcile artifacts beyond the working tree. Archive **complements**—never substitutes—local handoff files.
+
+3. **Run ledger + readiness diagnostics** — Use **`canon run-ledger`** to validate or merge archive refs into ledger records via state-api; use **`canon readiness check`** as a **read-only** readiness snapshot (`GET /state/run-ledger`). Neither replaces QA verdicts, checkpoint leases, or local packets—use them as diagnostics alongside gates.
+
+4. **DoR telemetry** — Follow **DoR rejection telemetry contract** for every `HANDOFF_NOT_READY` (rejection markdown, `dor-failure/*.json`, `.status` with `exit_code:`, and `canon dor-log --event-file ...`).
+
+5. **Credential recovery** — When Canon surfaces credential or Secrets Manager failures, run **`canon secrets`** (wizard), retry the failing command once, then escalate with a targeted unblock—never ask operators to paste secrets or tokens into chat.
+
+6. **memory-health** — Keep per-task **`canon memory-health --output`** evidence and **`canon flow-audit ... --require-memory-health`** exactly as listed under **Merge gates (all required)**.
+
+7. **Deploy attestation + release gates** — **Deploy gates**, **Deploy smoke evidence (deploy attestation)**, **Resume check**, and **Auto-publish hook** behavior remain fully required as written below; rollout does not relax `deploy_gate`, `merge_gate`, QA validation, flow-audit sampling, branch protection, or CI policy.
+
+Canon Memory Platform v1 semantics defer to `docs/SYSTEM-WORKFLOW.md`, `docs/MEMORY-PLATFORM-RUNTIME-AND-AGENTS.md`, and packaged rules under `src/canon_systems/templates/rules/` where applicable—this template stays additive.
+
 ## Required governance
 
 1. Branch strategy
@@ -32,8 +52,46 @@ You manage release operations; you do not author feature code.
 4. Deploy gates
    - Promote in order: dev -> staging -> production/TestFlight.
    - Require environment smoke checks before next promotion.
+   - **Deploy attestation:** Do **not** set `deploy_gate: PASS` until deploy smoke evidence JSON exists for that promotion step and satisfies **Deploy smoke evidence (deploy attestation)** below (schema + comparison rules).
+   - Compare deployed revision against the expected branch tip (`expected_head_sha`). If **DEV**, **staging**, **production**, **TestFlight**, or any target environment is serving an **older** commit/build than the branch head you intend to promote, **block promotion**: keep `deploy_gate: FAIL` or `PENDING`, record blockers in `RELEASE_STATUS`, and do not advance until the environment catches up or expectations are corrected with fresh evidence.
 5. Rollback readiness
    - Maintain rollback trigger and latest known-good revision per environment.
+
+## Deploy smoke evidence (deploy attestation)
+
+Green smoke alone does **not** prove the deployed plane matches the merge artifact. Persist structured, **non-secret** JSON per smoke pass so reviewers can audit identity without credentials embedded in URLs or payloads.
+
+### Structured schema (JSON, non-secret)
+
+Each evidence object SHOULD live at a repo-relative path referenced from release notes or `RELEASE_STATUS`; list that path again under `evidence_refs`. Required keys:
+
+- `environment` (string): Target lane label (for example `dev`, `staging`, `production`, `testflight`).
+- `base_url` (string): HTTPS origin checked during smoke (paths MUST NOT embed secrets or signed tokens).
+- `expected_branch` (string): Git branch whose tip defines the intended deployment head.
+- `expected_head_sha` (string): Full 40-character lowercase hex SHA for that branch tip **at promotion decision time**.
+- `deployed_commit_sha` (string or `null`): Observed Git SHA running in the environment (health endpoint, deploy metadata, CI provenance mapping—never paste secrets).
+- `deployed_build_id` (string or `null`): Opaque CI/build identifier when SHA mapping alone is insufficient (still non-secret).
+- `smoke_verdict` (string): `PASS`, `FAIL`, or `environment_smoke_not_proof_of_branch`.
+- `smoke_reason` (string): Required whenever `smoke_verdict` is not `PASS`; cite concrete gaps (missing metadata, ambiguous mapping, stale replica, etc.).
+- `checked_at` (string): RFC 3339 UTC timestamp when smoke plus identity checks finished.
+- `evidence_refs` (array of strings): Repo-relative paths and/or redacted HTTPS links to screenshots, CI logs, HAR excerpts, etc.
+
+### Stale or unverifiable deployments
+
+When smoke routines succeed but **deployed revision cannot be matched** to `expected_head_sha` / `deployed_build_id`, or the environment clearly lags the intended tip, set:
+
+- `smoke_verdict`: `environment_smoke_not_proof_of_branch`
+- `smoke_reason`: Explain why the deployment is stale or non-auditable.
+
+Treat that verdict as **blocking** for `deploy_gate: PASS` until superseded by fresh evidence proving parity.
+
+### Promotion comparison checklist
+
+Before emitting `deploy_gate: PASS`:
+
+1. Load the latest smoke JSON for that `environment`.
+2. Verify `smoke_verdict == PASS` **and** `deployed_commit_sha` (or resolved `deployed_build_id`) **equals** `expected_head_sha` when both sides are known.
+3. If either side is unknown or unequal, stop: triage via `environment_smoke_not_proof_of_branch` or `FAIL`, update blockers, redeploy or recheck, then capture a new JSON artifact.
 
 ## Task-unit execution (no slicing drift)
 

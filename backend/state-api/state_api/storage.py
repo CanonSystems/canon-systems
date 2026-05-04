@@ -2,10 +2,76 @@
 
 from __future__ import annotations
 
+import json
+from decimal import Decimal
 from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
+
+
+def _dynamo_to_plain(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return int(value) if value % 1 == 0 else float(value)
+    if isinstance(value, dict):
+        return {k: _dynamo_to_plain(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_dynamo_to_plain(v) for v in value]
+    return value
+
+
+def ledger_record_from_item(item: dict[str, Any]) -> dict[str, Any]:
+    """Strip DynamoDB keys and normalize numeric types for JSON/compare."""
+    raw = {k: v for k, v in item.items() if k not in ("pk", "sk")}
+    return _dynamo_to_plain(raw)  # type: ignore[return-value]
+
+
+def run_ledger_items_equivalent(stored: dict[str, Any], desired: dict[str, Any]) -> bool:
+    """True if ledger payloads match (ignoring pk/sk), after canonical validation."""
+    from canon_backend_shared.run_ledger import RunLedgerValidationError, validate_run_ledger_record
+
+    a_raw = ledger_record_from_item(stored)
+    b_raw = {k: v for k, v in desired.items() if k not in ("pk", "sk")}
+    try:
+        a = validate_run_ledger_record(a_raw)
+        b = validate_run_ledger_record(b_raw)
+    except RunLedgerValidationError:
+        return False
+    return json.dumps(a, sort_keys=True) == json.dumps(b, sort_keys=True)
+
+
+class RunLedgerStore:
+    """DynamoDB table for immutable run-ledger rows (distinct from checkpoint lease state)."""
+
+    def __init__(self, table_name: str, region: str) -> None:
+        self._table = boto3.resource("dynamodb", region_name=region).Table(table_name)
+
+    @property
+    def table_name(self) -> str:
+        return self._table.name
+
+    def get_item(self, pk: str, sk: str) -> dict[str, Any] | None:
+        resp = self._table.get_item(Key={"pk": pk, "sk": sk})
+        return resp.get("Item")
+
+    def put_if_absent(self, item: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        """
+        Insert a ledger row. Returns ``("created", item)`` or raises ClientError.
+        On duplicate key, use :meth:`get_item` + :func:`run_ledger_items_equivalent` outside.
+        """
+        self._table.put_item(
+            Item=item,
+            ConditionExpression="attribute_not_exists(pk) AND attribute_not_exists(sk)",
+        )
+        return ("created", item)
+
+    def query_sk_prefix(self, pk: str, sk_prefix: str, *, limit: int) -> list[dict[str, Any]]:
+        resp = self._table.query(
+            KeyConditionExpression="pk = :pk AND begins_with(sk, :pre)",
+            ExpressionAttributeValues={":pk": pk, ":pre": sk_prefix},
+            Limit=limit,
+        )
+        return list(resp.get("Items", []))
 
 
 class StateStore:

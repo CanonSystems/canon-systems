@@ -1,0 +1,84 @@
+{
+  "schema_version": "1",
+  "generated_at": "2026-05-04T17:27:28Z",
+  "overall_status": "ok",
+  "required_set": [
+    "canonical",
+    "mempalace"
+  ],
+  "timeout_ms": 2000,
+  "credential_attestation": {
+    "aws_secrets_resolution": {
+      "effective_aws_profile": "canon-systems",
+      "effective_aws_region": "us-east-1",
+      "resolved_secret_id": "canon-memory-dev/memory-layer__csc__canon-systems",
+      "memory_layer_aws_secret_id_from_explicit_env": false,
+      "cache_path": "/Users/edwardwalker/.canon/memory-layer-aws-cache.json",
+      "cache_exists": true,
+      "cache_disabled": false,
+      "cache_hit_when_known": true,
+      "resolution": {
+        "status": "cache_hit",
+        "boto3_available": true
+      },
+      "credential_resolution_degraded": false
+    },
+    "env_precedence": {
+      "tracked_keys": [
+        "AWS_PROFILE",
+        "AWS_REGION",
+        "AWS_DEFAULT_REGION"
+      ],
+      "mismatches": [
+        {
+          "env_key": "AWS_PROFILE",
+          "process_env_value": "canon-systems",
+          "layered_file_value": "canon-systems-v2",
+          "effective_value": "canon-systems",
+          "reason": "process_env_shadows_layered_file"
+        }
+      ],
+      "credential_resolution_degraded": true,
+      "layered_env_apply_observed": true
+    },
+    "credential_resolution_degraded": true
+  },
+  "backends": [
+    {
+      "name": "canonical",
+      "required": true,
+      "endpoint_ref": "https://memory.canon-systems.com/healthz",
+      "status": "ok",
+      "latency_ms": 134,
+      "version": null,
+      "last_error": null
+    },
+    {
+      "name": "mempalace",
+      "required": true,
+      "endpoint_ref": "https://memory.canon-systems.com/healthz",
+      "status": "ok",
+      "latency_ms": 53,
+      "version": null,
+      "last_error": null
+    },
+    {
+      "name": "state",
+      "required": false,
+      "endpoint_ref": "https://memory.canon-systems.com/healthz",
+      "status": "ok",
+      "latency_ms": 75,
+      "version": null,
+      "last_error": null
+    },
+    {
+      "name": "graph",
+      "required": false,
+      "endpoint_ref": "https://ksrmpdyi8h.us-east-1.awsapprunner.com/healthz",
+      "status": "ok",
+      "latency_ms": 235,
+      "version": null,
+      "last_error": null
+    }
+  ]
+}

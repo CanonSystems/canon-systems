@@ -80,6 +80,8 @@ def test_preflight_unreachable_records_md_sidecar_and_queue(
     assert context_preload.run(["--quiet", "my query"]) == 0
 
     md = (tmp_path / ".canon" / "memory" / "context-latest.md").read_text(encoding="utf-8")
+    assert "## Credential / Secrets resolution" in md
+    assert "### AWS Secrets Manager" in md
     assert "## MemPalace Status" in md
     assert "- status: `unreachable`" in md
     assert "- endpoint_ref: `http://m.test/memory/search`" in md
@@ -87,6 +89,11 @@ def test_preflight_unreachable_records_md_sidecar_and_queue(
     side = json.loads((tmp_path / ".canon" / "memory" / "context-latest.json").read_text(encoding="utf-8"))
     assert side["mempalace_status"]["status"] == "unreachable"
     assert "latency_ms" in side["mempalace_status"]
+    ca = side["credential_attestation"]
+    assert isinstance(ca, dict)
+    assert "aws_secrets_resolution" in ca
+    assert "env_precedence" in ca
+    assert "credential_resolution_degraded" in ca
 
     q = queue_path()
     assert q.exists()
@@ -116,6 +123,9 @@ def test_preflight_ok_no_queue(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     assert context_preload.run(["--quiet", "q"]) == 0
     j = json.loads((tmp_path / ".canon" / "memory" / "context-latest.json").read_text(encoding="utf-8"))
     assert j["mempalace_status"]["status"] == "ok"
+    assert isinstance(j.get("credential_attestation"), dict)
+    md = (tmp_path / ".canon" / "memory" / "context-latest.md").read_text(encoding="utf-8")
+    assert "## Credential / Secrets resolution" in md
     assert not queue_path().exists()
 
 
@@ -166,3 +176,68 @@ def test_classifier_not_configured_no_enqueue(tmp_path: Path, monkeypatch: pytes
     )
     assert block["status"] == "not_configured"
     assert not queue_path().exists()
+
+
+def test_preflight_persists_credential_attestation_summary_ac4(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AC4: context-latest.json + md carry structured credential attestation (non-secret)."""
+    _tmp_env(monkeypatch, tmp_path)
+    ident = _make_identity()
+    repo = _make_repo(tmp_path)
+    monkeypatch.setattr(context_preload, "load_identity_context", lambda: ident)
+    monkeypatch.setattr(context_preload, "load_repo_context", lambda _i: repo)
+
+    fake_att: dict[str, Any] = {
+        "aws_secrets_resolution": {
+            "effective_aws_profile": "prof_ws3",
+            "effective_aws_region": "us-east-1",
+            "resolved_secret_id": "canon-memory-dev/memory-layer__co__repo",
+            "memory_layer_aws_secret_id_from_explicit_env": False,
+            "cache_path": str(tmp_path / "cache.json"),
+            "cache_exists": True,
+            "cache_disabled": False,
+            "cache_hit_when_known": True,
+            "resolution": {"status": "cache_hit", "boto3_available": True},
+            "credential_resolution_degraded": False,
+        },
+        "env_precedence": {
+            "tracked_keys": ["AWS_PROFILE"],
+            "mismatches": [
+                {
+                    "env_key": "AWS_PROFILE",
+                    "process_env_value": "proc-prof",
+                    "layered_file_value": "file-prof",
+                    "effective_value": "proc-prof",
+                    "reason": "process_env_shadows_layered_file",
+                }
+            ],
+            "credential_resolution_degraded": True,
+            "layered_env_apply_observed": True,
+        },
+        "credential_resolution_degraded": True,
+    }
+    monkeypatch.setattr(context_preload, "get_credential_attestation", lambda: fake_att)
+
+    def fake_rj(
+        *, url: str, method: str, body: dict[str, Any] | None = None, **kwargs: Any
+    ) -> tuple[int, list[Any] | dict[str, Any] | str]:
+        if "/memory/search" in url:
+            return 200, {"results": []}
+        return 200, []
+
+    monkeypatch.setattr(context_preload, "request_json", fake_rj)
+    assert context_preload.run(["--quiet", "scope q"]) == 0
+
+    payload = json.loads((tmp_path / ".canon" / "memory" / "context-latest.json").read_text(encoding="utf-8"))
+    assert payload["credential_attestation"] == fake_att
+
+    md = (tmp_path / ".canon" / "memory" / "context-latest.md").read_text(encoding="utf-8")
+    assert "## Credential / Secrets resolution" in md
+    assert "- credential_resolution_degraded: `True`" in md
+    assert "effective_aws_profile: `prof_ws3`" in md
+    assert "resolved_secret_id: `canon-memory-dev/memory-layer__co__repo`" in md
+    assert "- resolution_status: `cache_hit`" in md
+    assert "`AWS_PROFILE`: `process_env_shadows_layered_file`" in md
+    assert "BEARER" not in md.upper()
+    assert "TOKEN" not in md.upper()

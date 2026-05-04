@@ -15,6 +15,13 @@ This roadmap now covers **both**. That is the necessary shape if Canon wants to 
 
 **May 1, 2026 update:** Canon has now validated the first practical remote execution substrate. An AWS ECS/Fargate task invoked the Cursor SDK cloud runtime against `github.com/CanonSystems/canon-systems`, completed a read-only repo analysis, then completed a write-path run that created a branch, commit, and PR. That changes Phase 3 and Phase 4 from "prove remote execution is possible" to "wrap a proven Cursor SDK adapter in Canon evidence, policy, and cleanup semantics."
 
+**May 4, 2026 update:** The governance/evidence plane should add a durable
+packet archive and DynamoDB run ledger. Local `.cursor/handoffs/...` files remain
+required for review and working state, but Canon should also archive every phase
+packet/evidence blob to S3 and store the relationships among plans, tasks,
+phases, packets, evidence, validations, commits, deployments, and outcomes in a
+queryable ledger.
+
 ---
 
 ## Non-goals (still non-goals)
@@ -207,6 +214,7 @@ This is different from “autonomy first.” It is deliberate. Canon’s moat is
 | P3 | **Audit export** | JSON / NDJSON export of canonical events and gate outcomes for date windows |
 | P4 | **Event-driven hooks** | Linear / Slack / CI -> documented Canon entrypoints |
 | P5 | **Policy surfaces** | readable policy definitions for what gates are required and when |
+| P6 | **Run ledger + packet archive** | **v1 shipped** in-repo (`canon packet-archive`, `canon run-ledger`, **`canon readiness check`**, `state-api` routes) — enterprise phase is productization, policy bundles, and admin surfaces atop the same contracts |
 
 ### Must ship (MVP)
 
@@ -214,6 +222,9 @@ This is different from “autonomy first.” It is deliberate. Canon’s moat is
 - `canon auth-migration` or successor supports prepare -> canary -> enforce path
 - Minimal audit export without raw secrets
 - Operator-visible policy surface showing what counts as required evidence for task completion
+- Durable packet/evidence retention plus a queryable run ledger so packet history
+  survives local working-tree cleanup and can power resume, readiness, synthesis,
+  and audit surfaces
 
 ### Nice to have
 

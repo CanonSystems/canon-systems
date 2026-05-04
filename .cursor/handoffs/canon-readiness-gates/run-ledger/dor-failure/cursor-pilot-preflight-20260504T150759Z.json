@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "event_type": "dor_failure",
+  "handoff_id": "canon-readiness-gates",
+  "plan_id": "canon_readiness_gates_c389cad8",
+  "task_id": "run-ledger",
+  "workstream_id": "run-ledger",
+  "stage": "cursor-pilot-preflight",
+  "root_causes": [
+    "missing-required-ac-traceability"
+  ],
+  "missing_fields": [
+    "scope_packet.ac_traceability"
+  ],
+  "quality_failures": [
+    "Cursor Pilot DoR requires ac_traceability to map every acceptance criterion to at least one implementation target and one verification test."
+  ],
+  "remediation_steps": [
+    "Update the persisted scoper packet to include scope_packet.ac_traceability entries for AC1 through AC8.",
+    "Rerun cursor-pilot after the packet is corrected."
+  ],
+  "timestamp": "2026-05-04T15:07:59Z"
+}

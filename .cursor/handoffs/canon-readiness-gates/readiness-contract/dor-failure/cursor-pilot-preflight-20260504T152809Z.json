@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "event_type": "dor_failure",
+  "handoff_id": "canon-readiness-gates",
+  "plan_id": "canon_readiness_gates_c389cad8",
+  "task_id": "readiness-contract",
+  "workstream_id": "readiness-contract",
+  "stage": "cursor-pilot-preflight",
+  "root_causes": [
+    "missing_repository_metadata",
+    "missing_must_not_break_constraints"
+  ],
+  "missing_fields": [
+    "scope_packet.repository",
+    "scope_packet.repository.primaryLanguages",
+    "scope_packet.repository.testFramework",
+    "scope_packet.constraints.mustNotBreak"
+  ],
+  "remediation_steps": [
+    "Add repository metadata and constraints.mustNotBreak to the persisted scoper packet.",
+    "Rerun cursor-pilot after the packet is corrected."
+  ],
+  "timestamp": "2026-05-04T15:28:09Z"
+}

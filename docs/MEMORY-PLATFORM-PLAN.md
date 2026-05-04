@@ -30,6 +30,14 @@ Purpose: answer "what is happening right now?" for all active agents.
 - Shared cloud state (task/workstream scoped) for checkpoints and handoffs.
 - Mandatory pre-step hydration + post-step checkpoint writes.
 - Concurrency controls: lease/lock, optimistic versioning, conflict handling.
+- **Run ledger (v1, shipped):** DynamoDB table **`STATE_RUN_LEDGER_TABLE_NAME`** on
+  `state-api` with **`PUT` / `GET` `/state/run-ledger`**, disjoint keys from
+  checkpoint/lease items; rows carry **`archive_refs`** (metadata pointers only),
+  validation slots, commits, PR/deployment fields. Operators use **`canon run-ledger`**
+  and **`canon readiness check`** (read-only **`GET`**) as in `docs/SYSTEM-WORKFLOW.md` §3.
+  Checkpoint/lease items (**`STATE_TABLE_NAME`**), ledger rows, and S3 archive objects
+  stay in separate persistence boundaries; readiness evaluation does not mutate
+  checkpoints or uploads.
 
 ### C. Historical Knowledge Plane (durable canonical memory)
 
@@ -38,6 +46,10 @@ Purpose: answer "what happened and why?" with auditability.
 - Canonical artifact captures for decisions, QA results, releases, failures.
 - Immutable event trail keyed by company/repo/plan/task/handoff/agent.
 - Telemetry for DoR failures, stalls, retries, and gate outcomes.
+- **Packet/evidence archive (v1, shipped):** **`POST /state/archive`** and **`canon packet-archive`**
+  write content-addressed objects to **`STATE_ARTIFACT_BUCKET`**; **`packet_archived`**
+  events carry metadata only. Local **`.cursor/handoffs/<handoff_id>/<task_id>/...`**
+  quartet files remain mandatory working-copy and review artifacts — archive is additive retention, not a replacement.
 
 ### D. Human Synthesis Plane (operator visibility)
 
@@ -45,6 +57,9 @@ Purpose: answer "what matters now?" for humans.
 
 - Obsidian-Mind style summaries, status pages, decision journals, blocker views.
 - Synced from canonical + operational layers (not source of truth itself).
+- Synthesis/vault views should render from canonical events, the run ledger, and
+  the packet/evidence archive; they are human-facing projections, not the
+  primary retention layer.
 
 ## 3) Canonical IDs and Event Model
 
@@ -61,6 +76,8 @@ Required event payload dimensions:
 - evidence artifacts (paths + IDs)
 - decisions and open questions
 - blocker classification and unblock ask
+- packet archive references (`packet_uri`, `packet_sha256`) and run-ledger keys
+  when phase packets or release evidence are produced
 
 ## 4) Crash Recovery and Resume Contract
 
@@ -194,4 +211,6 @@ The platform is "complete enough" when:
 - crash recovery resumes deterministically from checkpoints,
 - code comprehension is graph-assisted and token-efficient,
 - full auditability exists for actor/agent/task transitions,
+- every phase packet and required evidence blob has durable server-side
+  retention independent of local working-tree cleanup,
 - human operators have current, trustworthy synthesis without manual stitching.

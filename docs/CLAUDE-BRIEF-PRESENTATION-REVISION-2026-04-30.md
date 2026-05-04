@@ -18,6 +18,9 @@ Revise the presentation so it matches the updated strategy and roadmap:
   - **remote workers / remote subagents**
   - Cursor as the **user-facing shell**
   - Canon owning the **real execution, governance, and evidence path** remotely
+- Canon should make clear that phase packets and evidence are not merely local
+  files: the roadmap should include an S3-retained packet/evidence archive plus
+  a DynamoDB run ledger as the durable system of record.
 - Incorporate the May 1 validation:
   - AWS ECS/Fargate invoked Cursor SDK cloud execution against the Canon repo.
   - A read-only run completed successfully.
@@ -75,6 +78,7 @@ Add a slide or section that says Canon can be adopted in two ways:
   - task handoffs
   - checkpoint/state updates
   - evidence capture
+- packet/evidence archive + run ledger
   - PR/merge/release gates
 
 This is critical. It is the cleanest answer to “how do you mix and match other agents but still ensure governance?”
@@ -223,6 +227,7 @@ Show:
 - Canon control plane
 - Cursor SDK cloud agent or remote workers
 - packets/evidence/gates
+- durable archive + ledger-backed status
 - diff/PR/result returned
 
 ### Add a new slide: “Validated Remote Execution Path”

@@ -42,7 +42,7 @@ So a search for `http://` / `https://` **+ literal IPv4** in the git repo or in 
 
 - Open `~/.canon/memory-layer-aws-cache.json` and read the merged URL fields (or use the AWS console/CLI on `MEMORY_LAYER_AWS_SECRET_ID`).
 - **`canon memory-health --json`** — works on **3.4.6+**; reports backend probe status for the resolved URLs.
-- **`canon doctor`** (**≥ 3.4.7**) scans **standard Canon `.env` paths** for `http(s)://` + IPv4; it does **not** parse URL values out of the cache blob, so a secret-only task IP will **not** show up in `env_files_with_literal_ipv4_urls` until you put that URL in a layered file or change the secret.
+- **`canon doctor`** (**≥ 3.4.7**) scans **standard Canon `.env` paths** for `http(s)://` + IPv4; it does **not** parse URL values out of the cache blob, so a secret-only task IP will **not** show up in `env_files_with_literal_ipv4_urls` until you put that URL in a layered file or change the secret. **`canon doctor --json`** also emits **`credential_attestation`** (AWS secret resolution + env precedence diagnostics — **no** secret payloads or tokens in stdout).
 
 ### 1.2b AWS Secrets Manager **client cache** (when to clear it)
 
@@ -104,11 +104,27 @@ See also: [`infra/terraform/README.md`](../infra/terraform/README.md) (optional 
 
 | Key | Role |
 |-----|------|
-| `CANON_STATE_API_URL` | Preferred client base for `canon checkpoint` / `canon resume`. |
+| `CANON_STATE_API_URL` | Preferred client base for `canon checkpoint` / `canon resume` / **`canon packet-archive`** / **`canon run-ledger`** / **`canon readiness check`**. |
 | `STATE_API_URL` | Alias read by `canon memory-health` for the **state** row (first wins if both set). |
 | `CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION` | When set to `1` / `true` / `yes` / `on`, parent orchestrators may use **`canon resume --tasks-file ... --lanes`** for additive multilane visibility (`runnable_targets`, `active_targets`, `blocked_targets`, `task_threads`) per `memory-platform-build-discipline.mdc` §11. Does not change checkpoint schemas or merge-gate serial requirements. |
 
+**state-api server env (packet/evidence archive + run ledger):**
+
+| Key | Role |
+|-----|------|
+| `STATE_ARTIFACT_BUCKET` | S3 bucket for `POST /state/archive` durable bodies. |
+| `STATE_ARCHIVE_KEY_PREFIX` | Prefix for archive keys (default `canon/packets`); keys remain SHA-256-addressed. |
+| `STATE_RUN_LEDGER_TABLE_NAME` | DynamoDB table for **`PUT`/`GET` `/state/run-ledger`** rows (readiness/run history). Separate from **`STATE_TABLE_NAME`** (checkpoints/leases). If unset, run-ledger routes return **503**; checkpoint/archive behavior is unchanged. |
+
 **Behavior (CLI ≥ 3.4.4):** If neither state URL is set but `KNOWLEDGE_API_URL` is set, **`CANON_STATE_API_URL` defaults to `KNOWLEDGE_API_URL`** after layered + Secrets hydration (`ensure_state_api_url_from_knowledge`). Dedicated `state-api` deployments can still set an explicit URL.
+
+**Run ledger vs archive vs checkpoint vs readiness (boundary):**
+
+- **`POST /state/archive`** and **`canon packet-archive`** write **object bytes** to **`STATE_ARTIFACT_BUCKET`** and emit **`packet_archived`** (metadata-only allowlist in `packet_archived_event_payload` — no bodies or credential-shaped keys).
+- **`PUT /state/run-ledger`** stores **structured ledger records** in **`STATE_RUN_LEDGER_TABLE_NAME`**. `archive_refs` hold **pointers** (e.g. `s3_uri`, `s3_key`, `content_sha256`, `artifact_kind`)—validators reject body-like fields so DynamoDB never holds packet bodies.
+- **Checkpoints/leases** stay on **`STATE_TABLE_NAME`** with **`lease_token`** and optimistic **`state_version`**; the ledger does not participate in lease acquisition or checkpoint writes.
+
+CLI: **`canon run-ledger`** validates JSON, optionally merges archive metadata arrays into `archive_refs`, and **`PUT`**s to `state-api` (or **`--dry-run`**). **`canon readiness check`** performs **read-only `GET`** `/state/run-ledger`, builds an interchange JSON snapshot (stdout / optional **`--output`**), maps **existing** `validation_outcomes` / commit / PR / deployment slots from the ledger **without new normalization or attestation rules**, and verifies required phase **`archive_refs` only** (no packet body reads). Policy remains **`canon qa-validate`**, **`canon flow-audit`**, and release-orchestrator checks; **`canon readiness check`** is diagnostic (exits **`0`** ready, **`1`** not ready, **`2`** usage or query error).
 
 **Graph plane (Axon):**
 

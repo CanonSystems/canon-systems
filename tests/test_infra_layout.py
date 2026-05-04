@@ -161,6 +161,14 @@ def test_root_exposes_state_table_outputs() -> None:
     out = (TERRAFORM_ROOT / "outputs.tf").read_text(encoding="utf-8")
     assert "state_table_name" in out
     assert "state_table_arn" in out
+    assert "state_run_ledger_table_name" in out
+    assert "state_run_ledger_table_arn" in out
+
+
+def test_root_wires_state_run_ledger_outputs_from_state_module() -> None:
+    out = (TERRAFORM_ROOT / "outputs.tf").read_text(encoding="utf-8")
+    assert "module.state_table.run_ledger_table_name" in out
+    assert "module.state_table.run_ledger_table_arn" in out
 
 
 def test_dynamodb_main_tf_key_attrs_present() -> None:

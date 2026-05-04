@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # --- Keys & scope ---
@@ -244,3 +244,71 @@ def pk_sk_from_parts(
             workstream_id=workstream_id,
         )
     )
+
+
+# --- Packet / evidence archive (S3 historical plane; no DynamoDB run ledger) ---
+
+
+class ArchiveUploadRequest(BaseModel):
+    """Upload metadata + base64 body for ``POST /state/archive``."""
+
+    schema_version: int = 1
+    company_id: str
+    repository_id: str
+    plan_id: str
+    task_id: str
+    workstream_id: str
+    handoff_id: str
+    phase: str
+    artifact_kind: str
+    source_label: str
+    content_type: str = "application/octet-stream"
+    body_base64: str
+    content_sha256: str
+    agent_run_id: str = ""
+    actor_id: str = ""
+    outcome: str = ""
+    status: str = ""
+    evidence_subtype: str | None = None
+
+    @field_validator("source_label")
+    @classmethod
+    def _source_label_bounds(cls, v: str) -> str:
+        s = str(v).strip()
+        if not s:
+            raise ValueError("source_label is required")
+        if len(s) > 4096:
+            raise ValueError("source_label exceeds 4096 characters")
+        if "\x00" in s:
+            raise ValueError("source_label contains NUL")
+        return s
+
+
+class ArchiveRecordResponse(BaseModel):
+    """Structured archive row returned after a successful S3 write."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    schema_version: int
+    company_id: str
+    repository_id: str
+    plan_id: str
+    task_id: str
+    workstream_id: str
+    handoff_id: str
+    phase: str
+    artifact_kind: str
+    source_label: str
+    s3_bucket: str
+    s3_key: str
+    s3_uri: str
+    content_sha256: str
+    byte_length: int
+    content_type: str
+    created_at: str
+    agent_run_id: str = ""
+    actor_id: str = ""
+    outcome: str = ""
+    status: str = ""
+    evidence_subtype: str | None = None
+    s3_version_id: str | None = None

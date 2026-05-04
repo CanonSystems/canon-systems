@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "event_type": "dor_failure",
+  "handoff_id": "canon-readiness-gates",
+  "plan_id": "canon_readiness_gates_c389cad8",
+  "task_id": "qa-evidence-schema",
+  "workstream_id": "qa-evidence-schema",
+  "stage": "cursor-pilot-preflight",
+  "root_causes": [
+    "missing_required_readiness_field"
+  ],
+  "missing_fields": [
+    "scope_packet.risks_and_assumptions.openQuestions"
+  ],
+  "remediation_steps": [
+    "Add risks_and_assumptions.openQuestions: [] to the persisted scoper packet.",
+    "Rerun cursor-pilot after the packet is corrected."
+  ],
+  "timestamp": "2026-05-04T15:53:07Z"
+}

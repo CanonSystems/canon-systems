@@ -29,7 +29,7 @@ Canon has validated AWS-hosted Cursor SDK execution against the Canon repo, incl
 
 
 **Strategic conclusion**  
-Canon should **not** chase Devin as a generic autonomous SaaS alone. It should win **governance + organizational memory + operator control**, and **narrow** the autonomy/UX gap with **productized** knowledge UI, **event triggers**, **Cursor SDK-backed remote execution**, and **optional autonomous modes** that still emit evidence (packets, checkpoints).
+Canon should **not** chase Devin as a generic autonomous SaaS alone. It should win **governance + organizational memory + operator control**, and **narrow** the autonomy/UX gap with **productized** knowledge UI, **event triggers**, **Cursor SDK-backed remote execution**, and **optional autonomous modes** that still emit evidence (packets, checkpoints). The next governance hardening step is a durable packet/evidence archive plus DynamoDB run ledger so Canon, not a local working tree, is the system of record for what happened and whether it passed.
 
 ---
 

@@ -17,12 +17,47 @@ from .memory_queue import (
 from .shared import (
     artifact_identity,
     first_text,
+    get_credential_attestation,
     load_identity_context,
     load_repo_context,
     now_stamp,
     parse_hook_payload,
     request_json,
 )
+
+
+def _credential_markdown_lines(att: dict[str, Any]) -> list[str]:
+    """Non-secret summary lines for context-latest.md (AC4)."""
+    lines: list[str] = ["", "## Credential / Secrets resolution", ""]
+    lines.append(f"- credential_resolution_degraded: `{att.get('credential_resolution_degraded', '')}`")
+    aws = att.get("aws_secrets_resolution") if isinstance(att.get("aws_secrets_resolution"), dict) else {}
+    res = aws.get("resolution") if isinstance(aws.get("resolution"), dict) else {}
+    lines.extend(["", "### AWS Secrets Manager"])
+    lines.append(f"- effective_aws_profile: `{aws.get('effective_aws_profile', '')}`")
+    lines.append(f"- effective_aws_region: `{aws.get('effective_aws_region', '')}`")
+    rsid = str(aws.get("resolved_secret_id", "") or "").strip()
+    lines.append(f"- resolved_secret_id: `{rsid or '(none)'}`")
+    lines.append(f"- cache_exists: `{aws.get('cache_exists', '')}`")
+    lines.append(f"- cache_hit_when_known: `{aws.get('cache_hit_when_known', '')}`")
+    lines.append(f"- resolution_status: `{res.get('status', '')}`")
+    lines.append(f"- boto3_available: `{res.get('boto3_available', '')}`")
+
+    envp = att.get("env_precedence") if isinstance(att.get("env_precedence"), dict) else {}
+    lines.extend(["", "### Env precedence"])
+    lines.append(f"- layered_env_apply_observed: `{envp.get('layered_env_apply_observed', '')}`")
+    mm = envp.get("mismatches") if isinstance(envp.get("mismatches"), list) else []
+    if mm:
+        lines.append("- precedence_warnings:")
+        for item in mm:
+            if not isinstance(item, dict):
+                continue
+            ek = str(item.get("env_key", ""))
+            reason = str(item.get("reason", ""))
+            lines.append(f"  - `{ek}`: `{reason}`")
+    else:
+        lines.append("- precedence_warnings: _none_")
+    lines.append("")
+    return lines
 
 
 def _pick_prompt(cli_prompt: str, hook_payload: dict[str, Any]) -> str:
@@ -42,6 +77,7 @@ def _write_markdown(
     current_truth_payload: list[dict[str, Any]] | str,
     company_id: str,
     repository_id: str,
+    credential_attestation: dict[str, Any],
     mempalace_status: dict[str, Any],
 ) -> None:
     lines = [
@@ -50,9 +86,13 @@ def _write_markdown(
         f"- company_id: `{company_id}`",
         f"- repository_id: `{repository_id}`",
         f"- query: `{query}`",
-        "",
-        "## MemPalace Status",
     ]
+    lines.extend(_credential_markdown_lines(credential_attestation))
+    lines.extend(
+        [
+            "## MemPalace Status",
+        ]
+    )
     lines.append(f"- status: `{mempalace_status.get('status', '')}`")
     lines.append(f"- latency_ms: `{mempalace_status.get('latency_ms', '')}`")
     le = str(mempalace_status.get("last_error", ""))
@@ -150,6 +190,8 @@ def run(argv: list[str] | None = None) -> int:
         auth_profile="knowledge_api",
     )
 
+    credential_attestation = get_credential_attestation()
+
     context_md = repo_ctx.context_dir / "context-latest.md"
     _write_markdown(
         output_path=context_md,
@@ -158,6 +200,7 @@ def run(argv: list[str] | None = None) -> int:
         current_truth_payload=current_truth_payload if isinstance(current_truth_payload, list) else [],
         company_id=repo_ctx.company_id,
         repository_id=repo_ctx.repository_id,
+        credential_attestation=credential_attestation,
         mempalace_status=mempalace_status,
     )
     artifact_id, version_id = artifact_identity(prefix="art_taskctx_preload", actor_id=identity.actor_id)
@@ -172,6 +215,7 @@ def run(argv: list[str] | None = None) -> int:
                 "query": query,
                 "memory_status_code": memory_status,
                 "mempalace_status": mempalace_status,
+                "credential_attestation": credential_attestation,
                 "current_truth_status_code": current_truth_status,
                 "context_markdown_path": str(context_md),
                 "task_context_artifact_id_hint": artifact_id,
