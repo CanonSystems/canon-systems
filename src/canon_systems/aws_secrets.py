@@ -76,6 +76,8 @@ def build_aws_secrets_resolution_attestation() -> dict[str, Any]:
         "cache_path": str(cache_path.expanduser().resolve()),
         "cache_exists": cache_exists,
         "cache_disabled": disable_cache,
+        "cache_respects_ttl": _cache_respects_ttl(),
+        "repo_mirror_disabled": _repo_mirror_disabled(),
         "cache_hit_when_known": cache_hit,
         "resolution": {
             "status": resolution_status,
@@ -217,6 +219,21 @@ def _cache_file_path() -> Path:
     return Path.home() / ".canon" / "memory-layer-aws-cache.json"
 
 
+def _cache_respects_ttl() -> bool:
+    """If true, treat ``expires_at`` in the home cache as a hard invalidation.
+
+    Default is **false**: the on-disk cache under ``~/.canon/memory-layer-aws-cache.json`` is
+    a **durable** snapshot until deleted (``canon doctor --fix-cache``), so a TTL expiry does
+    not suddenly drop hydrated URLs/tokens from the process when AWS is temporarily
+    unavailable. Set ``MEMORY_LAYER_AWS_CACHE_RESPECT_TTL=1`` to restore strict expiry.
+    """
+    return os.environ.get("MEMORY_LAYER_AWS_CACHE_RESPECT_TTL", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
 def _read_cache(secret_id: str, region_tag: str) -> dict[str, str] | None:
     if os.environ.get("MEMORY_LAYER_AWS_DISABLE_CACHE", "").strip().lower() in ("1", "true", "yes"):
         return None
@@ -231,12 +248,13 @@ def _read_cache(secret_id: str, region_tag: str) -> dict[str, str] | None:
         return None
     if raw.get("secret_id") != secret_id or raw.get("region_tag") != region_tag:
         return None
-    try:
-        expires_at = float(raw.get("expires_at", 0))
-    except (TypeError, ValueError):
-        return None
-    if time.time() > expires_at:
-        return None
+    if _cache_respects_ttl():
+        try:
+            expires_at = float(raw.get("expires_at", 0))
+        except (TypeError, ValueError):
+            return None
+        if time.time() > expires_at:
+            return None
     env = raw.get("env")
     if not isinstance(env, dict):
         return None
@@ -244,10 +262,11 @@ def _read_cache(secret_id: str, region_tag: str) -> dict[str, str] | None:
 
 
 def _write_cache(secret_id: str, region_tag: str, pairs: dict[str, str]) -> None:
+    # Metadata only when TTL is not used for reads (default). Kept for diagnostics / future use.
     try:
-        ttl = float(os.environ.get("MEMORY_LAYER_AWS_CACHE_TTL_SEC", "900"))
+        ttl = float(os.environ.get("MEMORY_LAYER_AWS_CACHE_TTL_SEC", "604800"))
     except ValueError:
-        ttl = 900.0
+        ttl = 604800.0
     ttl = max(60.0, ttl)
     path = _cache_file_path()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -271,6 +290,74 @@ def _secretsmanager_client():
     return boto3.client("secretsmanager")
 
 
+def _repo_mirror_disabled() -> bool:
+    return os.environ.get("MEMORY_LAYER_AWS_DISABLE_REPO_MIRROR", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def _format_repo_mirror_body(pairs: dict[str, str]) -> str:
+    lines: list[str] = []
+    for key in sorted(pairs.keys()):
+        k = key.strip()
+        if not k:
+            continue
+        val = str(pairs[k])
+        if "\n" in val or "\r" in val:
+            escaped = val.replace("\\", "\\\\").replace('"', '\\"')
+            lines.append(f'{k}="{escaped}"')
+        elif any(ch in val for ch in (" ", "#", '"', "'")):
+            escaped = val.replace("\\", "\\\\").replace('"', '\\"')
+            lines.append(f'{k}="{escaped}"')
+        else:
+            lines.append(f"{k}={val}")
+    lines.append("")  # trailing newline
+    return "\n".join(lines)
+
+
+def _repo_secrets_mirror_path() -> Path | None:
+    try:
+        from .shared import repo_root
+    except ImportError:
+        return None
+    return repo_root() / ".canon" / "memory-layer.secrets.env"
+
+
+def _repo_mirror_needs_write(path: Path) -> bool:
+    try:
+        return not path.exists() or path.stat().st_size == 0
+    except OSError:
+        return True
+
+
+def write_repo_secrets_mirror(pairs: dict[str, str], *, force: bool = False) -> None:
+    """Persist hydrated secret keys next to the repo (gitignored). Best-effort only."""
+    if _repo_mirror_disabled() or not pairs:
+        return
+    path = _repo_secrets_mirror_path()
+    if path is None:
+        return
+    if not force and not _repo_mirror_needs_write(path):
+        return
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        body = _format_repo_mirror_body(pairs)
+        path.write_text(body, encoding="utf-8")
+        try:
+            path.chmod(0o600)
+        except OSError:
+            pass
+    except OSError:
+        return
+
+
+def refresh_repo_secrets_mirror_if_missing(pairs: dict[str, str]) -> None:
+    """Write repo mirror when missing/empty (e.g. after loading durable home cache)."""
+    write_repo_secrets_mirror(pairs, force=False)
+
+
 def apply_canon_systems_secrets_from_aws() -> None:
     secret_id = resolve_canon_systems_secret_id()
     if not secret_id:
@@ -282,6 +369,7 @@ def apply_canon_systems_secrets_from_aws() -> None:
         for k, v in cached.items():
             if k.strip():
                 os.environ.setdefault(k.strip(), v)
+        refresh_repo_secrets_mirror_if_missing(cached)
         return
 
     client = _secretsmanager_client()
@@ -306,6 +394,7 @@ def apply_canon_systems_secrets_from_aws() -> None:
     pairs = parse_secret_string(raw)
     if pairs:
         _write_cache(secret_id, region_tag, pairs)
+        write_repo_secrets_mirror(pairs, force=True)
     for k, v in pairs.items():
         if k.strip():
             os.environ.setdefault(k.strip(), v)

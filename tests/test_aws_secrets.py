@@ -1,9 +1,14 @@
 import json
+import os
 import time
 
+from canon_systems import aws_secrets
 from canon_systems.aws_secrets import (
+    apply_canon_systems_secrets_from_aws,
     build_aws_secrets_resolution_attestation,
     parse_secret_string,
+    refresh_repo_secrets_mirror_if_missing,
+    write_repo_secrets_mirror,
 )
 
 
@@ -123,3 +128,97 @@ def test_aws_secret_resolution_attestation_redacts_secret_values(tmp_path, monke
         "AWS_SECRET_ACCESS_KEY",
     ):
         assert forbidden not in dumped
+
+
+def test_read_cache_ignores_expired_ttl_by_default(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("canon_systems.aws_secrets.Path.home", lambda: tmp_path)
+    cache_dir = tmp_path / ".canon"
+    cache_dir.mkdir(parents=True)
+    monkeypatch.setenv("MEMORY_LAYER_AWS_SECRET_ID", "pref/my-secret")
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
+    monkeypatch.delenv("MEMORY_LAYER_AWS_CACHE_RESPECT_TTL", raising=False)
+    payload = {
+        "secret_id": "pref/my-secret",
+        "region_tag": "us-east-1",
+        "expires_at": time.time() - 60.0,
+        "env": {"KNOWLEDGE_API_URL": "https://stale.example"},
+    }
+    (cache_dir / "memory-layer-aws-cache.json").write_text(json.dumps(payload), encoding="utf-8")
+    att = build_aws_secrets_resolution_attestation()
+    assert att["resolution"]["status"] == "cache_hit"
+    assert att["cache_respects_ttl"] is False
+
+
+def test_read_cache_respects_ttl_when_env_set(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("canon_systems.aws_secrets.Path.home", lambda: tmp_path)
+    cache_dir = tmp_path / ".canon"
+    cache_dir.mkdir(parents=True)
+    monkeypatch.setenv("MEMORY_LAYER_AWS_SECRET_ID", "pref/my-secret")
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
+    monkeypatch.setenv("MEMORY_LAYER_AWS_CACHE_RESPECT_TTL", "1")
+    payload = {
+        "secret_id": "pref/my-secret",
+        "region_tag": "us-east-1",
+        "expires_at": time.time() - 60.0,
+        "env": {"KNOWLEDGE_API_URL": "https://stale.example"},
+    }
+    (cache_dir / "memory-layer-aws-cache.json").write_text(json.dumps(payload), encoding="utf-8")
+    att = build_aws_secrets_resolution_attestation()
+    assert att["resolution"]["status"] == "cache_miss"
+    assert att["cache_respects_ttl"] is True
+
+
+def test_apply_secrets_from_aws_writes_repo_mirror_on_fetch(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("canon_systems.aws_secrets.Path.home", lambda: tmp_path)
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / ".git").mkdir()
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(root))
+    monkeypatch.setenv("MEMORY_LAYER_AWS_SECRET_ID", "pref/secret")
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
+    monkeypatch.delenv("KNOWLEDGE_API_URL", raising=False)
+    secret_json = json.dumps(
+        {
+            "KNOWLEDGE_API_URL": "https://k.example",
+            "COMPANY_ID": "C",
+            "REPOSITORY_ID": "R",
+        }
+    )
+
+    class _FakeClient:
+        def get_secret_value(self, SecretId: str) -> dict:  # noqa: N802
+            assert SecretId == "pref/secret"
+            return {"SecretString": secret_json}
+
+    monkeypatch.setattr(aws_secrets, "_secretsmanager_client", lambda: _FakeClient())
+    apply_canon_systems_secrets_from_aws()
+    mirror = root / ".canon" / "memory-layer.secrets.env"
+    assert mirror.exists()
+    text = mirror.read_text(encoding="utf-8")
+    assert "KNOWLEDGE_API_URL=https://k.example" in text
+    assert os.environ.get("KNOWLEDGE_API_URL") == "https://k.example"
+
+
+def test_refresh_repo_mirror_if_missing_only_when_empty(tmp_path, monkeypatch) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / ".git").mkdir()
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(root))
+    pairs = {"KNOWLEDGE_API_URL": "https://x.example"}
+    refresh_repo_secrets_mirror_if_missing(pairs)
+    p = root / ".canon" / "memory-layer.secrets.env"
+    assert p.exists()
+    refresh_repo_secrets_mirror_if_missing({"KNOWLEDGE_API_URL": "https://y.example"})
+    assert "y.example" not in p.read_text(encoding="utf-8")
+
+
+def test_write_repo_secrets_mirror_force_updates(tmp_path, monkeypatch) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / ".git").mkdir()
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(root))
+    write_repo_secrets_mirror({"KNOWLEDGE_API_URL": "https://a.example"}, force=True)
+    write_repo_secrets_mirror({"KNOWLEDGE_API_URL": "https://b.example"}, force=True)
+    assert "b.example" in (root / ".canon" / "memory-layer.secrets.env").read_text(
+        encoding="utf-8"
+    )

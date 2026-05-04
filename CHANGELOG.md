@@ -35,6 +35,8 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **AWS secret hydration:** The Secrets Manager client cache at `~/.canon/memory-layer-aws-cache.json` no longer **invalidates** reads when `expires_at` passes (default). Optional strict mode: `MEMORY_LAYER_AWS_CACHE_RESPECT_TTL=1`. Default write metadata TTL is now **7 days** (`MEMORY_LAYER_AWS_CACHE_TTL_SEC` default `604800`). After each successful `GetSecretValue`, hydrated keys are also written to **`<repo>/.canon/memory-layer.secrets.env`** (gitignored; disable with `MEMORY_LAYER_AWS_DISABLE_REPO_MIRROR=1`). `canon doctor --json` attestation gains `cache_respects_ttl` and `repo_mirror_disabled`.
+
 ### Fixed
 
 - **CLI:** restore the **`graph`** sub-parser registration (was omitted beside **`packet-archive`**, causing **`NameError: graph_parser`** on startup).

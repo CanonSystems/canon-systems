@@ -25,5 +25,6 @@ vault/
 # <<< canon-systems:vault-sync <<<
 # Local tenant wiring + hook sidecars (do not commit)
 .canon/memory-layer.local.env
+.canon/memory-layer.secrets.env
 .canon/memory/pending-user-turn.json
 .canon/memory/mempalace-retry-queue.jsonl

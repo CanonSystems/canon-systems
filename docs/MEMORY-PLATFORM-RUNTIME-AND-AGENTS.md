@@ -36,7 +36,7 @@ Then **AWS Secrets Manager** is applied (same keys), using the secret id derived
 
 ### 1.2a URLs only in Secrets Manager (repo and dot-canon env look clean)
 
-`KNOWLEDGE_API_URL`, `KNOWLEDGE_WORKER_URL`, `MEMORY_ADAPTER_URL`, and related keys are often **only** in the AWS memory-layer secret — not in tracked source and not in `~/.canon/canon-systems.env`. After hydration, the CLI mirrors the decoded JSON in **`~/.canon/memory-layer-aws-cache.json`** (until TTL or you delete it).
+`KNOWLEDGE_API_URL`, `KNOWLEDGE_WORKER_URL`, `MEMORY_ADAPTER_URL`, and related keys are often **only** in the AWS memory-layer secret — not in tracked source and not in `~/.canon/canon-systems.env`. After hydration, the CLI mirrors the decoded JSON in **`~/.canon/memory-layer-aws-cache.json`**. That file’s `expires_at` field is **not** a hard invalidation by default (see §1.2b); after a successful fetch the CLI also writes **`./.canon/memory-layer.secrets.env`** (gitignored) so each repo clone keeps a durable local copy of hydrated keys.
 
 So a search for `http://` / `https://` **+ literal IPv4** in the git repo or in `~/.canon/*.env` may find **nothing**, while the **secret** (and cache) still point at a **temporary ECS task IP**. Fixing that means updating the secret payload in AWS (or your Canon infra pipeline) to stable hostnames (ALB/NLB + DNS), then clearing the client cache (§1.2b).
 
@@ -53,10 +53,11 @@ After layered files are merged, `apply_canon_systems_secrets_from_aws()` may **c
 | | |
 |---|---|
 | **Cache file** | `~/.canon/memory-layer-aws-cache.json` |
-| **Default TTL** | 900 seconds (15 minutes), overridable with `MEMORY_LAYER_AWS_CACHE_TTL_SEC` |
+| **Expiry / TTL** | By default, `expires_at` in the cache file is **not** used to drop the snapshot. Cached URLs and tokens remain usable if AWS is temporarily unavailable (e.g. expired SSO session). Set `MEMORY_LAYER_AWS_CACHE_RESPECT_TTL=1` to restore strict “expired = miss” behavior. The `MEMORY_LAYER_AWS_CACHE_TTL_SEC` value (default **604800** / 7 days) only updates the metadata field written on each **successful** `GetSecretValue` fetch. |
+| **Repo mirror** | After a successful fetch, the same key/value pairs are written to **`<repo>/.canon/memory-layer.secrets.env`** (gitignored, mode `600` on Unix). If the home cache is used and this file is **missing or empty**, it is backfilled from the cache. Disable with `MEMORY_LAYER_AWS_DISABLE_REPO_MIRROR=1`. |
 | **Disable reads** | Set `MEMORY_LAYER_AWS_DISABLE_CACHE=1` (or `true` / `yes`) |
 
-**Clear the cache when:** someone **rotated or replaced** the secret in AWS (new URLs, tokens, etc.) and your machine still behaves as if the **old** values are in effect—or you need new values **immediately** without waiting for TTL.
+**Clear the home cache when:** someone **rotated or replaced** the secret in AWS (new URLs, tokens, etc.) and you need the process to pick up the new values **immediately**—or delete **`<repo>/.canon/memory-layer.secrets.env`** if you rely on the repo mirror and need a clean re-hydration.
 
 **Ways to clear:**
 
