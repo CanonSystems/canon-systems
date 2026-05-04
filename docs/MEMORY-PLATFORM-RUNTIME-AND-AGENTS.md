@@ -16,6 +16,8 @@
 | `.cursor/` hooks + rules installed (`canon enable-repo` / setup) | Preflight/capture and Cursor rules. |
 | Hooks **executable** (`memory-preflight.sh`, `memory-capture.sh`, …) | `canon e2e-check` validates `+x`. |
 
+Per-repo credential confusion, Cursor Cloud vs local, clearing branch clutter, and offline artifacts are summarized in [CANON-CREDENTIAL-AND-OFFLINE-PLAYBOOK.md](CANON-CREDENTIAL-AND-OFFLINE-PLAYBOOK.md).
+
 ### 1.2 Layered environment (where URLs and tokens come from)
 
 Hooks, `canon memory-health`, `canon e2e-check`, `canon graph`, and related commands merge **in order** (later layers do not override earlier non-empty keys where `setdefault` applies; see implementation in `src/canon_systems/shared.py`):
