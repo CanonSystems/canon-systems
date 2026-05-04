@@ -236,10 +236,10 @@ You'll be prompted interactively. **What each prompt means:**
 
 | Prompt | Meaning | What to enter |
 |---|---|---|
-| **Company ID** | Tenant id sent to the memory APIs (`X-Company-Id`) and used in the Secrets Manager secret name. | Your company slug, e.g. `IMC` or `FMO` — must match how secrets were created in AWS. |
+| **Company ID** | Tenant id sent to the memory APIs (`X-Company-Id`) and used in the Secrets Manager secret name. | Your company slug, e.g. `MJC` or `FMO` — must match how secrets were created in AWS. |
 | **AWS credentials profile** | A **local nickname on your Mac** for which saved keys to use. It becomes the section header in `~/.aws/credentials`, e.g. `[memory-layer-edward]`. It is **not** your AWS console username, **not** your account email, and **not** the access key. | Type any label you like (often something you already use). If keys are already in that profile, you can skip pasting keys below. |
 | **AWS region** | Region for Secrets Manager and boto3. | Usually `us-east-1` unless the secrets live elsewhere. |
-| **REPOSITORY_ID** | Stable id for *this* repo (memory is scoped per company + repo). | **Best:** press Enter to use the value shown as *Detected REPOSITORY_ID* (from `git remote get-url origin`) — avoids collisions with another repo also named `innermost`. **OK:** a short name like `innermost` only if the AWS secret was provisioned for that exact id. |
+| **REPOSITORY_ID** | Stable id for *this* repo (memory is scoped per company + repo). | **Best:** press Enter to use the value shown as *Detected REPOSITORY_ID* (from `git remote get-url origin`). **OK:** a short id like `marrow` when the AWS secret was provisioned for that exact `COMPANY_ID` + `REPOSITORY_ID` pair. |
 | **Secrets name prefix** | *(No prompt.)* `canon setup` picks it automatically: existing `.canon/memory-layer.local.env` value, else `company-registry.json` for your company, else it **probes AWS** for an existing secret under `canon-memory-dev` then the legacy `canon-systems-v2-dev`, else defaults to **`canon-memory-dev`**. Override any time with `MEMORY_LAYER_AWS_SECRET_NAME_PREFIX` in env or that same file. |
 | **AWS keys** (optional) | Writes long-lived keys into `~/.aws/credentials` for the chosen profile. | Paste keys, or press Enter twice to skip if you use SSO / keys already in that profile. |
 
@@ -403,6 +403,37 @@ Most common causes, in order:
    you something else, edit
    `<repo>/.canon/memory-layer.local.env` and fix
    `MEMORY_LAYER_AWS_SECRET_NAME_PREFIX`.
+
+**`AccessDeniedException` on `GetSecretValue` after changing `COMPANY_ID` /
+`REPOSITORY_ID` (e.g. migrating Innermost from `IMC`/`innermost` to Marrow’s
+`MJC`/`marrow`).** The CLI builds the secret id as
+`<prefix>/memory-layer__<slug-company>__<slug-repo>` (slug = lowercased,
+non-alphanumeric → hyphens). Example:
+`MJC` + `marrow` → `canon-memory-dev/memory-layer__mjc__marrow` — a
+**different** secret than the former `IMC` + `innermost` →
+`.../memory-layer__imc__innermost`.
+Your AWS principal must be allowed to read **that** secret, and the secret
+must exist with valid JSON (or hydration will fail for another reason).
+
+**Fix (pick one):**
+
+- **Target state for Marrow:** `COMPANY_ID=MJC`, `REPOSITORY_ID=marrow` in
+  `.canon/memory-layer.local.env`. Ensure
+  `canon-memory-dev/memory-layer__mjc__marrow` exists (e.g. clone from the old
+  secret with `scripts/clone_memory_layer_secret.py` — see script header) and
+  extend IAM for your developer user so `secretsmanager:GetSecretValue` (and
+  `PutSecretValue` / `DescribeSecret` if you run `canon secrets`) includes
+  `arn:aws:secretsmanager:<region>:<account>:secret:canon-memory-dev/memory-layer__mjc__marrow-*`.
+  Then `canon doctor --fix-cache`, `canon memory-health --json`, and
+  `canon e2e-check --agent`.
+- **Until AWS is migrated:** keep `.canon/memory-layer.local.env` on the ids
+  that match the secret that **already** exists and that your IAM user can
+  read (e.g. `IMC` + `innermost`), then cut over after the new secret and IAM
+  are ready.
+
+Operator playbook for **moving historical memory** to `MJC` / `marrow` (Postgres
+artifacts, DynamoDB checkpoints, optional Axon/MemPalace):
+[`docs/migrations/tenant-rename-imc-innermost-to-mjc-marrow.md`](migrations/tenant-rename-imc-innermost-to-mjc-marrow.md).
 
 **`canon version-check` says "installed version X is older than pinned Y".**
 Run `pipx upgrade canon-systems`. The hooks surface this as a

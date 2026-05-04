@@ -7,8 +7,8 @@ import time
 import boto3
 
 SCOPE = {
-    "company_id": "IMC",
-    "repository_id": "innermost",
+    "company_id": "MJC",
+    "repository_id": "marrow",
     "plan_id": "p1",
     "task_id": "E2-T2",
     "workstream_id": "ws1",
@@ -23,7 +23,7 @@ def test_checkpoint_get_not_found(client, dynamodb_table) -> None:
     assert r.status_code == 404
     d = r.json()["detail"]
     assert d["error"] == "not_found"
-    assert d["pk"] == "IMC#innermost"
+    assert d["pk"] == "MJC#marrow"
     assert d["sk"] == "p1#E2-T2#ws1"
 
 
@@ -38,14 +38,14 @@ def test_checkpoint_get_missing_param_422(client) -> None:
 def test_checkpoint_get_reshapes_lease_no_token(client, dynamodb_table) -> None:
     now = int(time.time())
     tbl = boto3.resource("dynamodb", region_name="us-east-1").Table(dynamodb_table)
-    pk, sk = "IMC#innermost", "p1#E2-T2#ws1"
+    pk, sk = "MJC#marrow", "p1#E2-T2#ws1"
     tbl.put_item(
         Item={
             "pk": pk,
             "sk": sk,
             "schema_version": 1,
-            "company_id": "IMC",
-            "repository_id": "innermost",
+            "company_id": "MJC",
+            "repository_id": "marrow",
             "plan_id": "p1",
             "task_id": "E2-T2",
             "workstream_id": "ws1",

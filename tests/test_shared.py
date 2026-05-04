@@ -8,11 +8,96 @@ import canon_systems.shared as shared
 from canon_systems.shared import (
     apply_layered_canon_env_for_repo,
     canon_urlopen,
+    context_sidecars_stale_vs_authoritative,
     ensure_layered_memory_env,
     merge_canon_systems_env_files,
+    parse_context_latest_json_tenant,
+    parse_context_latest_md_tenant,
     repo_root,
     resolve_auth_bearer,
 )
+
+
+def test_parse_context_latest_md_tenant_backticks(tmp_path: Path) -> None:
+    md = tmp_path / "context-latest.md"
+    md.write_text(
+        "# Session Memory Context\n\n- company_id: `co_a`\n- repository_id: `repo_b`\n",
+        encoding="utf-8",
+    )
+    assert parse_context_latest_md_tenant(md) == ("co_a", "repo_b")
+
+
+def test_parse_context_latest_json_tenant_reads_top_level(tmp_path: Path) -> None:
+    js = tmp_path / "context-latest.json"
+    js.write_text(
+        '{"status": "ok", "company_id": "co_x", "repository_id": "repo_y"}\n',
+        encoding="utf-8",
+    )
+    assert parse_context_latest_json_tenant(js) == ("co_x", "repo_y")
+
+
+def test_context_sidecars_stale_when_md_differs_from_authoritative(tmp_path: Path) -> None:
+    ctx = tmp_path / ".canon" / "memory"
+    ctx.mkdir(parents=True)
+    (ctx / "context-latest.md").write_text(
+        "- company_id: `wrong`\n- repository_id: `repo_ok`\n",
+        encoding="utf-8",
+    )
+    assert context_sidecars_stale_vs_authoritative(
+        context_dir=ctx,
+        authoritative_company_id="co_ok",
+        authoritative_repository_id="repo_ok",
+    )
+
+
+def test_context_sidecars_stale_when_json_differs(tmp_path: Path) -> None:
+    ctx = tmp_path / ".canon" / "memory"
+    ctx.mkdir(parents=True)
+    (ctx / "context-latest.json").write_text(
+        '{"company_id": "co_ok", "repository_id": "bad_repo"}\n',
+        encoding="utf-8",
+    )
+    assert context_sidecars_stale_vs_authoritative(
+        context_dir=ctx,
+        authoritative_company_id="co_ok",
+        authoritative_repository_id="good_repo",
+    )
+
+
+def test_context_sidecars_stale_when_md_and_json_disagree(tmp_path: Path) -> None:
+    ctx = tmp_path / ".canon" / "memory"
+    ctx.mkdir(parents=True)
+    (ctx / "context-latest.md").write_text(
+        "- company_id: `same`\n- repository_id: `r_md`\n",
+        encoding="utf-8",
+    )
+    (ctx / "context-latest.json").write_text(
+        '{"company_id": "same", "repository_id": "r_json"}\n',
+        encoding="utf-8",
+    )
+    assert context_sidecars_stale_vs_authoritative(
+        context_dir=ctx,
+        authoritative_company_id="same",
+        authoritative_repository_id="r_md",
+    )
+
+
+def test_context_sidecars_not_stale_when_matching(tmp_path: Path) -> None:
+    ctx = tmp_path / ".canon" / "memory"
+    ctx.mkdir(parents=True)
+    (ctx / "context-latest.md").write_text(
+        "- company_id: `co1`\n- repository_id: `r1`\n",
+        encoding="utf-8",
+    )
+    (ctx / "context-latest.json").write_text(
+        '{"company_id": "co1", "repository_id": "r1"}\n',
+        encoding="utf-8",
+    )
+    assert not context_sidecars_stale_vs_authoritative(
+        context_dir=ctx,
+        authoritative_company_id="co1",
+        authoritative_repository_id="r1",
+    )
 
 
 def test_merge_canon_systems_env_files_order(tmp_path: Path) -> None:

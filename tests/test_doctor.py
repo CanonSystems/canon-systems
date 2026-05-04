@@ -32,6 +32,12 @@ def test_doctor_json_ok_when_wired_no_hits(tmp_path: Path, monkeypatch: pytest.M
     o = json.loads(buf.getvalue())
     assert o["company_id_file"] == "ACME"
     assert o["tenant_context_mismatch"] is False
+    ctx = o["context_tenant"]
+    assert isinstance(ctx, dict)
+    assert ctx["expected_company_id"] == "ACME"
+    assert ctx["authoritative_tenant_mismatch"] is False
+    assert ctx["context_sidecars_trust_status"] == "trusted"
+    assert ctx["remediation"]
     assert o["dns"]["status"] == "skipped"
     assert o["canonical_memory_https_url_keys"] == [
         "KNOWLEDGE_API_URL",
@@ -124,7 +130,9 @@ def test_doctor_curl_resolve_snippet_stdout(tmp_path: Path, monkeypatch: pytest.
     assert "/healthz" in line
 
 
-def test_doctor_tenant_mismatch_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_doctor_tenant_mismatch_context_markdown_sidecar(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(tmp_path))
     (tmp_path / ".canon").mkdir(parents=True)
     (tmp_path / ".canon" / "memory-layer.local.env").write_text(
@@ -142,3 +150,71 @@ def test_doctor_tenant_mismatch_context(tmp_path: Path, monkeypatch: pytest.Monk
     assert dr.run(["--json"]) == 1
     o = json.loads(buf.getvalue())
     assert o["tenant_context_mismatch"] is True
+    ctx = o["context_tenant"]
+    assert ctx["expected_company_id"] == "ACME"
+    assert ctx["expected_repository_id"] == "demo"
+    assert ctx["observed_markdown_company_id"] == "OTHER"
+    assert ctx["observed_markdown_repository_id"] == "demo"
+    assert ctx["observed_json_company_id"] == ""
+    assert ctx["authoritative_tenant_mismatch"] is True
+    assert ctx["context_sidecars_trust_status"] == "do_not_trust"
+    assert "preflight" in ctx["remediation"].lower() or "context-latest" in ctx["remediation"].lower()
+
+
+def test_doctor_tenant_mismatch_json_sidecar_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Markdown matches wiring but JSON sidecar still carries a stale tenant (no live services)."""
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(tmp_path))
+    (tmp_path / ".canon").mkdir(parents=True)
+    (tmp_path / ".canon" / "memory-layer.local.env").write_text(
+        "COMPANY_ID=ACME\nREPOSITORY_ID=demo\n",
+        encoding="utf-8",
+    )
+    (tmp_path / ".canon" / "memory").mkdir(parents=True)
+    (tmp_path / ".canon" / "memory" / "context-latest.md").write_text(
+        "# Session Memory Context\n\n- company_id: `ACME`\n- repository_id: `demo`\n",
+        encoding="utf-8",
+    )
+    (tmp_path / ".canon" / "memory" / "context-latest.json").write_text(
+        json.dumps({"company_id": "OTHER", "repository_id": "demo"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(dr, "repo_root", lambda: tmp_path)
+    buf = io.StringIO()
+    monkeypatch.setattr(dr.sys, "stdout", buf)
+    assert dr.run(["--json"]) == 1
+    o = json.loads(buf.getvalue())
+    assert o["tenant_context_mismatch"] is True
+    ctx = o["context_tenant"]
+    assert ctx["observed_markdown_company_id"] == "ACME"
+    assert ctx["observed_json_company_id"] == "OTHER"
+    assert ctx["authoritative_tenant_mismatch"] is True
+    assert ctx["context_sidecars_trust_status"] == "do_not_trust"
+
+
+def test_doctor_tenant_mismatch_human_stderr_banner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(tmp_path))
+    (tmp_path / ".canon").mkdir(parents=True)
+    (tmp_path / ".canon" / "memory-layer.local.env").write_text(
+        "COMPANY_ID=ACME\nREPOSITORY_ID=demo\n",
+        encoding="utf-8",
+    )
+    (tmp_path / ".canon" / "memory").mkdir(parents=True)
+    (tmp_path / ".canon" / "memory" / "context-latest.md").write_text(
+        "# Session Memory Context\n\n- company_id: `OTHER`\n- repository_id: `demo`\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(dr, "repo_root", lambda: tmp_path)
+    out = io.StringIO()
+    err = io.StringIO()
+    monkeypatch.setattr(dr.sys, "stdout", out)
+    monkeypatch.setattr(dr.sys, "stderr", err)
+    assert dr.run([]) == 1
+    banner = err.getvalue()
+    assert "CONTEXT TENANT MISMATCH" in banner
+    assert "Expected (authoritative wiring)" in banner
+    assert "context-latest.json" in banner
+    assert "Remediation:" in banner

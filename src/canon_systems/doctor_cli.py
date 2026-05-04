@@ -14,7 +14,15 @@ import urllib.parse
 from pathlib import Path
 
 from .aws_secrets import _cache_file_path, resolve_canon_systems_secret_id
-from .shared import _resolve_ipv4_via_dig, _runtime_canon_version_string, load_env_file, repo_root
+from .shared import (
+    _resolve_ipv4_via_dig,
+    _runtime_canon_version_string,
+    context_sidecars_stale_vs_authoritative,
+    load_env_file,
+    parse_context_latest_json_tenant,
+    parse_context_latest_md_tenant,
+    repo_root,
+)
 
 _IPV4_IN_URL = re.compile(r"https?://\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?")
 
@@ -43,23 +51,57 @@ def _scan_env_files_for_raw_ips(paths: list[Path]) -> list[tuple[str, str, str]]
     return hits
 
 
-def _context_tenant(root: Path) -> tuple[str, str]:
-    md = root / ".canon" / "memory" / "context-latest.md"
-    if not md.is_file():
-        return "", ""
-    text = md.read_text(encoding="utf-8", errors="replace")
-    company = ""
-    repo = ""
-    for line in text.splitlines():
-        if "company_id:" in line and "`" in line:
-            parts = line.split("`")
-            if len(parts) >= 2:
-                company = parts[1].strip()
-        if "repository_id:" in line and "`" in line:
-            parts = line.split("`")
-            if len(parts) >= 2:
-                repo = parts[1].strip()
-    return company, repo
+def _tenant_context_remediation() -> str:
+    return (
+        "Run `canon preflight \"refresh context\"` so fresh sidecars match "
+        "`.canon/memory-layer.local.env`, delete stale `.canon/memory/context-latest.{md,json}` "
+        "if needed, and clear conflicting COMPANY_ID/REPOSITORY_ID from your shell or Cursor env."
+    )
+
+
+def _build_context_tenant_diagnostic(
+    *,
+    root: Path,
+    company_env: str,
+    repo_env: str,
+) -> dict[str, object]:
+    """Structured tenant comparison: authoritative env vs markdown/json sidecars."""
+    context_dir = root / ".canon" / "memory"
+    md_path = context_dir / "context-latest.md"
+    js_path = context_dir / "context-latest.json"
+    md_c, md_r = parse_context_latest_md_tenant(md_path)
+    js_c, js_r = parse_context_latest_json_tenant(js_path)
+    mismatch = context_sidecars_stale_vs_authoritative(
+        context_dir=context_dir,
+        authoritative_company_id=company_env,
+        authoritative_repository_id=repo_env,
+    )
+    md_present = md_path.is_file()
+    js_present = js_path.is_file()
+    md_json_company_conflict = bool(md_c and js_c and md_c != js_c)
+    md_json_repo_conflict = bool(md_r and js_r and md_r != js_r)
+    trust = "trusted"
+    if mismatch:
+        trust = "do_not_trust"
+    elif md_json_company_conflict or md_json_repo_conflict:
+        trust = "do_not_trust"
+    return {
+        "expected_company_id": company_env,
+        "expected_repository_id": repo_env,
+        "markdown_sidecar_path": str(md_path),
+        "json_sidecar_path": str(js_path),
+        "markdown_sidecar_present": md_present,
+        "json_sidecar_present": js_present,
+        "observed_markdown_company_id": md_c,
+        "observed_markdown_repository_id": md_r,
+        "observed_json_company_id": js_c,
+        "observed_json_repository_id": js_r,
+        "markdown_json_company_agree": not md_json_company_conflict,
+        "markdown_json_repository_agree": not md_json_repo_conflict,
+        "authoritative_tenant_mismatch": mismatch,
+        "context_sidecars_trust_status": trust,
+        "remediation": _tenant_context_remediation(),
+    }
 
 
 def _package_version() -> str:
@@ -176,6 +218,43 @@ def _cache_status() -> dict[str, object]:
     return out
 
 
+def _emit_context_tenant_mismatch_human(diag: dict[str, object]) -> None:
+    remediation = str(diag.get("remediation") or _tenant_context_remediation())
+    sep = "=" * 72
+    exp_c = diag.get("expected_company_id") or "(unset)"
+    exp_r = diag.get("expected_repository_id") or "(unset)"
+    md_c = diag.get("observed_markdown_company_id") or "(none)"
+    md_r = diag.get("observed_markdown_repository_id") or "(none)"
+    js_c = diag.get("observed_json_company_id") or "(none)"
+    js_r = diag.get("observed_json_repository_id") or "(none)"
+    trust = diag.get("context_sidecars_trust_status") or "unknown"
+    print("", file=sys.stderr)
+    print(sep, file=sys.stderr)
+    print(
+        "Canon doctor: CONTEXT TENANT MISMATCH — stale or conflicting hydrated memory context.",
+        file=sys.stderr,
+    )
+    print("Do not trust `.canon/memory/context-latest.md` or `context-latest.json` until fixed.",
+          file=sys.stderr)
+    print(sep, file=sys.stderr)
+    print(
+        f"  Expected (authoritative wiring): company_id={exp_c!s} repository_id={exp_r!s}",
+        file=sys.stderr,
+    )
+    print(
+        f"  Observed context-latest.md:      company_id={md_c!s} repository_id={md_r!s}",
+        file=sys.stderr,
+    )
+    print(
+        f"  Observed context-latest.json:    company_id={js_c!s} repository_id={js_r!s}",
+        file=sys.stderr,
+    )
+    print(f"  Trust status: {trust}", file=sys.stderr)
+    print(f"  Remediation: {remediation}", file=sys.stderr)
+    print(sep, file=sys.stderr)
+    print("", file=sys.stderr)
+
+
 def run(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="canon doctor",
@@ -216,14 +295,15 @@ def run(argv: list[str] | None = None) -> int:
         root / ".canon" / "memory-layer.secrets.env",
     ]
     ip_hits = _scan_env_files_for_raw_ips(scan_paths)
-    ctx_company, ctx_repo = _context_tenant(root)
+    tenant_ctx_diag = _build_context_tenant_diagnostic(
+        root=root,
+        company_env=company_env,
+        repo_env=repo_env,
+    )
+    mismatch = bool(tenant_ctx_diag["authoritative_tenant_mismatch"])
+    ctx_company = str(tenant_ctx_diag["observed_markdown_company_id"])
+    ctx_repo = str(tenant_ctx_diag["observed_markdown_repository_id"])
     cache = _cache_status()
-
-    mismatch = False
-    if company_env and ctx_company and company_env != ctx_company:
-        mismatch = True
-    if repo_env and ctx_repo and repo_env != ctx_repo:
-        mismatch = True
 
     secret_id = ""
     for k, v in local.items():
@@ -267,6 +347,7 @@ def run(argv: list[str] | None = None) -> int:
         "context_latest_company_id": ctx_company,
         "context_latest_repository_id": ctx_repo,
         "tenant_context_mismatch": mismatch,
+        "context_tenant": tenant_ctx_diag,
         "resolved_secret_id": secret_id,
         "aws_secret_cache": cache,
         "canonical_memory_https_url_keys": list(CANONICAL_MEMORY_HTTPS_KEYS),
@@ -287,13 +368,11 @@ def run(argv: list[str] | None = None) -> int:
     if secret_id:
         print(f"resolved Secrets Manager id: {secret_id}")
     print(f"context-latest.md: company_id={ctx_company or '(none)'} repository_id={ctx_repo or '(none)'}")
+    js_pc = str(tenant_ctx_diag["observed_json_company_id"])
+    js_pr = str(tenant_ctx_diag["observed_json_repository_id"])
+    print(f"context-latest.json: company_id={js_pc or '(none)'} repository_id={js_pr or '(none)'}")
     if mismatch:
-        print(
-            "WARNING: preflight context tenant differs from repo wiring — "
-            "run `env -u COMPANY_ID -u REPOSITORY_ID canon preflight \"tenant check\"` "
-            "or clear stray tenant vars in your shell/Cursor.",
-            file=sys.stderr,
-        )
+        _emit_context_tenant_mismatch_human(tenant_ctx_diag)
     c = cache
     if c.get("exists"):
         print(f"AWS secret cache: {c.get('path')} (secret_id={c.get('secret_id', '')!r})")

@@ -19,6 +19,18 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **Examples / fixtures:** canonical Marrow (formerly Innermost) tenant ids in
+  tests, synthesis defaults, `examples/company-registry.example.json`, and docs
+  now use `COMPANY_ID=MJC` and `REPOSITORY_ID=marrow` (Secrets Manager:
+  `memory-layer__mjc__marrow`). Does **not** migrate AWS data — operators must
+  clone the secret, extend IAM, and repoint Marrow’s `.canon/memory-layer.local.env`
+  as in `docs/ONBOARDING.md`.
+- **Ops:** `scripts/migrate_knowledge_api_tenant.py` and
+  `scripts/migrate_state_api_tenant.py` plus
+  `docs/migrations/tenant-rename-imc-innermost-to-mjc-marrow.md` for moving
+  Postgres/DynamoDB data from `IMC`/`innermost` to `MJC`/`marrow` so `canon ask`
+  and checkpoints stay continuous after rename.
+
 ### Fixed
 
 ## [3.5.5] - 2026-04-24
@@ -608,7 +620,7 @@ Canon Memory Platform **v1** — complete. Ships operator CLI (`canon report` fu
 
 ### Added
 
-- **`examples/company-registry.example.json`:** `IMC` example on the new
+- **`examples/company-registry.example.json`:** `MJC` (Marrow) example on the new
   prefix; `FMO` example still shows the legacy prefix for stacks that have
   not migrated AWS yet.
 

@@ -7,6 +7,7 @@ import json
 import os
 import re
 import socket
+import sys
 from importlib.metadata import PackageNotFoundError, version as pkg_version
 import ssl
 import subprocess
@@ -286,6 +287,158 @@ class RepoContext:
     memory_adapter_url: str
     artifact_bucket: str
     context_dir: Path
+
+
+CONTEXT_TENANT_STALE_STATUS = "tenant_mismatch_invalidated"
+
+
+def parse_context_latest_md_tenant(md_path: Path) -> tuple[str, str]:
+    """Parse ``company_id`` / ``repository_id`` from a preflight markdown sidecar (backtick form)."""
+    if not md_path.is_file():
+        return "", ""
+    text = md_path.read_text(encoding="utf-8", errors="replace")
+    company = ""
+    repo = ""
+    for line in text.splitlines():
+        if "company_id:" in line and "`" in line:
+            parts = line.split("`")
+            if len(parts) >= 2:
+                company = parts[1].strip()
+        if "repository_id:" in line and "`" in line:
+            parts = line.split("`")
+            if len(parts) >= 2:
+                repo = parts[1].strip()
+    return company, repo
+
+
+def parse_context_latest_json_tenant(json_path: Path) -> tuple[str, str]:
+    """Parse tenant ids from ``context-latest.json`` if present and shaped as an object."""
+    if not json_path.is_file():
+        return "", ""
+    try:
+        data = json.loads(json_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return "", ""
+    if not isinstance(data, dict):
+        return "", ""
+    return (
+        str(data.get("company_id", "") or "").strip(),
+        str(data.get("repository_id", "") or "").strip(),
+    )
+
+
+def context_sidecars_stale_vs_authoritative(
+    *,
+    context_dir: Path,
+    authoritative_company_id: str,
+    authoritative_repository_id: str,
+) -> bool:
+    """True when a sidecar's tenant disagrees with authoritative wiring (or md/json disagree)."""
+    ac = (authoritative_company_id or "").strip()
+    ar = (authoritative_repository_id or "").strip()
+    md_path = context_dir / "context-latest.md"
+    js_path = context_dir / "context-latest.json"
+    md_c, md_r = parse_context_latest_md_tenant(md_path)
+    js_c, js_r = parse_context_latest_json_tenant(js_path)
+
+    def _conflicts(side_val: str, auth_val: str) -> bool:
+        sv = (side_val or "").strip()
+        if not sv:
+            return False
+        return sv != (auth_val or "").strip()
+
+    if _conflicts(md_c, ac) or _conflicts(md_r, ar):
+        return True
+    if _conflicts(js_c, ac) or _conflicts(js_r, ar):
+        return True
+    if md_c and js_c and md_c != js_c:
+        return True
+    if md_r and js_r and md_r != js_r:
+        return True
+    return False
+
+
+def write_context_sidecars_tenant_invalidation_placeholder(
+    *,
+    context_dir: Path,
+    authoritative_company_id: str,
+    authoritative_repository_id: str,
+) -> None:
+    """Overwrite md/json so stale tenant sidecars are not trusted until preflight finishes."""
+    context_dir.mkdir(parents=True, exist_ok=True)
+    ac = authoritative_company_id.strip()
+    ar = authoritative_repository_id.strip()
+    md_path = context_dir / "context-latest.md"
+    md_lines = [
+        "# Session Memory Context — INVALIDATED (stale tenant)",
+        "",
+        "Previous sidecar content does not match authoritative repo tenant wiring from "
+        "`.canon/memory-layer.local.env` and layered Canon env (same rules as `load_repo_context`). "
+        "**Do not trust** prior MemPalace or current-truth sections until preflight completes.",
+        "",
+        f"- **authoritative** company_id: `{ac}`",
+        f"- **authoritative** repository_id: `{ar}`",
+        "",
+        "## MemPalace Status",
+        "- status: `invalidated`",
+        "- latency_ms: ``",
+        "- last_error: `tenant mismatch — refreshing`",
+        "- endpoint_ref: ``",
+        "",
+        "## MemPalace Hits",
+        "- (invalidated — awaiting fresh preflight)",
+        "",
+        "## Current Truth Artifacts",
+        "- (invalidated — awaiting fresh preflight)",
+        "",
+    ]
+    md_path.write_text("\n".join(md_lines), encoding="utf-8")
+
+    payload: dict[str, Any] = {
+        "status": CONTEXT_TENANT_STALE_STATUS,
+        "company_id": ac,
+        "repository_id": ar,
+        "message": (
+            "Sidecar tenant differed from authoritative repo wiring; "
+            "content invalidated before preflight network calls."
+        ),
+        "mempalace_status": {
+            "status": "invalidated",
+            "latency_ms": 0,
+            "last_error": "tenant mismatch — refreshing",
+            "endpoint_ref": "",
+        },
+    }
+    (context_dir / "context-latest.json").write_text(
+        json.dumps(payload, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def invalidate_context_sidecars_if_stale_tenant(repo_ctx: RepoContext, *, quiet: bool = False) -> bool:
+    """If sidecars disagree with ``repo_ctx`` tenant, overwrite them before outbound HTTP.
+
+    Authoritative identity matches :func:`load_repo_context` (layered env + ``memory-layer.local.env``).
+    """
+    stale = context_sidecars_stale_vs_authoritative(
+        context_dir=repo_ctx.context_dir,
+        authoritative_company_id=repo_ctx.company_id,
+        authoritative_repository_id=repo_ctx.repository_id,
+    )
+    if not stale:
+        return False
+    write_context_sidecars_tenant_invalidation_placeholder(
+        context_dir=repo_ctx.context_dir,
+        authoritative_company_id=repo_ctx.company_id,
+        authoritative_repository_id=repo_ctx.repository_id,
+    )
+    if not quiet:
+        print(
+            "memory-layer preflight: invalidated stale context sidecars "
+            "(tenant mismatch vs repo wiring); refreshing",
+            file=sys.stderr,
+        )
+    return True
 
 
 _CACHED_REPO_ROOT: Path | None = None
