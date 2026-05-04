@@ -8,6 +8,8 @@ This file collects **future** initiatives. **Order is not priority.** Pull items
 
 - **Stricter E2E / CI gate** optionally treating **graph** (and/or **state**) as required in `canon e2e-check` for tenants that mandate the full four-plane stack.
 
+- **Cursor SDK remote execution adapter:** Productize the validated AWS ECS/Fargate -> Cursor SDK cloud path into a Canon-native runtime adapter with persisted evidence envelope, negative merge/release tests, credential rotation, and cleanup tooling. Validation record: [CURSOR-SDK-AWS-VALIDATION-2026-05-01.md](CURSOR-SDK-AWS-VALIDATION-2026-05-01.md).
+
 - **Rotate / externalize** long-lived bearer tokens (e.g. graph, shared `CANON_HTTP_BEARER_TOKEN`) via short-lived credentials or per-service auth where product requirements allow.
 
 - **Single “operator runbook”** for greenfield AWS: order of apply (VPC, data planes, App Runner/ECS, secrets, smoke tests) generated from the same sources as docs to avoid drift.
