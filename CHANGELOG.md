@@ -13,6 +13,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.5.7] - 2026-05-05
+
+### Fixed
+
+- **AWS secret hydration:** if `<repo>/.canon/memory-layer.secrets.env` is populated, use it without attempting an AWS Secrets Manager fetch by default. This removes noisy offline failures when a repo-local mirror is already sufficient but the shared home cache currently belongs to another repo. Set `MEMORY_LAYER_AWS_FORCE_REFRESH=1` to bypass the mirror and force a fresh Secrets Manager read.
+
 ## [3.5.6] - 2026-05-05
 
 ### Added

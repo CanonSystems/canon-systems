@@ -222,3 +222,48 @@ def test_write_repo_secrets_mirror_force_updates(tmp_path, monkeypatch) -> None:
     assert "b.example" in (root / ".canon" / "memory-layer.secrets.env").read_text(
         encoding="utf-8"
     )
+
+
+def test_apply_secrets_uses_repo_mirror_without_aws_fetch(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("canon_systems.aws_secrets.Path.home", lambda: tmp_path)
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / ".git").mkdir()
+    mirror = root / ".canon" / "memory-layer.secrets.env"
+    mirror.parent.mkdir(parents=True)
+    mirror.write_text("KNOWLEDGE_API_URL=https://mirror.example\n", encoding="utf-8")
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(root))
+    monkeypatch.setenv("MEMORY_LAYER_AWS_SECRET_ID", "pref/secret")
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
+    monkeypatch.delenv("KNOWLEDGE_API_URL", raising=False)
+
+    def _raise_if_called():
+        raise AssertionError("repo mirror should avoid AWS fetch")
+
+    monkeypatch.setattr(aws_secrets, "_secretsmanager_client", _raise_if_called)
+    apply_canon_systems_secrets_from_aws()
+    assert os.environ.get("KNOWLEDGE_API_URL") == "https://mirror.example"
+
+
+def test_force_refresh_bypasses_repo_mirror(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("canon_systems.aws_secrets.Path.home", lambda: tmp_path)
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / ".git").mkdir()
+    mirror = root / ".canon" / "memory-layer.secrets.env"
+    mirror.parent.mkdir(parents=True)
+    mirror.write_text("KNOWLEDGE_API_URL=https://mirror.example\n", encoding="utf-8")
+    monkeypatch.setenv("CANON_SYSTEMS_REPO_ROOT", str(root))
+    monkeypatch.setenv("MEMORY_LAYER_AWS_SECRET_ID", "pref/secret")
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
+    monkeypatch.setenv("MEMORY_LAYER_AWS_FORCE_REFRESH", "1")
+    monkeypatch.delenv("KNOWLEDGE_API_URL", raising=False)
+
+    class _FakeClient:
+        def get_secret_value(self, SecretId: str) -> dict:  # noqa: N802
+            assert SecretId == "pref/secret"
+            return {"SecretString": '{"KNOWLEDGE_API_URL": "https://fresh.example"}'}
+
+    monkeypatch.setattr(aws_secrets, "_secretsmanager_client", lambda: _FakeClient())
+    apply_canon_systems_secrets_from_aws()
+    assert os.environ.get("KNOWLEDGE_API_URL") == "https://fresh.example"

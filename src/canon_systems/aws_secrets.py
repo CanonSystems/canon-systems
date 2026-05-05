@@ -332,6 +332,34 @@ def _repo_mirror_needs_write(path: Path) -> bool:
         return True
 
 
+def _repo_mirror_force_refresh() -> bool:
+    return os.environ.get("MEMORY_LAYER_AWS_FORCE_REFRESH", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def read_repo_secrets_mirror() -> dict[str, str]:
+    """Read the repo-local mirror, returning no secrets if disabled/missing/empty."""
+    if _repo_mirror_disabled():
+        return {}
+    path = _repo_secrets_mirror_path()
+    if path is None or not path.exists():
+        return {}
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    return _parse_dotenv_body(raw)
+
+
+def apply_pairs_to_environ(pairs: dict[str, str]) -> None:
+    for k, v in pairs.items():
+        if k.strip():
+            os.environ.setdefault(k.strip(), v)
+
+
 def write_repo_secrets_mirror(pairs: dict[str, str], *, force: bool = False) -> None:
     """Persist hydrated secret keys next to the repo (gitignored). Best-effort only."""
     if _repo_mirror_disabled() or not pairs:
@@ -364,11 +392,14 @@ def apply_canon_systems_secrets_from_aws() -> None:
         return
     region_tag = (os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "default").strip()
 
+    mirrored = read_repo_secrets_mirror()
+    if mirrored and not _repo_mirror_force_refresh():
+        apply_pairs_to_environ(mirrored)
+        return
+
     cached = _read_cache(secret_id, region_tag)
     if cached is not None:
-        for k, v in cached.items():
-            if k.strip():
-                os.environ.setdefault(k.strip(), v)
+        apply_pairs_to_environ(cached)
         refresh_repo_secrets_mirror_if_missing(cached)
         return
 
@@ -395,6 +426,4 @@ def apply_canon_systems_secrets_from_aws() -> None:
     if pairs:
         _write_cache(secret_id, region_tag, pairs)
         write_repo_secrets_mirror(pairs, force=True)
-    for k, v in pairs.items():
-        if k.strip():
-            os.environ.setdefault(k.strip(), v)
+    apply_pairs_to_environ(pairs)
