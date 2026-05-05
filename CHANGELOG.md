@@ -9,6 +9,14 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [3.5.6] - 2026-05-05
+
+### Added
+
 - **Readiness:** CLI **`canon readiness check`** — **`GET`** `/state/run-ledger`-backed JSON snapshot (`src/canon_systems/readiness.py`, **`tests/test_readiness.py`**, **`tests/test_readiness_cli.py`**). Uses ledger + **`archive_refs`** metadata only (no archived body reads); passes through **`validation_outcomes`** / commit / PR / deployment fields already on rows; deterministic exits **`0`**/**`1`**/**`2`**. **`canon flow-audit --require-deploy-attestation`** enforces on-disk **`deployment-smoke.json`** separately. **`canon doctor --json`** includes redacted **`credential_attestation`** (wiring diagnostics, not secret values). Still deferred in **`readiness`**: QA evidence normalization, shared DoR validation, and new attestation rules beyond fields already persisted on ledger rows.
 - **Run ledger:** DynamoDB-backed durable run records on **`state-api`**
   (**`PUT`/`GET` `/state/run-ledger`**, table **`STATE_RUN_LEDGER_TABLE_NAME`**,
