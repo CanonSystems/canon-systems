@@ -18,6 +18,7 @@ from .packet_archive_cli import run as run_packet_archive_cli
 from .run_ledger_cli import run as run_run_ledger_cli
 from .readiness_cli import run as run_readiness_cli
 from .graph_indexer import run as run_graph_cli
+from .live_plan import run as run_live_plan
 from .report_cli import run as run_report_cli
 from .resume_engine import run as run_resume_engine
 from .stall_watchdog import run as run_stall_watchdog
@@ -480,6 +481,12 @@ def main(argv: list[str] | None = None) -> int:
     graph_parser = sub.add_parser("graph", help="Graph retrieval plane CLI")
     graph_parser.add_argument("args", nargs=argparse.REMAINDER)
 
+    live_plan_parser = sub.add_parser(
+        "live-plan",
+        help="Capture and verify a live meeting plan before Cursor handoff.",
+    )
+    live_plan_parser.add_argument("args", nargs=argparse.REMAINDER)
+
     report_parser = sub.add_parser("report", help="Retrieval-telemetry rollups (stub; Wave 6 polishes)")
     report_parser.add_argument("args", nargs=argparse.REMAINDER)
 
@@ -850,6 +857,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "graph":
         return run_graph_cli(list(getattr(args, "args", [])))
+
+    if args.command == "live-plan":
+        return run_live_plan(list(getattr(args, "args", [])))
 
     if args.command == "report":
         return run_report_cli(list(getattr(args, "args", [])))

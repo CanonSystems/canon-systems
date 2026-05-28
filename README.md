@@ -15,6 +15,10 @@ What ships in one install:
 - **Subagent system**: `project-planner`, `scoper`, `cursor-pilot`,
   `implementer`, `qa-gate`, and `release-orchestrator` — backlog planning,
   DoR-driven execution, and gated release orchestration.
+- **Live meeting planning substrate**: `canon live-plan` captures meeting
+  transcript segments, explicit visual/repo references, read-back verified plan
+  items, and a Cursor handoff plan. See
+  [docs/LIVE-MEETING-BOT.md](docs/LIVE-MEETING-BOT.md).
 - Graph-first retrieval is the default for all coder-facing agent templates (scoper/cursor-pilot/implementer). See `## Retrieval policy (required)` in `src/canon_systems/templates/rules/memory-layer-defaults.mdc`.
 - **Version-drift guard**: hooks hard-fail if the installed CLI is older
   than the version a repo was wired with; the agent is instructed to

@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Canon Meet Companion",
+  "version": "0.1.0",
+  "description": "Inject a Canon live-planning companion dock into Google Meet and bridge it to the local Canon runtime.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://meet.google.com/*",
+    "http://127.0.0.1:8765/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://meet.google.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
