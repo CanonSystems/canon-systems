@@ -1,36 +1,64 @@
 {
   "request": {
-    "artifact_id": "art_memcap_20260422T202726Z_usr_new.moon3461",
-    "version_id": "ver_art_memcap_20260422T202726Z_usr_new.moon3461",
+    "artifact_id": "art_memcap_20260502T002508Z_usr_new.moon3461",
+    "version_id": "ver_art_memcap_20260502T002508Z_usr_new.moon3461",
     "title": "Session memory capture (edward-Nf8bZHgYi9)",
-    "transcript_text": "## Decisions\n\n- qa-validate PASS\n- flow-audit PASS (forced sample 1.0; default 0.2 skipped by design)\n- memory-health scaffold-ok \u2014 canonical localhost:8080 unreachable in sandbox, deferred to wave PR per rule \u00a710 and E2-T1 precedent\n- AC28 forbidden-surface intersection empty\n\n## Next Actions\n\n- Parent commits E2-T2 on wave/2/canon-memory-v1 per rule \u00a79\n- Advance to next Wave-2 task\n- Evaluate memory-health against live services at wave PR merge\n\n## Metadata\n\n- actor_id: usr_new.moon3461\n- actor_display_name: edward-Nf8bZHgYi9\n- company_id: UNKNOWN_COMPANY\n- repository_id: github.com/CanonSystems/canon-systems\n- source_surface: cursor\n",
+    "transcript_text": "## User Prompt\n\nI do not have a reliable mapping from **931112912572** to a specific org or account nickname. That ID does not appear anywhere in this **canon-systems** repo, and AWS does not publish a global \u201caccount ID \u2192 company name\u201d directory.\n\n**Ways to identify it (pick what matches your access):**\n\n1. **You already have credentials for that account**  \n   Run:\n   ```bash\n   aws sts get-caller-identity\n   ```\n   The `Account` field will be `931112912572` when your current profile/session is in that account. The `Arn` shows whether you are root, an IAM user, or a role.\n\n2. **AWS Organizations (management or delegated admin)**  \n   If this is a member account in your org, look it up in **AWS Organizations** in the console, or use APIs/CLI your org allows (e.g. list accounts / describe account). Account Management\u2019s `get-account-information` can return the **account name** when called from the management or delegated admin context for that org.\n\n3. **From an ARN**  \n   Any ARN like `arn:aws:iam::931112912572:role/...` or `arn:aws:secretsmanager:region:931112912572:secret:...` confirms the ID; the **friendly name** still comes from your org\u2019s naming (console, tags, or internal docs).\n\n4. **Internal docs / infra-as-code**  \n   Many teams store account IDs in Terraform, CDK, or a spreadsheet; searching your internal repos or wikis for `931112912572` is often fastest.\n\nIf you tell me whether you use **Organizations** or only **CLI profiles**, I can narrow this to the exact console path or CLI command for your setup (without needing secrets in chat).\n\n## Assistant Output\n\nI do not have a reliable mapping from **931112912572** to a specific org or account nickname. That ID does not appear anywhere in this **canon-systems** repo, and AWS does not publish a global \u201caccount ID \u2192 company name\u201d directory.\n\n**Ways to identify it (pick what matches your access):**\n\n1. **You already have credentials for that account**  \n   Run:\n   ```bash\n   aws sts get-caller-identity\n   ```\n   The `Account` field will be `931112912572` when your current profile/session is in that account. The `Arn` shows whether you are root, an IAM user, or a role.\n\n2. **AWS Organizations (management or delegated admin)**  \n   If this is a member account in your org, look it up in **AWS Organizations** in the console, or use APIs/CLI your org allows (e.g. list accounts / describe account). Account Management\u2019s `get-account-information` can return the **account name** when called from the management or delegated admin context for that org.\n\n3. **From an ARN**  \n   Any ARN like `arn:aws:iam::931112912572:role/...` or `arn:aws:secretsmanager:region:931112912572:secret:...` confirms the ID; the **friendly name** still comes from your org\u2019s naming (console, tags, or internal docs).\n\n4. **Internal docs / infra-as-code**  \n   Many teams store account IDs in Terraform, CDK, or a spreadsheet; searching your internal repos or wikis for `931112912572` is often fastest.\n\nIf you tell me whether you use **Organizations** or only **CLI profiles**, I can narrow this to the exact console path or CLI command for your setup (without needing secrets in chat).\n\n## Metadata\n\n- actor_id: usr_new.moon3461\n- actor_display_name: edward-Nf8bZHgYi9\n- company_id: CSC\n- repository_id: canon-systems\n- source_surface: cursor\n",
     "created_by": "usr_new.moon3461",
     "source_system": "cursor-memory-hooks",
-    "body_bucket": "knowledge-dev",
-    "summary": "Task E2-T2 status: READY_TO_MERGE",
-    "decisions": [
-      "qa-validate PASS",
-      "flow-audit PASS (forced sample 1.0; default 0.2 skipped by design)",
-      "memory-health scaffold-ok \u2014 canonical localhost:8080 unreachable in sandbox, deferred to wave PR per rule \u00a710 and E2-T1 precedent",
-      "AC28 forbidden-surface intersection empty"
-    ],
-    "next_actions": [
-      "Parent commits E2-T2 on wave/2/canon-memory-v1 per rule \u00a79",
-      "Advance to next Wave-2 task",
-      "Evaluate memory-health against live services at wave PR merge"
-    ],
+    "body_bucket": "canon-systems-v2-dev-artifacts-4952f257",
+    "summary": "I do not have a reliable mapping from **931112912572** to a specific org or account nickname. That ID does not appear anywhere in this **canon-systems** repo, and AWS does not publish a global \u201caccount ID \u2192 company name\u201d directory.\n\n**Ways ",
+    "decisions": [],
+    "next_actions": [],
     "open_questions": [],
     "owners": [
       "usr_new.moon3461"
     ],
     "scope_ids": [
-      "UNKNOWN_COMPANY"
+      "CSC"
     ],
     "repo_ids": [
-      "github.com/CanonSystems/canon-systems"
+      "canon-systems"
     ],
-    "conversation_ids": []
+    "conversation_ids": [
+      "c9ca1b45-3868-4add-bd15-c8ec043bda4c"
+    ]
   },
-  "response_status": 500,
-  "response_payload": "Internal Server Error"
+  "response_status": 201,
+  "response_payload": {
+    "fallback": "knowledge_api.create_artifact",
+    "payload": {
+      "artifact_id": "art_memcap_20260502T002508Z_usr_new.moon3461",
+      "version_id": "ver_art_memcap_20260502T002508Z_usr_new.moon3461",
+      "artifact_type": "memory_capture",
+      "title": "Session memory capture (edward-Nf8bZHgYi9)",
+      "status": "draft",
+      "visibility": "team",
+      "owners": [
+        "usr_new.moon3461"
+      ],
+      "groups": [],
+      "scope_ids": [
+        "CSC"
+      ],
+      "repo_ids": [
+        "canon-systems"
+      ],
+      "work_item_ids": [],
+      "conversation_ids": [
+        "c9ca1b45-3868-4add-bd15-c8ec043bda4c"
+      ],
+      "source_system": "cursor-memory-hooks",
+      "supersedes_artifact_id": null,
+      "body_ref": {
+        "storage": "s3",
+        "bucket": "canon-systems-v2-dev-artifacts-4952f257",
+        "key": "artifacts/art_memcap_20260502T002508Z_usr_new.moon3461/ver_art_memcap_20260502T002508Z_usr_new.moon3461/body.md",
+        "content_type": "text/markdown"
+      },
+      "summary": "I do not have a reliable mapping from **931112912572** to a specific org or account nickname. That ID does not appear anywhere in this **canon-systems** repo, and AWS does not publish a global \u201caccount ID \u2192 company name\u201d directory.\n\n**Ways ",
+      "created_at": "2026-05-02T00:25:08.541686+00:00",
+      "created_by": "usr_new.moon3461"
+    }
+  }
 }

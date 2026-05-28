@@ -8,8 +8,8 @@ from uuid import UUID
 import boto3
 
 SCOPE = {
-    "company_id": "IMC",
-    "repository_id": "innermost",
+    "company_id": "MJC",
+    "repository_id": "marrow",
     "plan_id": "p1",
     "task_id": "E2-T2",
     "workstream_id": "ws1",
@@ -57,7 +57,7 @@ def test_acquire_mints_uuidv4_and_creates_item(client, dynamodb_table) -> None:
     assert body["acquired_at"] >= before
 
     tbl = boto3.resource("dynamodb", region_name="us-east-1").Table(dynamodb_table)
-    item = tbl.get_item(Key={"pk": "IMC#innermost", "sk": "p1#E2-T2#ws1"})["Item"]
+    item = tbl.get_item(Key={"pk": "MJC#marrow", "sk": "p1#E2-T2#ws1"})["Item"]
     assert int(item["state_version"]) == 0
     assert item["lease_token"] == body["lease_token"]
 

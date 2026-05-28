@@ -343,7 +343,7 @@ def run(argv: list[str] | None = None) -> int:
     if command == "wizard":
         print("Canon secrets wizard")
         print(f"Target repo: {repo_root()}")
-        company_id = _prompt("Company ID", company_id or "IMC")
+        company_id = _prompt("Company ID", company_id or "MJC")
         repository_id = _prompt("Repository ID", repository_id or repo_root().name)
         prefix = _prompt(
             "Secret prefix",

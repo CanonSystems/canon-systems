@@ -28,3 +28,5 @@ vault/
 .canon/memory-layer.secrets.env
 .canon/memory/pending-user-turn.json
 .canon/memory/mempalace-retry-queue.jsonl
+# Local live-plan runtime artifacts (sessions, OAuth tokens, SDP captures)
+.canon/live-plan/

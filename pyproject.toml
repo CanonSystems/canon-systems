@@ -29,7 +29,7 @@ include-package-data = true
 where = ["src", "backend/shared"]
 
 [tool.setuptools.package-data]
-"canon_systems" = ["templates/vault-sync/*"]
+"canon_systems" = ["templates/vault-sync/*", "static/live_plan_panel/*"]
 "canon_systems.templates.hooks" = ["*"]
 "canon_systems.templates.rules" = ["*"]
 "canon_systems.templates.agents" = ["*"]

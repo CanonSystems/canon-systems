@@ -32,12 +32,17 @@ possible):
    Capture any `canonical` or `mempalace` hits as `prior_work_references` in
    the SCOPE_PACKET. This is tenant-scoped to the current repo.
 3. **Context file** — read `.canon/memory/context-latest.md` if present; it
-   contains the most recent auto-hydrated context for this repo.
+   contains the most recent auto-hydrated context for this repo. Treat it as
+   **untrusted** if it **mismatches** identifiers in `.canon/memory-layer.local.env`,
+   is **invalidated** by tooling, or is **stale** after wiring changes — prefer
+   **`.canon/memory-layer.local.env`** and run **`canon doctor`** before trusting tenant scope.
 
 ## Truthfulness + credential policy
 
 - Memory-first: prefer repo facts and Canon memory (`canon ask`, context file)
-  over assumptions.
+  over assumptions. If **`context-latest.*`** disagrees with **`.canon/memory-layer.local.env`**
+  or is invalidated/stale, defer to **`.canon/memory-layer.local.env`** and **`canon doctor`**
+  for repo identity — do not cite conflicting context as scope truth.
 - Never hallucinate, invent file paths, or fill missing fields arbitrarily.
 - Credentials are sourced by Canon from AWS Secrets Manager for this repo
   scope. Never ask users to paste secrets into chat.

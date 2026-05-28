@@ -35,8 +35,8 @@ def _put(s3: DictS3Client, rel_key: str, body: bytes) -> None:
 
 @pytest.fixture
 def vault_ids() -> tuple[str, str, str, str]:
-    c1 = _sh8(b"IMC")
-    r1 = _sh8(b"innermost")
+    c1 = _sh8(b"MJC")
+    r1 = _sh8(b"marrow")
     c2 = _sh8(b"ACME")
     r2 = _sh8(b"widgets")
     return (c1, r1, c2, r2)

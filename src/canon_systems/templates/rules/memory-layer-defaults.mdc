@@ -14,17 +14,23 @@ This repo is wired to Canon Systems (tenant-scoped to this `company_id` +
 1. Read `.canon/memory/context-latest.md` to see prior work relevant to the
    current prompt. It is auto-refreshed on every user turn by the preflight
    hook.
-2. If the context looks stale or missing, refresh it yourself:
+2. Treat `context-latest.*` as **untrusted** if it **mismatches**
+   `.canon/memory-layer.local.env` (wrong `company_id` / `repository_id`), hooks
+   or operators mark it **invalidated**, or it reads **stale** after repo or
+   secret changes. Prefer `.canon/memory-layer.local.env` for authoritative repo
+   identity; run **`canon doctor`** to confirm tenant alignment and URL/cache
+   sanity before leaning on hydrated context or memory calls for scope.
+3. If the context looks stale or missing, refresh it yourself:
    `canon preflight "<what you're about to do>" --quiet`
-3. For targeted questions ("have I solved this before? what did we decide
+4. For targeted questions ("have I solved this before? what did we decide
    last time?"), use:
    `canon ask "<question>"`
    This queries both canonical artifacts and MemPalace, scoped to this repo.
-4. After a `pipx upgrade canon-systems` or when validating a machine, from
+5. After a `pipx upgrade canon-systems` or when validating a machine, from
    **repo root** run: `canon e2e-check --agent` — the JSON must show
    `"verdict": "PASS"` (single plug-and-play health check: wiring + required
    memory backends).
-5. **canon-systems ≥ 3.4.7:** run `canon doctor` when validating wiring (tenant
+6. **canon-systems ≥ 3.4.7:** run `canon doctor` when validating wiring (tenant
    alignment, env URL sanity, cache metadata). After secret or dev URL changes,
    run `canon doctor --fix-cache` (or `rm -f ~/.canon/memory-layer-aws-cache.json`).
    **3.4.6 and older:** there is no `doctor` command — use the `rm` line above,
@@ -42,7 +48,10 @@ This repo is wired to Canon Systems (tenant-scoped to this `company_id` +
 ## Truthfulness + secrets handling (required)
 
 - Memory-first: use `.canon/memory/context-latest.md` and `canon ask` before
-  making assumptions about prior work.
+  making assumptions about prior work — unless `context-latest.*` is
+  mismatched, invalidated, or obviously stale versus **`.canon/memory-layer.local.env`**;
+  then treat it as untrusted until **`canon preflight`** / **`canon doctor`**
+  reconciles repo identity.
 - Never hallucinate, fabricate outputs, or fill missing technical details
   arbitrarily.
 - Do not ask users to paste credentials/tokens/secrets into chat. Canon
@@ -234,7 +243,9 @@ arbitrary files:
 3. **Canonical layer** — decision history. Read
    `.canon/memory/context-latest.md` for the preflight summary, and/or run
    `canon ask "<question>"` for targeted lookups across canonical events and
-   MemPalace, scoped to this repo.
+   MemPalace, scoped to this repo. If `context-latest.*` mismatches **`.canon/memory-layer.local.env`**
+   or is invalidated/stale, do not trust it for tenant scope until **`canon doctor`**
+   / **`canon preflight`**; identity ground truth stays in **`.canon/memory-layer.local.env`**.
 4. **File reads** — last resort. Only open files that were cited by steps 1-3,
    or whose existence was explicitly required by the user prompt. Broad
    repo-wide greps or speculative `ls -R` are discouraged when steps 1-3

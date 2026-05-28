@@ -1,12 +1,18 @@
 {
   "status": "ok",
   "actor_id": "usr_new.moon3461",
-  "company_id": "IMC",
-  "repository_id": "innermost",
-  "query": "status check",
-  "memory_status_code": 404,
+  "company_id": "CSC",
+  "repository_id": "canon-systems",
+  "query": "tenant check",
+  "memory_status_code": 200,
+  "mempalace_status": {
+    "latency_ms": 63,
+    "endpoint_ref": "https://memory.canon-systems.com/memory/search",
+    "status": "ok",
+    "last_error": ""
+  },
   "current_truth_status_code": 200,
   "context_markdown_path": "/Users/edwardwalker/localwork/canon-systems/.canon/memory/context-latest.md",
-  "task_context_artifact_id_hint": "art_taskctx_preload_20260422T132642Z_usr_new.moon3461",
-  "task_context_version_id_hint": "ver_art_taskctx_preload_20260422T132642Z_usr_new.moon3461"
+  "task_context_artifact_id_hint": "art_taskctx_preload_20260501T191014Z_usr_new.moon3461",
+  "task_context_version_id_hint": "ver_art_taskctx_preload_20260501T191014Z_usr_new.moon3461"
 }

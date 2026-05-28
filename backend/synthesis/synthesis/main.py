@@ -25,11 +25,11 @@ def get_event_source() -> EventSource:
 
 
 def _env_company() -> str:
-    return os.environ.get("SYNTHESIS_COMPANY_ID", "IMC")
+    return os.environ.get("SYNTHESIS_COMPANY_ID", "MJC")
 
 
 def _env_repository() -> str:
-    return os.environ.get("SYNTHESIS_REPOSITORY_ID", "innermost")
+    return os.environ.get("SYNTHESIS_REPOSITORY_ID", "marrow")
 
 
 def _parse_iso8601(value: str) -> str:
