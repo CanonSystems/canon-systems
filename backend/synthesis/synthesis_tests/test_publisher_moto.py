@@ -19,8 +19,8 @@ def _ev() -> CanonicalEvent:
             "event_id": "01JS3PUB",
             "parent_event_id": "01J0000",
             "event_type": "retrieval_breakdown",
-            "company_id": "IMC",
-            "repository_id": "innermost",
+            "company_id": "MJC",
+            "repository_id": "marrow",
             "plan_id": "p1",
             "task_id": "t1",
             "handoff_id": "h1",
@@ -43,11 +43,11 @@ def test_publish_is_idempotent_no_duplicate_writes() -> None:
     ev = _ev()
     bundle = generate_vault(
         [ev],
-        company_id="IMC",
-        repository_id="innermost",
+        company_id="MJC",
+        repository_id="marrow",
         cutoff_timestamp="2026-12-31T00:00:00Z",
     )
-    pfx = f"vault/{shorthash('IMC')}/{shorthash('innermost')}"
+    pfx = f"vault/{shorthash('MJC')}/{shorthash('marrow')}"
     pub = SynthesisPublisher(
         bucket=bucket,
         s3_client=s3,

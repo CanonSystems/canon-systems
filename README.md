@@ -349,7 +349,7 @@ If you need automation/CI, use the explicit workflow below:
 
 ```bash
 # 1) Generate canonical payload shape
-canon secrets template --company-id IMC --repository-id innermost > /tmp/canon-secret.json
+canon secrets template --company-id MJC --repository-id marrow > /tmp/canon-secret.json
 
 # 2) Fill real values (URLs, bucket, tokens) in the file
 

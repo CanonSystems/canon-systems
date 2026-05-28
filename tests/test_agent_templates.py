@@ -442,6 +442,31 @@ def test_release_orchestrator_template_resume_aware() -> None:
     assert "--lanes" in body
 
 
+def test_agent_templates_and_defaults_tenant_context_trust_guidance() -> None:
+    """Hydrated context is useful but not authoritative when it disagrees with local env."""
+    defaults = resources.files("canon_systems.templates.rules").joinpath("memory-layer-defaults.mdc").read_text(
+        encoding="utf-8"
+    )
+    assert "Treat `context-latest.*` as **untrusted**" in defaults
+    assert ".canon/memory-layer.local.env" in defaults
+    assert "canon doctor" in defaults
+    assert "**untrusted**" in defaults
+    assert "invalidated" in defaults
+    assert "Unless `context-latest.*` is" in defaults or "mismatched" in defaults
+
+    scoper = resources.files("canon_systems.templates.agents").joinpath("scoper.md").read_text(encoding="utf-8")
+    assert "**untrusted**" in scoper
+    assert ".canon/memory-layer.local.env" in scoper
+    assert "canon doctor" in scoper
+
+    implementer = resources.files("canon_systems.templates.agents").joinpath("implementer.md").read_text(
+        encoding="utf-8"
+    )
+    assert "context-latest.*` as **untrusted**" in implementer
+    assert ".canon/memory-layer.local.env" in implementer
+    assert "canon doctor" in implementer
+
+
 def test_resume_runbook_exists_and_covers_workflow() -> None:
     from pathlib import Path
     # Resolve relative to repo root: this test file lives at tests/test_agent_templates.py

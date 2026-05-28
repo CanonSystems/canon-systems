@@ -40,8 +40,8 @@ def _write_repo_scope(tmp_path: Path) -> None:
     env_path.write_text(
         "\n".join(
             [
-                "COMPANY_ID=IMC",
-                "REPOSITORY_ID=innermost",
+                "COMPANY_ID=MJC",
+                "REPOSITORY_ID=marrow",
                 "MEMORY_LAYER_AWS_SECRET_NAME_PREFIX=canon-memory-dev",
                 "AWS_REGION=us-east-1",
             ]
@@ -52,11 +52,11 @@ def _write_repo_scope(tmp_path: Path) -> None:
 
 
 def test_template_outputs_structured_payload(capsys) -> None:
-    code = secrets_submit.run(["template", "--company-id", "IMC", "--repository-id", "innermost"])
+    code = secrets_submit.run(["template", "--company-id", "MJC", "--repository-id", "marrow"])
     assert code == 0
     out = capsys.readouterr().out
-    assert '"COMPANY_ID": "IMC"' in out
-    assert '"REPOSITORY_ID": "innermost"' in out
+    assert '"COMPANY_ID": "MJC"' in out
+    assert '"REPOSITORY_ID": "marrow"' in out
     assert '"CANON_STATE_API_URL": "https://memory.canon-systems.com"' in out
     assert '"AXON_SERVICE_URL": ""' in out
     assert '"AXON_SERVICE_TOKEN": ""' in out
@@ -93,9 +93,9 @@ def test_submit_validates_and_writes_existing_secret(
         [
             "submit",
             "--company-id",
-            "IMC",
+            "MJC",
             "--repository-id",
-            "innermost",
+            "marrow",
             "--prefix",
             "canon-memory-dev",
             "--aws-region",
@@ -134,9 +134,9 @@ def test_submit_requires_missing_keys_without_allow_partial(
         [
             "submit",
             "--company-id",
-            "IMC",
+            "MJC",
             "--repository-id",
-            "innermost",
+            "marrow",
             "--prefix",
             "canon-memory-dev",
             "--aws-region",
@@ -159,8 +159,8 @@ def test_wizard_collects_prompts_and_runs_dry_run(
 
     answers = iter(
         [
-            "IMC",
-            "innermost",
+            "MJC",
+            "marrow",
             "canon-memory-dev",
             "us-east-1",
             "canon-systems",

@@ -16,8 +16,8 @@ from state_api.main import app
 from state_api.storage import StateStore
 
 SCOPE = {
-    "company_id": "IMC",
-    "repository_id": "innermost",
+    "company_id": "MJC",
+    "repository_id": "marrow",
     "plan_id": "p1",
     "task_id": "E2-T2",
     "workstream_id": "ws1",
@@ -101,7 +101,7 @@ def test_put_lease_token_mismatch(client, dynamodb_table) -> None:
 def test_put_lease_expired(client, dynamodb_table) -> None:
     a = _acquire(client)
     token = a["lease_token"]
-    pk, sk = "IMC#innermost", "p1#E2-T2#ws1"
+    pk, sk = "MJC#marrow", "p1#E2-T2#ws1"
     tbl = boto3.resource("dynamodb", region_name="us-east-1").Table(dynamodb_table)
     past = int(time.time()) - 60
     tbl.update_item(
@@ -115,7 +115,7 @@ def test_put_lease_expired(client, dynamodb_table) -> None:
 
 
 def test_put_lease_required(client, dynamodb_table) -> None:
-    pk, sk = "IMC#innermost", "p1#E2-T2#ws1"
+    pk, sk = "MJC#marrow", "p1#E2-T2#ws1"
     tbl = boto3.resource("dynamodb", region_name="us-east-1").Table(dynamodb_table)
     now = int(time.time())
     tbl.put_item(

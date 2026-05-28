@@ -15,8 +15,8 @@ def test_resolve_prefix_prefers_existing_repo_env(tmp_path: Path) -> None:
     )
     prefix, src = resolve_setup_secret_prefix(
         root,
-        "IMC",
-        "innermost",
+        "MJC",
+        "marrow",
         region="us-east-1",
         profile="test-profile",
         ent={"aws_secret_name_prefix": "from-registry"},
@@ -29,8 +29,8 @@ def test_resolve_prefix_registry_when_no_file(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     prefix, src = resolve_setup_secret_prefix(
         root,
-        "IMC",
-        "innermost",
+        "MJC",
+        "marrow",
         region="us-east-1",
         profile="test-profile",
         ent={"aws_secret_name_prefix": "registry-prefix"},
@@ -50,8 +50,8 @@ def test_resolve_prefix_default_when_aws_probe_finds_nothing(
     )
     prefix, src = resolve_setup_secret_prefix(
         root,
-        "IMC",
-        "innermost",
+        "MJC",
+        "marrow",
         region="us-east-1",
         profile="test-profile",
         ent={},

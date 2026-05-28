@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 SCOPE = {
-    "company_id": "IMC",
-    "repository_id": "innermost",
+    "company_id": "MJC",
+    "repository_id": "marrow",
     "plan_id": "p1",
     "task_id": "E2-T2",
     "workstream_id": "ws1",
