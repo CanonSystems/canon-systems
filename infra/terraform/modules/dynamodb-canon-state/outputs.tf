@@ -17,3 +17,13 @@ output "run_ledger_table_arn" {
   description = "ARN of the DynamoDB run-ledger table."
   value       = aws_dynamodb_table.run_ledger.arn
 }
+
+output "tasks_table_name" {
+  description = "DynamoDB tasks table name (assignable-task event plane for `canon task`)."
+  value       = aws_dynamodb_table.tasks.name
+}
+
+output "tasks_table_arn" {
+  description = "ARN of the DynamoDB tasks table."
+  value       = aws_dynamodb_table.tasks.arn
+}

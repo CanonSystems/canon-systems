@@ -109,6 +109,16 @@ output "state_run_ledger_table_arn" {
   value       = module.state_table.run_ledger_table_arn
 }
 
+output "state_tasks_table_name" {
+  description = "DynamoDB tasks table (assignable-task event plane for `canon task`)."
+  value       = module.state_table.tasks_table_name
+}
+
+output "state_tasks_table_arn" {
+  description = "ARN of the DynamoDB tasks table."
+  value       = module.state_table.tasks_table_arn
+}
+
 output "snapshots_bucket_name" {
   description = "S3 bucket for Axon per-commit graph snapshots (gzip JSON)."
   value       = module.axon_snapshots.snapshots_bucket_name

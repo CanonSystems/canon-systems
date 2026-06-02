@@ -171,6 +171,24 @@ def test_root_wires_state_run_ledger_outputs_from_state_module() -> None:
     assert "module.state_table.run_ledger_table_arn" in out
 
 
+def test_root_exposes_state_tasks_table_outputs() -> None:
+    out = (TERRAFORM_ROOT / "outputs.tf").read_text(encoding="utf-8")
+    assert "state_tasks_table_name" in out
+    assert "state_tasks_table_arn" in out
+
+
+def test_root_wires_state_tasks_outputs_from_state_module() -> None:
+    out = (TERRAFORM_ROOT / "outputs.tf").read_text(encoding="utf-8")
+    assert "module.state_table.tasks_table_name" in out
+    assert "module.state_table.tasks_table_arn" in out
+
+
+def test_dynamodb_module_declares_tasks_table() -> None:
+    main_tf = (DYNAMODB_CANON_STATE_MODULE / "main.tf").read_text(encoding="utf-8")
+    assert 'resource "aws_dynamodb_table" "tasks"' in main_tf
+    assert "canon-tasks" in main_tf
+
+
 def test_dynamodb_main_tf_key_attrs_present() -> None:
     main_tf = (DYNAMODB_CANON_STATE_MODULE / "main.tf").read_text(encoding="utf-8")
     assert 'billing_mode = "PAY_PER_REQUEST"' in main_tf

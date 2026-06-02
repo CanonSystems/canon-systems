@@ -107,7 +107,8 @@ See also: [`infra/terraform/README.md`](../infra/terraform/README.md) (optional 
 
 | Key | Role |
 |-----|------|
-| `CANON_STATE_API_URL` | Preferred client base for `canon checkpoint` / `canon resume` / **`canon packet-archive`** / **`canon run-ledger`** / **`canon readiness check`**. |
+| `CANON_STATE_API_URL` | Preferred client base for `canon checkpoint` / `canon resume` / **`canon packet-archive`** / **`canon run-ledger`** / **`canon readiness check`** / **`canon task`** (server mode). |
+| `CANON_TASKS_API_URL` | Optional override base for **`canon task`** only; if unset, **`CANON_STATE_API_URL`** is used. |
 | `STATE_API_URL` | Alias read by `canon memory-health` for the **state** row (first wins if both set). |
 | `CANON_EXPERIMENTAL_MULTILANE_ORCHESTRATION` | When set to `1` / `true` / `yes` / `on`, parent orchestrators may use **`canon resume --tasks-file ... --lanes`** for additive multilane visibility (`runnable_targets`, `active_targets`, `blocked_targets`, `task_threads`) per `memory-platform-build-discipline.mdc` §11. Does not change checkpoint schemas or merge-gate serial requirements. |
 
@@ -118,6 +119,9 @@ See also: [`infra/terraform/README.md`](../infra/terraform/README.md) (optional 
 | `STATE_ARTIFACT_BUCKET` | S3 bucket for `POST /state/archive` durable bodies. |
 | `STATE_ARCHIVE_KEY_PREFIX` | Prefix for archive keys (default `canon/packets`); keys remain SHA-256-addressed. |
 | `STATE_RUN_LEDGER_TABLE_NAME` | DynamoDB table for **`PUT`/`GET` `/state/run-ledger`** rows (readiness/run history). Separate from **`STATE_TABLE_NAME`** (checkpoints/leases). If unset, run-ledger routes return **503**; checkpoint/archive behavior is unchanged. |
+| `STATE_TASKS_TABLE_NAME` | DynamoDB table for **`POST`/`GET` `/state/tasks`** (assignable-task event plane, **canon-systems ≥ 3.7.0**). Separate from checkpoint and run-ledger tables. If unset, task routes return **503** `tasks_table_unset`; other state-api routes unchanged. |
+
+**Assignable tasks (client, ≥ 3.7.0):** `canon task` uses **`CANON_STATE_API_URL`** (or **`CANON_TASKS_API_URL`**) as the server when set; reads fold the server event stream, writes push events first, local NDJSON is cache. **`canon task next`** is the agent “what's next?” entrypoint. Operator deploy: [`docs/runbooks/TASKS-SERVER-DEPLOY.md`](runbooks/TASKS-SERVER-DEPLOY.md).
 
 **Behavior (CLI ≥ 3.4.4):** If neither state URL is set but `KNOWLEDGE_API_URL` is set, **`CANON_STATE_API_URL` defaults to `KNOWLEDGE_API_URL`** after layered + Secrets hydration (`ensure_state_api_url_from_knowledge`). Dedicated `state-api` deployments can still set an explicit URL.
 

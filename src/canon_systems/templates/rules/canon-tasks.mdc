@@ -1,8 +1,33 @@
 # Canon Tasks — assignable work items
 
-This repo has `canon task`: a lightweight, tenant-scoped task tracker for
-writing work for each other to complete. Tasks are **local-first** (on-disk
-NDJSON ledgers) and **fail-open** (remote sync never blocks a local action).
+This repo has `canon task`: a tenant-scoped task tracker for writing work for
+each other to complete. When `CANON_TASKS_API_URL` (or the shared
+`CANON_STATE_API_URL`) is set, tasks are **server-authoritative** via state-api,
+so every machine sees the same tasks instantly regardless of git state. The
+on-disk NDJSON ledger is an offline cache + memory mirror. Everything is
+**fail-open**: if the server is unreachable the action is recorded locally and
+reconciles on the next reachable read/write.
+
+## Agent loop ("what's next?")
+
+When the user asks what to work on next, run:
+
+```
+canon task next --json
+```
+
+It returns the single highest-priority open task assigned to / authored by the
+current actor in this repo (use `--any` to drop the mine filter). Then: use repo
++ `canon-memory` context to do the work, attribute progress, and advance:
+
+```
+canon task update <task_ref> --status in_progress --branch <branch> --note "<what you did>"
+canon task update <task_ref> --deployment <url-or-target> --note "deployed"
+canon task close <task_ref> --comment "<shipped + evidence>"
+canon task next --json     # move on to the next one
+```
+
+Reassign with `canon task assign <task_ref> <actor> [--replace]`.
 
 ## When to use it
 
@@ -25,15 +50,17 @@ NDJSON ledgers) and **fail-open** (remote sync never blocks a local action).
 canon task create "Title" [--body ...] [--scope repo|company|multi-repo]
                           [--repos r1,r2] [--assignee usr_x] [--priority high]
                           [--label backend] [--due 2026-06-15]
+canon task next [--any] [--all-repos] [--assignee usr_x] [--json]
 canon task list [--mine] [--status open] [--scope company] [--all] [--all-repos] [--json]
 canon task show <task_ref> [--json]
 canon task update <task_ref> [--status in_progress] [--assignee usr_y] [--title ...]
+                            [--branch <branch>] [--deployment <target>] [--note "progress"]
 canon task assign <task_ref> usr_a [usr_b ...] [--replace]
 canon task comment <task_ref> "note"
 canon task status <task_ref> in_progress
 canon task close <task_ref> [--cancel] [--comment "done because..."]
 canon task reopen <task_ref>
-canon task sync [--pull-only]   # best-effort S3 sync of company tasks
+canon task sync [--pull-only]   # push local events to server + pull (or S3 fallback)
 ```
 
 `canon task list` defaults to tasks relevant to the current repo and hides

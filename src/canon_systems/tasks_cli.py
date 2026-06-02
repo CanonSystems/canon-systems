@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Any
 
 from . import tasks as core
+from . import tasks_remote as remote
 from .shared import load_identity_context, load_repo_context, repo_root
 
 EXIT_OK = 0
@@ -148,12 +149,33 @@ class _Ctx:
         self.repository_id = repo.repository_id
 
 
+def _combined_state(ctx: _Ctx) -> tuple[dict[str, dict[str, Any]], bool | None]:
+    """Materialize repo + company ledgers, unioned with the server stream.
+
+    Returns ``(state, remote_status)`` where ``remote_status`` is ``None`` when
+    no server is configured, ``True`` when the server stream was folded in, and
+    ``False`` when a server is configured but unreachable (fail-open to local).
+    """
+    streams: list[list[dict[str, Any]]] = [
+        _read_ledger(_repo_ledger_path(ctx.root)),
+        _read_ledger(_company_ledger_path(ctx.company_id)),
+    ]
+    remote_status: bool | None = None
+    if remote.remote_base():
+        fetched = remote.fetch_events(ctx.company_id)
+        if fetched is None:
+            remote_status = False
+        else:
+            remote_status = True
+            streams.append(fetched)
+    merged = core.dedupe_events(*streams)
+    return core.materialize(merged), remote_status
+
+
 def _load_all_for_repo(ctx: _Ctx) -> dict[str, dict[str, Any]]:
-    """Materialize the union of repo + company ledgers for the active company."""
-    repo_events = _read_ledger(_repo_ledger_path(ctx.root))
-    company_events = _read_ledger(_company_ledger_path(ctx.company_id))
-    merged = core.dedupe_events(repo_events, company_events)
-    return core.materialize(merged)
+    """Materialize the union of repo + company ledgers (+ server) for the company."""
+    state, _ = _combined_state(ctx)
+    return state
 
 
 def _ledger_for_scope(ctx: _Ctx, scope: str) -> Path:
@@ -163,13 +185,39 @@ def _ledger_for_scope(ctx: _Ctx, scope: str) -> Path:
 
 
 def _find_ledger_with_task(ctx: _Ctx, task_ref: str) -> tuple[Path, dict[str, Any]] | None:
-    """Locate the ledger that owns ``task_ref`` and return (path, task)."""
-    for path in (_repo_ledger_path(ctx.root), _company_ledger_path(ctx.company_id)):
-        events = _read_ledger(path)
-        state = core.materialize(events)
-        if task_ref in state:
-            return path, state[task_ref]
-    return None
+    """Locate the cache ledger that owns ``task_ref`` and return (path, task).
+
+    Uses the combined (local + server) view so a task that lives only on the
+    server can still be mutated; the chosen local ledger acts as offline cache.
+    """
+    state, _ = _combined_state(ctx)
+    task = state.get(task_ref)
+    if task is None:
+        return None
+    return _ledger_for_scope(ctx, str(task.get("scope", "company"))), task
+
+
+def _record_event(ctx: _Ctx, event: dict[str, Any], ledger: Path) -> tuple[bool | None, str]:
+    """Append event to local cache + memory mirror, then push to the server.
+
+    Returns ``(remote_ok, detail)``: ``remote_ok`` is ``None`` when no server is
+    configured, else the push result. Local write always happens (fail-open).
+    """
+    _append_event(ledger, event)
+    _emit_canonical_event(ctx.root, event, ctx)
+    if not remote.remote_base():
+        return None, ""
+    ok, detail = remote.push_event(event)
+    return ok, detail
+
+
+def _warn_remote(remote_ok: bool | None, detail: str) -> None:
+    if remote_ok is False:
+        print(
+            f"note: server task-plane unreachable ({detail}); recorded locally, "
+            "will reconcile on next reachable write/read.",
+            file=sys.stderr,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -225,11 +273,14 @@ def _cmd_create(ctx: _Ctx, args: argparse.Namespace) -> int:
         return EXIT_USAGE
 
     ledger = _ledger_for_scope(ctx, scope)
-    _append_event(ledger, event)
-    _emit_canonical_event(ctx.root, event, ctx)
+    remote_ok, detail = _record_event(ctx, event, ledger)
+    _warn_remote(remote_ok, detail)
 
     if args.json:
-        print(json.dumps({"task_ref": task_ref, "ledger": str(ledger)}, sort_keys=True))
+        print(json.dumps(
+            {"task_ref": task_ref, "ledger": str(ledger), "remote": remote_ok},
+            sort_keys=True,
+        ))
     else:
         print(f"created {task_ref} ({core.render_scope({'scope': scope, 'repository_id': repository_id, 'repositories': repositories, 'company_id': ctx.company_id})})")
         print(f"  ledger: {ledger}")
@@ -264,8 +315,8 @@ def _mutate(
     except core.TaskError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_USAGE
-    _append_event(ledger, event)
-    _emit_canonical_event(ctx.root, event, ctx)
+    remote_ok, detail = _record_event(ctx, event, ledger)
+    _warn_remote(remote_ok, detail)
     return EXIT_OK
 
 
@@ -281,14 +332,29 @@ def _cmd_update(ctx: _Ctx, args: argparse.Namespace) -> int:
         fields["priority"] = args.priority
     if args.due is not None:
         fields["due"] = args.due
+    if args.branch is not None:
+        fields["branch"] = args.branch
+    if args.deployment is not None:
+        fields["deployment"] = args.deployment
     if args.label:
         fields["labels"] = args.label
     if args.assignee:
         fields["assignees"] = args.assignee
-    if not fields:
-        print("error: nothing to update (pass --status/--assignee/--title/...)", file=sys.stderr)
+    note = (getattr(args, "note", "") or "").strip()
+    if not fields and not note:
+        print(
+            "error: nothing to update (pass --status/--assignee/--branch/"
+            "--deployment/--note/...)",
+            file=sys.stderr,
+        )
         return EXIT_USAGE
-    rc = _mutate(ctx, args.task_ref, fields=fields)
+    # A note attaches progress as a comment in the same logical update so branch/
+    # deployment changes carry their "why" alongside the field change.
+    if note and fields:
+        _mutate(ctx, args.task_ref, comment=note, event_type=core.EVENT_COMMENTED)
+    rc = _mutate(ctx, args.task_ref, fields=fields) if fields else _mutate(
+        ctx, args.task_ref, comment=note, event_type=core.EVENT_COMMENTED
+    )
     if rc == EXIT_OK and not args.json:
         print(f"updated {args.task_ref}")
     elif rc == EXIT_OK:
@@ -392,8 +458,88 @@ def _cmd_list(ctx: _Ctx, args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _cmd_next(ctx: _Ctx, args: argparse.Namespace) -> int:
+    """Pick the single highest-priority open task — 'what should I do next?'.
+
+    Defaults to work assigned to or authored by me in the current repo; pass
+    ``--any`` to consider every open task touching this repo. This is the
+    agent's entrypoint: it reads server truth, returns one task with full
+    context (branch, deployment, comments), and the agent then works + updates it.
+    """
+    state, _ = _combined_state(ctx)
+    filters: dict[str, Any] = {"include_terminal": False}
+    if not args.all_repos:
+        filters["repository_id"] = ctx.repository_id
+    if not args.any:
+        filters["mine_actor"] = ctx.actor_id
+    if args.assignee:
+        filters["assignee"] = args.assignee
+    selected = core.filter_and_sort(state.values(), **filters)
+    if not selected:
+        if args.json:
+            print(json.dumps({"task": None}, sort_keys=True))
+        else:
+            print("no open tasks match — you're clear.")
+        return EXIT_OK
+    top = selected[0]
+    if args.json:
+        print(json.dumps({"task": top}, sort_keys=True))
+    else:
+        print(core.render_task_detail(top))
+    return EXIT_OK
+
+
 def _cmd_sync(ctx: _Ctx, args: argparse.Namespace) -> int:
-    """Best-effort S3 push/pull of the company ledger. Fail-open."""
+    """Push local events to the server (if configured), then best-effort S3 push/pull.
+
+    When ``CANON_TASKS_API_URL``/``CANON_STATE_API_URL`` is set this backfills the
+    server task plane with any local-only events (e.g. tasks imported before the
+    server existed) and pulls the server stream back into the local cache. S3
+    sync remains a fallback transport for environments without state-api.
+    """
+    if remote.remote_base():
+        streams: list[list[dict[str, Any]]] = [
+            _read_ledger(_repo_ledger_path(ctx.root)),
+            _read_ledger(_company_ledger_path(ctx.company_id)),
+        ]
+        if getattr(args, "scan_localwork", False):
+            lw = Path(
+                os.environ.get("CANON_LOCALWORK_ROOT", str(Path.home() / "localwork"))
+            ).expanduser()
+            if lw.is_dir():
+                for ledger in sorted(lw.glob("*/.canon/tasks/ledger.ndjson")):
+                    streams.append(_read_ledger(ledger))
+        local_events = core.dedupe_events(*streams)
+        pushed = 0
+        failed = 0
+        for ev in local_events:
+            if not str(ev.get("company_id", "")).strip():
+                ev = {**ev, "company_id": ctx.company_id}
+            ok, _detail = remote.push_event(ev)
+            if ok:
+                pushed += 1
+            else:
+                failed += 1
+        fetched = remote.fetch_events(ctx.company_id)
+        if fetched is not None:
+            merged = core.dedupe_events(
+                _read_ledger(_company_ledger_path(ctx.company_id)), fetched
+            )
+            cache = _company_ledger_path(ctx.company_id)
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            cache.write_text(
+                "".join(json.dumps(ev, sort_keys=True) + "\n" for ev in merged),
+                encoding="utf-8",
+            )
+        print(
+            f"server sync: pushed {pushed} event(s)"
+            + (f", {failed} failed" if failed else "")
+            + (f", pulled {len(fetched)} from server" if fetched is not None else
+               ", server unreachable for pull")
+        )
+        if not failed:
+            return EXIT_OK
+
     bucket = (os.environ.get("CANON_TASKS_BUCKET", "") or "").strip()
     if not bucket:
         print(
@@ -500,6 +646,12 @@ def _build_parser() -> argparse.ArgumentParser:
     ls.add_argument("--all-repos", action="store_true", help="Don't restrict to the current repo.")
     ls.add_argument("--json", action="store_true")
 
+    nx = sub.add_parser("next", help="Show the single highest-priority open task to work on.")
+    nx.add_argument("--any", action="store_true", help="Not just mine: any open task in this repo.")
+    nx.add_argument("--all-repos", action="store_true", help="Don't restrict to the current repo.")
+    nx.add_argument("--assignee", default="", help="Pick the next task for a specific actor_id.")
+    nx.add_argument("--json", action="store_true")
+
     sh = sub.add_parser("show", help="Show one task in detail.")
     sh.add_argument("task_ref")
     sh.add_argument("--json", action="store_true")
@@ -511,6 +663,9 @@ def _build_parser() -> argparse.ArgumentParser:
     up.add_argument("--status", default="")
     up.add_argument("--priority", default="")
     up.add_argument("--due", default=None)
+    up.add_argument("--branch", default=None, help="Active branch for this task.")
+    up.add_argument("--deployment", default=None, help="Deploy target/URL for this task.")
+    up.add_argument("--note", default="", help="Progress note recorded as a comment.")
     up.add_argument("--label", action="append", default=[])
     up.add_argument("--assignee", action="append", default=[])
     up.add_argument("--json", action="store_true")
@@ -536,8 +691,17 @@ def _build_parser() -> argparse.ArgumentParser:
     ro = sub.add_parser("reopen", help="Reopen a closed task.")
     ro.add_argument("task_ref")
 
-    sy = sub.add_parser("sync", help="Best-effort S3 sync of company/multi-repo tasks.")
+    sy = sub.add_parser(
+        "sync",
+        help="Push local events to state-api and/or S3; pull server stream into company cache.",
+    )
     sy.add_argument("--pull-only", action="store_true", help="Merge remote into local; don't push.")
+    sy.add_argument(
+        "--scan-localwork",
+        action="store_true",
+        help="Also push events from every <localwork>/*/.canon/tasks/ledger.ndjson "
+        "(backfill multi-repo imports before server was live).",
+    )
 
     return p
 
@@ -545,6 +709,7 @@ def _build_parser() -> argparse.ArgumentParser:
 _HANDLERS = {
     "create": _cmd_create,
     "list": _cmd_list,
+    "next": _cmd_next,
     "show": _cmd_show,
     "update": _cmd_update,
     "comment": _cmd_comment,

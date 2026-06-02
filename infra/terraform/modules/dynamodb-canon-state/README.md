@@ -1,46 +1,59 @@
-# DynamoDB `canon-state` table (Terraform module)
+# DynamoDB Canon state plane (Terraform module)
 
 ## Purpose
 
-Provisions the **Canon Memory Platform** operational-state plane DynamoDB table per [`docs/MEMORY-PLATFORM-BACKLOG.md`](../../../docs/MEMORY-PLATFORM-BACKLOG.md) §B: leased checkpoints, version checks, and resume/concurrency data for Wave 2+ (state-api, checkpoint CLI) and later waves.
+Provisions DynamoDB tables for the **Canon Memory Platform** operational-state plane per [`docs/MEMORY-PLATFORM-BACKLOG.md`](../../../docs/MEMORY-PLATFORM-BACKLOG.md) §B and later additions:
 
-E2-T1 did **not** run `terraform apply`; creation/import in AWS is an operator follow-up. See root [`README.md`](../README.md) E2-T1 section.
+| Resource | Table suffix | Used by |
+|----------|--------------|---------|
+| `aws_dynamodb_table.this` | `-canon-state` | Checkpoints + leases (`STATE_TABLE_NAME`) |
+| `aws_dynamodb_table.run_ledger` | `-canon-run-ledger` | Run ledger (`STATE_RUN_LEDGER_TABLE_NAME`) |
+| `aws_dynamodb_table.tasks` | `-canon-tasks` | Assignable tasks (`STATE_TASKS_TABLE_NAME`, canon-systems ≥ 3.7.0) |
+
+E2-T1 did **not** run `terraform apply`; creation/import in AWS is an operator follow-up. See root [`README.md`](../README.md) and [`docs/runbooks/TASKS-SERVER-DEPLOY.md`](../../../docs/runbooks/TASKS-SERVER-DEPLOY.md).
 
 ## Per-environment isolation
 
-The root module passes `name_prefix = "${var.project_name}-${var.environment}"` (same pattern as S3, Secrets, RDS, and other modules). The table name is `"${var.name_prefix}-canon-state"`, so for `project_name = canon-systems-v2`:
+The root module passes `name_prefix = "${var.project_name}-${var.environment}"`. For `project_name = canon-systems-v2`:
 
-| `environment` | Table name |
-| --- | --- |
-| `dev` | `canon-systems-v2-dev-canon-state` |
-| `staging` | `canon-systems-v2-staging-canon-state` |
-| `prod` | `canon-systems-v2-prod-canon-state` |
-
-Switching `environment` (e.g. via separate `-var-file` or workspace practice) addresses a different physical table.
+| `environment` | Checkpoint table | Run ledger | Tasks |
+| --- | --- | --- | --- |
+| `dev` | `canon-systems-v2-dev-canon-state` | `...-canon-run-ledger` | `...-canon-tasks` |
+| `staging` | `canon-systems-v2-staging-canon-state` | `...` | `...` |
+| `prod` | `canon-systems-v2-prod-canon-state` | `...` | `...` |
 
 ## Input
 
 | Name | Description |
 | --- | --- |
-| `name_prefix` | String prefix for the table name; must match `project_name` + `environment` convention from the root (see table above). |
+| `name_prefix` | String prefix for table names (`project_name` + `environment`). |
 
 ## Outputs
 
 | Name | Description |
 | --- | --- |
-| `table_name` | DynamoDB table name. |
-| `table_arn` | DynamoDB table ARN. |
+| `table_name` / `table_arn` | Checkpoint/lease table |
+| `run_ledger_table_name` / `run_ledger_table_arn` | Run ledger table |
+| `tasks_table_name` / `tasks_table_arn` | Assignable-task event table |
 
-## Key schema
+## Key schemas
+
+**Checkpoint (`-canon-state`):**
 
 - **`pk` (S)** — `company_id#repository_id`
 - **`sk` (S)** — `plan_id#task_id#workstream_id`
+- **TTL:** `lease_expires_at`
+
+**Run ledger (`-canon-run-ledger`):** same `pk`/`sk` pattern; keys use `#run_ledger` partition suffix per `canon_backend_shared.run_ledger`.
+
+**Tasks (`-canon-tasks`):**
+
+- **`pk` (S)** — `{company_id}#tasks`
+- **`sk` (S)** — `{task_ref}#evt#{event_id}`
 
 ## Billing and features
 
-- **Billing mode:** `PAY_PER_REQUEST`
-- **TTL:** attribute `lease_expires_at` (Number, epoch seconds). Items expire automatically after that time; this enforces Backlog §B lease semantics.
-- **PITR, SSE (AWS-owned key), deletion protection** are enabled in `main.tf`.
+All three tables: **PAY_PER_REQUEST**, **PITR**, **SSE** (AWS-owned key), **deletion protection**. Only the checkpoint table enables **TTL** on `lease_expires_at`.
 
 ## Example (root-style invocation)
 

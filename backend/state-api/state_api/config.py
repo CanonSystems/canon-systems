@@ -23,6 +23,10 @@ class Settings(BaseSettings):
         default="",
         validation_alias="STATE_RUN_LEDGER_TABLE_NAME",
     )
+    state_tasks_table_name: str = Field(
+        default="",
+        validation_alias="STATE_TASKS_TABLE_NAME",
+    )
     aws_region: str = Field(default="us-east-1", validation_alias="AWS_REGION")
     state_artifact_bucket: str = Field(default="", validation_alias="STATE_ARTIFACT_BUCKET")
     state_archive_key_prefix: str = Field(

@@ -10,6 +10,7 @@ Operational-state plane for the Canon Memory Platform: DynamoDB-backed **checkpo
 |----------|---------|
 | `STATE_TABLE_NAME` | DynamoDB table name (e.g. `${project}-${environment}-canon-state`). If unset, `GET /healthz` returns **503 degraded**. |
 | `STATE_RUN_LEDGER_TABLE_NAME` | DynamoDB table for run-ledger rows (e.g. `${project}-${environment}-canon-run-ledger`). If unset or empty, run-ledger routes return **503** `run_ledger_table_unset`. Does not affect checkpoint health (`GET /healthz` still keys off `STATE_TABLE_NAME` only). |
+| `STATE_TASKS_TABLE_NAME` | DynamoDB table for assignable-task event rows (`pk = "{company_id}#tasks"`, `sk = "{task_ref}#evt#{event_id}"`; e.g. `${project}-${environment}-canon-tasks`). If unset or empty, `/state/tasks` routes return **503** `tasks_table_unset`. Independent of checkpoint health. |
 | `AWS_REGION` | AWS region for boto3 (default `us-east-1`). |
 | `STATE_ARTIFACT_BUCKET` | S3 bucket for packet/evidence archive writes (`POST /state/archive`). If unset, archive uploads return **503** `artifact_bucket_unset`. |
 | `STATE_ARCHIVE_KEY_PREFIX` | Logical prefix for archive keys (default `canon/packets`). Each object key is still content-addressed by SHA-256. |
@@ -74,6 +75,25 @@ Query (required): `company_id`, `repository_id`, `plan_id`, `task_id`, `workstre
 - **503** — table unset (same as PUT).
 
 **Read-only contract:** **`GET`** never writes ledger rows and does **not** touch checkpoint items or S3 artifact objects. Clients such as **`canon readiness check`** (workstation **`canon-systems`**) only consume this endpoint for diagnostics; readiness **does not** require a dedicated mutating **`/state/readiness`** route.
+
+## Tasks (assignable work items)
+
+Server-authoritative plane for `canon task`. Task **events** are appended here and the client folds them into materialized tasks, so every machine sees the same tasks instantly regardless of repo git state. Rows live on `pk = "{company_id}#tasks"`, `sk = "{task_ref}#evt#{event_id}"` in `STATE_TASKS_TABLE_NAME` (disjoint from checkpoint and run-ledger items). This router never touches checkpoint/lease rows or S3.
+
+### `POST /state/tasks/events`
+
+Body: one normalized task event (`event_id`, `event_type` ∈ {`task_created`,`task_updated`,`task_commented`}, `task_ref`, `timestamp`, `actor_id`, `company_id`, plus optional `scope`/`repository_id`/`repositories`/`fields`/`comment`). Append is **idempotent by `event_id`**.
+
+- **200** — `{ "status": "created" | "idempotent", "event" }`.
+- **400** — `task_validation_error` (missing/invalid envelope or key-unsafe segment).
+- **409** — `task_event_id_conflict` when the same `event_id` was stored with a different body.
+- **503** — `tasks_table_unset` when `STATE_TASKS_TABLE_NAME` is not configured.
+
+### `GET /state/tasks`
+
+Query: `company_id` (required), `task_ref` (optional — one task's events), `limit` (1–10000, default 2000). Returns `{ "events", "count" }`; the client (`canon task`) folds the stream into materialized tasks.
+
+Workstation client: **`canon task`** (`CANON_TASKS_API_URL` or shared `CANON_STATE_API_URL`); reads fold server-over-local, writes push here first, fail-open to the local NDJSON cache.
 
 ### `GET /state/checkpoint`
 

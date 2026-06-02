@@ -156,6 +156,22 @@ Equivalent form using variable interpolation (resolve `project_name` and `enviro
 terraform import 'module.state_table.aws_dynamodb_table.this' "${var.project_name}-${var.environment}-canon-state"
 ```
 
+### Run ledger + assignable tasks tables (same module)
+
+The [`dynamodb-canon-state`](modules/dynamodb-canon-state/) module also declares:
+
+- **`${var.project_name}-${var.environment}-canon-run-ledger`** — set **`STATE_RUN_LEDGER_TABLE_NAME`** on state-api.
+- **`${var.project_name}-${var.environment}-canon-tasks`** — set **`STATE_TASKS_TABLE_NAME`** on state-api (canon-systems ≥ 3.7.0).
+
+Import when adopting existing tables:
+
+```bash
+terraform import 'module.state_table.aws_dynamodb_table.run_ledger' 'canon-systems-v2-dev-canon-run-ledger'
+terraform import 'module.state_table.aws_dynamodb_table.tasks' 'canon-systems-v2-dev-canon-tasks'
+```
+
+Root outputs: `state_run_ledger_table_name`, `state_tasks_table_name` (and ARNs). Operator runbook: [`docs/runbooks/TASKS-SERVER-DEPLOY.md`](../../docs/runbooks/TASKS-SERVER-DEPLOY.md).
+
 ## E3-T1 — axon-snapshots module (S3 + DynamoDB)
 
 **E3-T1 executed zero cloud commands** in-task (waiver: operator `terraform apply` / AWS calls only with credentials and backend outside CI).

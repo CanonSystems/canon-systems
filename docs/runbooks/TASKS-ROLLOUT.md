@@ -5,6 +5,13 @@ reaches every machine, repo, and user **without manual per-repo steps**. It
 leans entirely on the existing Canon self-update + auto-rewire machinery; the
 only release action is publishing the new version.
 
+## Server-authoritative tasks (3.7.0+)
+
+After **3.7.0**, assignable tasks can live in **state-api** (instant sync across
+machines). That requires a one-time **operator deploy** (DynamoDB table +
+`STATE_TASKS_TABLE_NAME` on state-api) and a **`canon task sync`** backfill.
+See **[`TASKS-SERVER-DEPLOY.md`](TASKS-SERVER-DEPLOY.md)**.
+
 ## TL;DR — what an operator does
 
 1. Land this change on `main` and tag/publish **canon-systems 3.6.0** to the
