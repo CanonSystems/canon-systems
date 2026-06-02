@@ -19,6 +19,8 @@ import urllib.request
 from typing import Any
 from urllib.parse import urlencode
 
+from canon_systems.shared import canon_urlopen
+
 ENV_TASKS_URL = "CANON_TASKS_API_URL"
 ENV_STATE_URL = "CANON_STATE_API_URL"
 _DEFAULT_TIMEOUT_MS = 10000
@@ -51,7 +53,7 @@ def _request(method: str, url: str, body: dict[str, Any] | None) -> tuple[int, d
     if token:
         headers["Authorization"] = f"Bearer {token}"
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
-    with urllib.request.urlopen(req, timeout=_timeout_seconds()) as resp:  # noqa: S310
+    with canon_urlopen(req, timeout_s=_timeout_seconds()) as resp:
         raw = resp.read().decode("utf-8")
         parsed = json.loads(raw) if raw else {}
         return resp.getcode(), (parsed if isinstance(parsed, dict) else {"data": parsed})
@@ -88,10 +90,17 @@ def push_event(event: dict[str, Any]) -> tuple[bool, str]:
         code, payload = _request("POST", url, event)
     except urllib.error.HTTPError as exc:  # 4xx/5xx
         try:
-            detail = json.loads(exc.read().decode("utf-8"))
+            body = json.loads(exc.read().decode("utf-8"))
         except Exception:
-            detail = {}
-        return False, f"http_{exc.code}:{detail.get('detail', {}).get('error', '')}"
+            body = {}
+        inner = body.get("detail") if isinstance(body, dict) else None
+        if isinstance(inner, dict):
+            err = inner.get("error", "")
+        elif isinstance(inner, str):
+            err = inner
+        else:
+            err = ""
+        return False, f"http_{exc.code}:{err}"
     except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError) as exc:
         return False, f"transport:{exc}"
     if code not in (200, 201):
