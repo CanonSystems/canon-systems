@@ -22,7 +22,12 @@ def test_enable_repo_writes_hooks_rule_agents_and_version(tmp_path: Path) -> Non
     after = payload["hooks"]["afterAgentResponse"]
     assert any(item.get("command") == "bash .cursor/hooks/memory-preflight.sh" for item in before)
     assert any(item.get("command") == "bash .cursor/hooks/vault-sync-preflight.sh" for item in before)
+    assert any(item.get("command") == "bash .cursor/hooks/task-preflight.sh" for item in before)
     assert any(item.get("command") == "bash .cursor/hooks/memory-capture.sh" for item in after)
+
+    # Tasks feature wiring: surfacing hook + agent rule installed.
+    assert (repo / ".cursor" / "hooks" / "task-preflight.sh").exists()
+    assert (repo / ".cursor" / "rules" / "canon-tasks.mdc").exists()
 
     gi = (repo / ".gitignore").read_text(encoding="utf-8")
     assert "vault/" in gi

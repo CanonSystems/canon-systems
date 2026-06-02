@@ -1,0 +1,48 @@
+# Canon Tasks — assignable work items
+
+This repo has `canon task`: a lightweight, tenant-scoped task tracker for
+writing work for each other to complete. Tasks are **local-first** (on-disk
+NDJSON ledgers) and **fail-open** (remote sync never blocks a local action).
+
+## When to use it
+
+- The user asks to "create a task", "assign", "hand off", "leave a task for
+  <person>", "what tasks do I have", "what's assigned to me", or similar.
+- You finish work that implies a follow-up someone else should own — offer to
+  capture it as a task rather than only mentioning it in chat.
+
+## Scopes
+
+- `repo` (default) — belongs to one repository; the ledger lives at
+  `.canon/tasks/ledger.ndjson` and is git-tracked, so it travels with the repo
+  to every teammate who pulls.
+- `company` — applies across every repo for this `company_id`.
+- `multi-repo` — applies to an explicit set of repos (`--repos r1,r2`).
+
+## Commands
+
+```
+canon task create "Title" [--body ...] [--scope repo|company|multi-repo]
+                          [--repos r1,r2] [--assignee usr_x] [--priority high]
+                          [--label backend] [--due 2026-06-15]
+canon task list [--mine] [--status open] [--scope company] [--all] [--all-repos] [--json]
+canon task show <task_ref> [--json]
+canon task update <task_ref> [--status in_progress] [--assignee usr_y] [--title ...]
+canon task assign <task_ref> usr_a [usr_b ...] [--replace]
+canon task comment <task_ref> "note"
+canon task status <task_ref> in_progress
+canon task close <task_ref> [--cancel] [--comment "done because..."]
+canon task reopen <task_ref>
+canon task sync [--pull-only]   # best-effort S3 sync of company tasks
+```
+
+`canon task list` defaults to tasks relevant to the current repo and hides
+done/cancelled tasks. A `beforeSubmitPrompt` hook surfaces your open tasks at
+the start of each turn; honour them when relevant to the user's request.
+
+## Tenant boundaries
+
+Tasks are scoped by `company_id` + `repository_id` from
+`.canon/memory-layer.local.env`. Do not move tasks across companies. Cross-repo
+tasks are explicitly authorized only via `--scope company` / `--scope
+multi-repo` for repos within the **same** company.

@@ -23,6 +23,7 @@ from .report_cli import run as run_report_cli
 from .resume_engine import run as run_resume_engine
 from .stall_watchdog import run as run_stall_watchdog
 from .synth_cli import run as run_synth_cli
+from .tasks_cli import run as run_tasks_cli
 from .doctor_cli import run as run_doctor
 from .dor_log import run as run_dor_log
 from .flow_audit import run as run_flow_audit
@@ -493,6 +494,12 @@ def main(argv: list[str] | None = None) -> int:
     resume_parser = sub.add_parser("resume", help="Orchestrator resume engine (read-only)")
     resume_parser.add_argument("args", nargs=argparse.REMAINDER)
 
+    task_parser = sub.add_parser(
+        "task",
+        help="Create + track assignable tasks (per repo, per company, or across repos).",
+    )
+    task_parser.add_argument("args", nargs=argparse.REMAINDER)
+
     stall_watchdog_parser = sub.add_parser(
         "stall-watchdog",
         help="Scan for stalled leases and emit lease_stall_detected events (read-only).",
@@ -866,6 +873,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "resume":
         return run_resume_engine(list(getattr(args, "args", [])))
+
+    if args.command == "task":
+        return run_tasks_cli(list(getattr(args, "args", [])))
 
     if args.command == "stall-watchdog":
         return run_stall_watchdog(list(getattr(args, "args", [])))

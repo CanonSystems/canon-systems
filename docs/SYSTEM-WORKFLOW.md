@@ -250,6 +250,28 @@ See rule §§9-10 for authoritative wording.
 - Repo/user wiring auto-refreshes when installed version is newer than pinned.
 - Global auto-rewire updates previously wired repos under configured roots.
 
+### 7.1) Tasks (`canon task`, v3.6.0)
+
+`canon task` is a local-first, tenant-scoped tracker for assignable work items
+("write tasks for each other"). It is event-sourced (append-only NDJSON
+ledgers; deterministic fold; set-union merge by `event_id`) and fail-open.
+
+- **Scopes:** `repo` (git-tracked ledger `<repo>/.canon/tasks/ledger.ndjson`),
+  `company`, `multi_repo` (machine-global ledger under `$CANON_TASKS_HOME` or
+  `~/.canon/tasks/<company_id>/`). Cross-repo tasks are authorized only within
+  the same `company_id`, preserving tenant boundaries.
+- **Memory plane:** each mutation appends a best-effort `task_activity`
+  canonical event to `.canon/memory/events.ndjson` so tasks are discoverable
+  via the existing memory/synthesis surfaces.
+- **Surfacing:** `beforeSubmitPrompt` hook `task-preflight.sh` lists the user's
+  open tasks each turn (opt out with `CANON_TASKS_PREFLIGHT=0`).
+- **Cross-machine sync:** `canon task sync` does an idempotent S3 set-union of
+  the company ledger when `CANON_TASKS_BUCKET` is set; otherwise a clean no-op.
+- **Propagation:** delivered by the same self-update + auto-rewire path above —
+  `enable_repo()` / `install_user_scope()` install the hook + `canon-tasks.mdc`
+  rule, so a version bump is the only release action. See
+  `docs/runbooks/TASKS-ROLLOUT.md`.
+
 ## 8) Living update checklist (required per iteration)
 
 When Canon behavior changes, update in the same PR:
