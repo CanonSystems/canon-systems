@@ -7,8 +7,8 @@ import time
 import boto3
 
 SCOPE = {
-    "company_id": "IMC",
-    "repository_id": "innermost",
+    "company_id": "MJC",
+    "repository_id": "marrow",
     "plan_id": "p1",
     "task_id": "E2-T2",
     "workstream_id": "ws1",
@@ -67,7 +67,7 @@ def test_renew_lease_expired(client, dynamodb_table) -> None:
     tbl = boto3.resource("dynamodb", region_name="us-east-1").Table(dynamodb_table)
     past = int(time.time()) - 30
     tbl.update_item(
-        Key={"pk": "IMC#innermost", "sk": "p1#E2-T2#ws1"},
+        Key={"pk": "MJC#marrow", "sk": "p1#E2-T2#ws1"},
         UpdateExpression="SET lease_expires_at = :p",
         ExpressionAttributeValues={":p": past},
     )

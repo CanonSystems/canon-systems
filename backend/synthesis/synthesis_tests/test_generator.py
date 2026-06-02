@@ -18,8 +18,8 @@ def _e(**kw) -> CanonicalEvent:
         "event_id": "01JBASEV",
         "parent_event_id": "01J0000",
         "event_type": "retrieval_breakdown",
-        "company_id": "IMC",
-        "repository_id": "innermost",
+        "company_id": "MJC",
+        "repository_id": "marrow",
         "plan_id": "plan-a",
         "task_id": "E5-T2",
         "handoff_id": "h1",
@@ -46,14 +46,14 @@ def test_generator_deterministic_byte_identical_output() -> None:
     )
     a = generate_vault(
         [ev1, ev2],
-        company_id="IMC",
-        repository_id="innermost",
+        company_id="MJC",
+        repository_id="marrow",
         cutoff_timestamp="2026-04-23T10:00:10Z",
     )
     b = generate_vault(
         [ev1, ev2],
-        company_id="IMC",
-        repository_id="innermost",
+        company_id="MJC",
+        repository_id="marrow",
         cutoff_timestamp="2026-04-23T10:00:10Z",
     )
     assert a.pages == b.pages
@@ -70,14 +70,14 @@ def test_generator_event_ordering_stable_across_permutations() -> None:
     )
     a = generate_vault(
         [ev1, ev2],
-        company_id="IMC",
-        repository_id="innermost",
+        company_id="MJC",
+        repository_id="marrow",
         cutoff_timestamp="2026-12-31T00:00:00Z",
     )
     b = generate_vault(
         [ev2, ev1],
-        company_id="IMC",
-        repository_id="innermost",
+        company_id="MJC",
+        repository_id="marrow",
         cutoff_timestamp="2026-12-31T00:00:00Z",
     )
     assert a.pages == b.pages
@@ -89,8 +89,8 @@ def test_redaction_drops_model_field_from_frontmatter() -> None:
     assert "model" not in s.frontmatter
     bundle = generate_vault(
         [ev],
-        company_id="IMC",
-        repository_id="innermost",
+        company_id="MJC",
+        repository_id="marrow",
         cutoff_timestamp="2026-12-31T00:00:00Z",
     )
     for body in bundle.pages.values():
@@ -104,14 +104,14 @@ def test_redaction_never_emits_raw_company_id_or_repository_id() -> None:
     )
     bundle = generate_vault(
         [ev],
-        company_id="IMC",
-        repository_id="innermost",
+        company_id="MJC",
+        repository_id="marrow",
         cutoff_timestamp="2026-12-31T00:00:00Z",
     )
     for body in bundle.pages.values():
         s = body.decode("utf-8", errors="replace")
-        assert "IMC" not in s
-        assert "innermost" not in s
+        assert "MJC" not in s
+        assert "marrow" not in s
 
 
 def test_redaction_silently_drops_unknown_payload_keys(
@@ -139,8 +139,8 @@ def test_redaction_unknown_event_type_routes_to_opaque_with_dropped_payload_mark
     )
     b = generate_vault(
         [ev],
-        company_id="IMC",
-        repository_id="innermost",
+        company_id="MJC",
+        repository_id="marrow",
         cutoff_timestamp="2026-12-31T00:00:00Z",
     )
     key = "events/opaque/01JUNKT.md"
@@ -155,8 +155,8 @@ def test_citations_present_for_every_rendered_fact() -> None:
     )
     bundle = generate_vault(
         [ev],
-        company_id="IMC",
-        repository_id="innermost",
+        company_id="MJC",
+        repository_id="marrow",
         cutoff_timestamp="2026-12-31T00:00:00Z",
     )
     for name, data in sorted(bundle.pages.items()):
@@ -168,7 +168,7 @@ def test_citations_present_for_every_rendered_fact() -> None:
 
 
 def test_shorthashes_are_deterministic_sha256_prefix() -> None:
-    assert shorthash("IMC") == hashlib.sha256(b"IMC").hexdigest()[:8]
+    assert shorthash("MJC") == hashlib.sha256(b"MJC").hexdigest()[:8]
 
 
 def test_frontmatter_key_order_anchors_first_then_alphabetical() -> None:
@@ -201,8 +201,8 @@ def test_obsidian_seed_present_and_write_once() -> None:
     ev = _e(event_id="01JOBS01")
     bundle = generate_vault(
         [ev],
-        company_id="IMC",
-        repository_id="innermost",
+        company_id="MJC",
+        repository_id="marrow",
         cutoff_timestamp="2026-12-31T00:00:00Z",
     )
     assert ".obsidian/app.json" in bundle.pages
@@ -221,8 +221,8 @@ def test_cross_links_emit_plan_task_event_wikilinks() -> None:
     )
     bundle = generate_vault(
         [ev],
-        company_id="IMC",
-        repository_id="innermost",
+        company_id="MJC",
+        repository_id="marrow",
         cutoff_timestamp="2026-12-31T00:00:00Z",
     )
     task_key = "plans/plan-xlink/tasks/T-xlink/index.md"

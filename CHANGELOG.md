@@ -82,6 +82,17 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - **AWS secret hydration:** The Secrets Manager client cache at `~/.canon/memory-layer-aws-cache.json` no longer **invalidates** reads when `expires_at` passes (default). Optional strict mode: `MEMORY_LAYER_AWS_CACHE_RESPECT_TTL=1`. Default write metadata TTL is now **7 days** (`MEMORY_LAYER_AWS_CACHE_TTL_SEC` default `604800`). After each successful `GetSecretValue`, hydrated keys are also written to **`<repo>/.canon/memory-layer.secrets.env`** (gitignored; disable with `MEMORY_LAYER_AWS_DISABLE_REPO_MIRROR=1`). `canon doctor --json` attestation gains `cache_respects_ttl` and `repo_mirror_disabled`.
+- **Examples / fixtures:** canonical Marrow (formerly Innermost) tenant ids in
+  tests, synthesis defaults, `examples/company-registry.example.json`, and docs
+  now use `COMPANY_ID=MJC` and `REPOSITORY_ID=marrow` (Secrets Manager:
+  `memory-layer__mjc__marrow`). Does **not** migrate AWS data — operators must
+  clone the secret, extend IAM, and repoint Marrow’s `.canon/memory-layer.local.env`
+  as in `docs/ONBOARDING.md`.
+- **Ops:** `scripts/migrate_knowledge_api_tenant.py` and
+  `scripts/migrate_state_api_tenant.py` plus
+  `docs/migrations/tenant-rename-imc-innermost-to-mjc-marrow.md` for moving
+  Postgres/DynamoDB data from `IMC`/`innermost` to `MJC`/`marrow` so `canon ask`
+  and checkpoints stay continuous after rename.
 
 ### Fixed
 
@@ -674,7 +685,7 @@ Canon Memory Platform **v1** — complete. Ships operator CLI (`canon report` fu
 
 ### Added
 
-- **`examples/company-registry.example.json`:** `IMC` example on the new
+- **`examples/company-registry.example.json`:** `MJC` (Marrow) example on the new
   prefix; `FMO` example still shows the legacy prefix for stacks that have
   not migrated AWS yet.
 

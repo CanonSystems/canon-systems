@@ -18,6 +18,7 @@ from .shared import (
     artifact_identity,
     first_text,
     get_credential_attestation,
+    invalidate_context_sidecars_if_stale_tenant,
     load_identity_context,
     load_repo_context,
     now_stamp,
@@ -138,6 +139,7 @@ def run(argv: list[str] | None = None) -> int:
     prompt = _pick_prompt(args.prompt, hook_payload)
     identity = load_identity_context()
     repo_ctx = load_repo_context(identity)
+    invalidate_context_sidecars_if_stale_tenant(repo_ctx, quiet=args.quiet)
 
     query = prompt or f"Working context for {repo_ctx.repository_id} at {repo_ctx.company_id}."
     memory_body: dict[str, Any] = {"query": query, "limit": 6}

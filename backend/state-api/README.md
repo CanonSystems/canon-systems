@@ -83,7 +83,7 @@ Query (all required): `company_id`, `repository_id`, `plan_id`, `task_id`, `work
 - **404** — `{ "error": "not_found", "pk", "sk" }`.
 
 ```bash
-curl -sS "$BASE/state/checkpoint?company_id=IMC&repository_id=innermost&plan_id=p1&task_id=E2-T2&workstream_id=ws1"
+curl -sS "$BASE/state/checkpoint?company_id=MJC&repository_id=marrow&plan_id=p1&task_id=E2-T2&workstream_id=ws1"
 ```
 
 ### `PUT /state/checkpoint`
@@ -95,7 +95,7 @@ Body: §B fields including `handoff_id`, `phase`, `phase_status`, optimistic `st
 ```bash
 curl -sS -X PUT "$BASE/state/checkpoint" \
   -H 'Content-Type: application/json' \
-  -d '{"company_id":"IMC","repository_id":"innermost","plan_id":"p1","task_id":"E2-T2","workstream_id":"ws1","handoff_id":"h1","phase":"implementer","phase_status":"pass","state_version":0,"lease_token":"<token>"}'
+  -d '{"company_id":"MJC","repository_id":"marrow","plan_id":"p1","task_id":"E2-T2","workstream_id":"ws1","handoff_id":"h1","phase":"implementer","phase_status":"pass","state_version":0,"lease_token":"<token>"}'
 ```
 
 ### `POST /state/lease/acquire`
@@ -109,7 +109,7 @@ Body: scope ids, `owner_agent_run_id`, `owner_actor_id`, `ttl_seconds` (1–3600
 ```bash
 curl -sS -X POST "$BASE/state/lease/acquire" \
   -H 'Content-Type: application/json' \
-  -d '{"company_id":"IMC","repository_id":"innermost","plan_id":"p1","task_id":"E2-T2","workstream_id":"ws1","owner_agent_run_id":"run-1","owner_actor_id":"actor-1","ttl_seconds":300}'
+  -d '{"company_id":"MJC","repository_id":"marrow","plan_id":"p1","task_id":"E2-T2","workstream_id":"ws1","owner_agent_run_id":"run-1","owner_actor_id":"actor-1","ttl_seconds":300}'
 ```
 
 ### `POST /state/lease/renew`
@@ -122,7 +122,7 @@ Body: `scope_ids` (object with the five ids), `lease_token`, `ttl_seconds` (1–
 ```bash
 curl -sS -X POST "$BASE/state/lease/renew" \
   -H 'Content-Type: application/json' \
-  -d '{"scope_ids":{"company_id":"IMC","repository_id":"innermost","plan_id":"p1","task_id":"E2-T2","workstream_id":"ws1"},"lease_token":"<token>","ttl_seconds":600}'
+  -d '{"scope_ids":{"company_id":"MJC","repository_id":"marrow","plan_id":"p1","task_id":"E2-T2","workstream_id":"ws1"},"lease_token":"<token>","ttl_seconds":600}'
 ```
 
 ### `POST /state/lease/release`
@@ -135,7 +135,7 @@ Body: `scope_ids`, `lease_token`. Clears all five `lease_*` attributes when the 
 ```bash
 curl -sS -X POST "$BASE/state/lease/release" \
   -H 'Content-Type: application/json' \
-  -d '{"scope_ids":{"company_id":"IMC","repository_id":"innermost","plan_id":"p1","task_id":"E2-T2","workstream_id":"ws1"},"lease_token":"<token>"}'
+  -d '{"scope_ids":{"company_id":"MJC","repository_id":"marrow","plan_id":"p1","task_id":"E2-T2","workstream_id":"ws1"},"lease_token":"<token>"}'
 ```
 
 ## Run / dev

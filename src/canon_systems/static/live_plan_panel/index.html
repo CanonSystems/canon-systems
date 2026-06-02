@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Canon Meeting Console</title>
+    <link rel="stylesheet" href="/static/live-plan-panel/styles.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <p class="eyebrow">Canon Live Plan</p>
+          <h1>Meeting Console</h1>
+          <p class="muted">A high-signal operator surface for the live planning participant.</p>
+        </div>
+
+        <div class="card session-card">
+          <label class="field-label" for="session-id">Session ID</label>
+          <div class="inline-field">
+            <input id="session-id" type="text" placeholder="meeting-..." />
+            <button id="load-session" class="ghost">Load</button>
+          </div>
+          <p class="hint">Open with <code>/app?session_id=&lt;id&gt;</code> or bind a live Canon session here.</p>
+        </div>
+
+        <div class="card meeting-card">
+          <div class="card-head tight">
+            <div>
+              <p class="card-label">Meeting</p>
+              <h2 id="hero-title">No session loaded</h2>
+            </div>
+            <button id="refresh-manifest" class="primary">Refresh</button>
+          </div>
+          <p id="hero-subtitle" class="muted">Load a live Canon session to review evidence, verify task wording, and track AI participation.</p>
+          <dl class="meta-list">
+            <div>
+              <dt>Space</dt>
+              <dd id="meeting-space">-</dd>
+            </div>
+            <div>
+              <dt>Mode</dt>
+              <dd id="meeting-mode">-</dd>
+            </div>
+            <div>
+              <dt>Media</dt>
+              <dd id="meeting-media">-</dd>
+            </div>
+          </dl>
+          <a id="meeting-link" class="meeting-link" target="_blank" rel="noreferrer">Open meeting</a>
+        </div>
+
+        <div class="card">
+          <p class="card-label">Live Status</p>
+          <div class="status-grid">
+            <div>
+              <span class="stat-value" id="pending-items">0</span>
+              <span class="stat-label">Pending items</span>
+            </div>
+            <div>
+              <span class="stat-value" id="pending-hands">0</span>
+              <span class="stat-label">Pending hands</span>
+            </div>
+            <div>
+              <span class="stat-value" id="reference-count">0</span>
+              <span class="stat-label">Evidence refs</span>
+            </div>
+            <div>
+              <span class="stat-value" id="transcript-count">0</span>
+              <span class="stat-label">Transcript segs</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head tight">
+            <div>
+              <p class="card-label">Participants</p>
+              <h3>Voice roster</h3>
+            </div>
+          </div>
+          <div id="participant-list" class="participant-list">
+            <p class="empty-state">No participants loaded.</p>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-panel">
+        <section class="hero-band">
+          <article class="hero-card">
+            <p class="eyebrow">Capture Evidence</p>
+            <h2>Send one artifact and keep the room aligned</h2>
+            <p class="muted">Upload a screenshot or attach a file directly. The bridge stores the artifact, creates the Canon reference, and marks whether the room already saw it.</p>
+          </article>
+          <article class="hero-card accent-card">
+            <p class="eyebrow">Verification Rule</p>
+            <h2>Read every major item back before it lands</h2>
+            <p class="muted">The pane keeps draft items and hand raises visible until you confirm, amend, or dismiss them.</p>
+          </article>
+        </section>
+
+        <section class="surface-grid">
+          <article class="card emphasis-card">
+            <div class="card-head">
+              <div>
+                <p class="card-label">Evidence Intake</p>
+                <h3>Upload image or file</h3>
+              </div>
+              <span class="pill">Direct upload</span>
+            </div>
+            <form id="reference-upload-form" class="stack" enctype="multipart/form-data">
+              <label class="dropzone">
+                <input id="reference-file" name="file" type="file" required />
+                <span class="dropzone-title">Drop an image or choose a file</span>
+                <span id="reference-file-meta" class="dropzone-meta">No file selected.</span>
+              </label>
+              <div class="dual-field">
+                <label>
+                  <span>Type</span>
+                  <select name="type">
+                    <option value="image">Image</option>
+                    <option value="file">File</option>
+                    <option value="repo">Repo</option>
+                    <option value="memory">Memory</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Title</span>
+                  <input name="title" type="text" placeholder="Error screenshot" />
+                </label>
+              </div>
+              <label>
+                <span>Summary</span>
+                <textarea name="summary" rows="3" placeholder="Why this artifact matters."></textarea>
+              </label>
+              <label class="checkbox">
+                <input name="shared_to_meeting" type="checkbox" />
+                <span>Already visible to the meeting</span>
+              </label>
+              <button type="submit" class="primary">Upload to Canon</button>
+            </form>
+
+            <form id="reference-form" class="stack top-rule">
+              <div class="card-head tight">
+                <div>
+                  <p class="card-label">External Reference</p>
+                  <h3>Use path or URL instead</h3>
+                </div>
+              </div>
+              <div class="dual-field">
+                <label>
+                  <span>Type</span>
+                  <select name="type">
+                    <option value="url">URL</option>
+                    <option value="image">Image path</option>
+                    <option value="file">File path</option>
+                    <option value="repo">Repo</option>
+                    <option value="memory">Memory</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Title</span>
+                  <input name="title" type="text" placeholder="Spec document" required />
+                </label>
+              </div>
+              <label>
+                <span>Path or URL</span>
+                <input name="path" type="text" placeholder="/absolute/path.png or https://..." />
+              </label>
+              <label>
+                <span>Summary</span>
+                <textarea name="summary" rows="3" placeholder="Why this reference matters."></textarea>
+              </label>
+              <label class="checkbox">
+                <input name="shared_to_meeting" type="checkbox" />
+                <span>Already visible to the meeting</span>
+              </label>
+              <button type="submit" class="ghost">Add external reference</button>
+            </form>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <p class="card-label">Plan Verification</p>
+                <h3>Propose and confirm wording</h3>
+              </div>
+            </div>
+            <form id="item-form" class="stack">
+              <label>
+                <span>Type</span>
+                <select name="item_type">
+                  <option value="task">Task</option>
+                  <option value="decision">Decision</option>
+                  <option value="open_question">Open question</option>
+                  <option value="assumption">Assumption</option>
+                </select>
+              </label>
+              <label>
+                <span>Title</span>
+                <input name="title" type="text" placeholder="Split auth and UI work" required />
+              </label>
+              <label>
+                <span>Content</span>
+                <textarea name="content" rows="4" placeholder="Write the item exactly as the bot should read it back." required></textarea>
+              </label>
+              <label>
+                <span>Evidence refs</span>
+                <input name="evidence_refs" type="text" placeholder="ref-001, ref-002" />
+              </label>
+              <button type="submit" class="primary">Propose item</button>
+            </form>
+
+            <form id="confirm-form" class="stack top-rule">
+              <div class="card-head tight">
+                <div>
+                  <p class="card-label">Resolve</p>
+                  <h3>Confirm or amend</h3>
+                </div>
+              </div>
+              <label>
+                <span>Item ID</span>
+                <input name="item_id" type="text" placeholder="item-001" required />
+              </label>
+              <label>
+                <span>Status</span>
+                <select name="status">
+                  <option value="confirmed">Confirmed</option>
+                  <option value="amended">Amended</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </label>
+              <label>
+                <span>Updated title</span>
+                <input name="title" type="text" placeholder="Optional" />
+              </label>
+              <label>
+                <span>Updated content</span>
+                <textarea name="content" rows="3" placeholder="Optional"></textarea>
+              </label>
+              <button type="submit" class="ghost">Send confirmation</button>
+            </form>
+          </article>
+        </section>
+
+        <section class="bottom-grid">
+          <article class="card compact-card">
+            <div class="card-head">
+              <div>
+                <p class="card-label">Pending Queue</p>
+                <h3>Read back and resolve</h3>
+              </div>
+            </div>
+            <div class="queue-block">
+              <p class="mini-label">Pending items</p>
+              <div id="pending-item-list" class="queue-list">
+                <p class="empty-state">No pending items.</p>
+              </div>
+            </div>
+            <div class="queue-block">
+              <p class="mini-label">Pending hand raises</p>
+              <div id="pending-hand-list" class="queue-list">
+                <p class="empty-state">No pending hand raises.</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="card compact-card">
+            <div class="card-head">
+              <div>
+                <p class="card-label">AI Participation</p>
+                <h3>Raise hand or switch mode</h3>
+              </div>
+            </div>
+            <form id="hand-form" class="stack">
+              <label>
+                <span>Reason</span>
+                <input name="reason" type="text" placeholder="Need to read back task wording." required />
+              </label>
+              <button type="submit" class="primary">Raise hand</button>
+            </form>
+            <form id="resolve-hand-form" class="stack top-rule">
+              <label>
+                <span>Hand raise ID</span>
+                <input name="hand_raise_id" type="text" placeholder="hand-001" required />
+              </label>
+              <label>
+                <span>Status</span>
+                <select name="status">
+                  <option value="approved">Approved</option>
+                  <option value="dismissed">Dismissed</option>
+                </select>
+              </label>
+              <button type="submit" class="ghost">Resolve hand raise</button>
+            </form>
+            <form id="mode-form" class="stack top-rule">
+              <label>
+                <span>Mode</span>
+                <select name="mode">
+                  <option value="prompted">Prompted</option>
+                  <option value="independent-hand-raise">Independent with hand raise</option>
+                </select>
+              </label>
+              <button type="submit" class="ghost">Update mode</button>
+            </form>
+          </article>
+
+          <article class="card compact-card">
+            <div class="card-head">
+              <div>
+                <p class="card-label">Meeting Feed</p>
+                <h3>Recent evidence and transcript</h3>
+              </div>
+            </div>
+            <div class="queue-block">
+              <p class="mini-label">Recent references</p>
+              <div id="recent-reference-list" class="queue-list">
+                <p class="empty-state">No references yet.</p>
+              </div>
+            </div>
+            <div class="queue-block">
+              <p class="mini-label">Recent transcript</p>
+              <div id="recent-transcript-list" class="queue-list">
+                <p class="empty-state">No transcript yet.</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="card event-log-card">
+            <div class="card-head">
+              <div>
+                <p class="card-label">Bridge Result</p>
+                <h3>Latest response</h3>
+              </div>
+            </div>
+            <pre id="event-log">No requests sent yet.</pre>
+          </article>
+        </section>
+
+        <section class="surface-grid">
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <p class="card-label">Transcript Event</p>
+                <h3>Add meeting transcript</h3>
+              </div>
+            </div>
+            <form id="transcript-form" class="stack">
+              <label>
+                <span>Speaker</span>
+                <input name="speaker" type="text" placeholder="Edward Walker" required />
+              </label>
+              <label>
+                <span>Text</span>
+                <textarea name="text" rows="4" placeholder="Paste a verbatim segment or summarize the room." required></textarea>
+              </label>
+              <button type="submit" class="ghost">Send transcript event</button>
+            </form>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/live-plan-panel/app.js" type="module"></script>
+  </body>
+</html>

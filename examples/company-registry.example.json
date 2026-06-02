@@ -8,8 +8,8 @@
       "aws_region": "us-east-1",
       "suggested_aws_profile": "canon-systems"
     },
-    "IMC": {
-      "description": "Example: Innermost — new installs use the clearer default prefix (canon-memory-dev).",
+    "MJC": {
+      "description": "Example: Marrow (formerly Innermost) — new installs use the default prefix (canon-memory-dev).",
       "aws_secret_name_prefix": "canon-memory-dev",
       "aws_region": "us-east-1",
       "suggested_aws_profile": "canon-systems"
