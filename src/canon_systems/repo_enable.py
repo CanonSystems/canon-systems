@@ -142,6 +142,7 @@ def enable_repo(  # noqa: PLR0912
     _copy_template("hooks/memory-preflight.sh", hooks_dir / "memory-preflight.sh", executable=True)
     _copy_template("hooks/memory-capture.sh", hooks_dir / "memory-capture.sh", executable=True)
     _copy_template("hooks/vault-sync-preflight.sh", hooks_dir / "vault-sync-preflight.sh", executable=True)
+    _copy_template("hooks/task-preflight.sh", hooks_dir / "task-preflight.sh", executable=True)
 
     # Merge hooks.json (preserve any pre-existing hooks; dedupe by command).
     _merge_hooks_json(repo_root)
@@ -154,6 +155,7 @@ def enable_repo(  # noqa: PLR0912
         "rules/memory-platform-build-discipline.mdc",
         rules_dir / "memory-platform-build-discipline.mdc",
     )
+    _copy_template("rules/canon-tasks.mdc", rules_dir / "canon-tasks.mdc")
 
     # Install repo-level subagents (project-planner, scoper, cursor-pilot, implementer, qa-gate, release-orchestrator).
     for name in (
@@ -217,6 +219,7 @@ def install_user_scope() -> None:
         "rules/memory-platform-build-discipline.mdc",
         home / "rules" / "memory-platform-build-discipline.mdc",
     )
+    _copy_template("rules/canon-tasks.mdc", home / "rules" / "canon-tasks.mdc")
     for name in (
         "project-planner.md",
         "scoper.md",

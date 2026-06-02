@@ -11,6 +11,11 @@
         "command": "bash .cursor/hooks/vault-sync-preflight.sh",
         "matcher": "UserPromptSubmit",
         "timeout": 20
+      },
+      {
+        "command": "bash .cursor/hooks/task-preflight.sh",
+        "matcher": "UserPromptSubmit",
+        "timeout": 20
       }
     ],
     "afterAgentResponse": [

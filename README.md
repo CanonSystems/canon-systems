@@ -297,6 +297,15 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon synth show` | Stream Obsidian vault markdown for `(plan_id[, task_id])` from S3 (read-only; markdown or JSON). Honors `CANON_PLAN_ID` / `CANON_TASK_ID` / `CANON_VAULT_BUCKET` / `CANON_VAULT_PREFIX` / `CANON_SYNTH_CUTOFF_TS`. |
 | `canon vault sync` | Mirror S3 vault into `<repo>/vault/` (read-only, content-hash diff, offline-tolerant). `--once` for single pull; default loop interval 10s. `--install` registers a per-tenant launchd/systemd/schtasks daemon. |
 | `canon release publish-on-pass --release-status-file <path> [--release-id <id>]` | Called by the release-orchestrator when `RELEASE_STATUS` hits all-PASS; invokes `canon synth publish` exactly once with bounded exponential-backoff retries (`CANON_PUBLISH_RETRIES`, default 3), is idempotent per `(plan_id, release_id)`, and optionally POSTs to `CANON_PUBLISH_NOTIFIER_URL` so vault-sync clients refresh within 30 s. Emits `synth_publish` (+ optional `vault_sync_notified`) canonical events. |
+| `canon task create "<title>" [--scope repo\|company\|multi-repo] [--repos r1,r2] [--assignee <actor>] [--priority high] [--label X] [--due <when>] [--body ...] [--json]` | Create an assignable task. `repo` scope is git-tracked with the repo; `company`/`multi-repo` live in the machine-global ledger. |
+| `canon task list [--mine] [--status open] [--scope company] [--assignee <actor>] [--label X] [--all] [--all-repos] [--json]` | List tasks relevant to the current repo (repo + company + multi-repo touching it). Hides done/cancelled unless `--all`/`--status`. |
+| `canon task show <task_ref> [--json]` | Show one task with comments + status history. |
+| `canon task update <task_ref> [--status ...] [--assignee ...] [--priority ...] [--title ...] [--body ...] [--label ...] [--due ...]` | Update fields on a task. |
+| `canon task assign <task_ref> <actor>... [--replace]` | Add (or replace) assignees. |
+| `canon task comment <task_ref> "<text>"` | Append a comment. |
+| `canon task status <task_ref> <open\|in_progress\|blocked\|done\|cancelled>` | Set status. |
+| `canon task close <task_ref> [--cancel] [--comment ...]` / `canon task reopen <task_ref>` | Complete/cancel or reopen a task. |
+| `canon task sync [--pull-only]` | Best-effort S3 set-union sync of company/multi-repo tasks (requires `CANON_TASKS_BUCKET`; no-op otherwise). |
 | `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
 | `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |
@@ -304,6 +313,46 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 ### Memory degraded-mode fallback
 
 Preflight (`canon preflight`) and hybrid ask (`canon ask`) classify each MemPalace `/memory/search` response into `mempalace_status` (`ok`, `degraded`, `unreachable`, or `not_configured`) with `latency_ms`, `last_error`, and `endpoint_ref`. That block is written into `.canon/memory/context-latest.md` / `context-latest.json` on preflight and into `canon ask --json` output. When the status is `degraded` or `unreachable`, the CLI appends a JSONL record to **`.canon/memory/mempalace-retry-queue.jsonl`** for a future drain (no automatic replay in v1). Exit codes stay **0**; a bad MemPalace outcome is advisory unless the command would have failed for other reasons.
+
+## Tasks (assignable work items)
+
+`canon task` lets teammates write work for each other to complete, scoped per
+repo, per company, or across several repos. It is **local-first** and
+**fail-open**: it always works against on-disk NDJSON ledgers, and any remote
+sync is best-effort and never blocks a local action.
+
+- **Scopes:**
+  - `repo` (default) — stored at `<repo>/.canon/tasks/ledger.ndjson`, git-tracked
+    so repo tasks travel with the repo to everyone who pulls.
+  - `company` — applies to every repo for this `company_id`.
+  - `multi-repo` — applies to an explicit set of repos (`--repos r1,r2`).
+  - `company`/`multi-repo` tasks live in the machine-global ledger
+    (`$CANON_TASKS_HOME` or `~/.canon/tasks/<company_id>/ledger.ndjson`).
+- **Event-sourced:** each mutation appends an idempotent event; materialization
+  is a deterministic fold, so two ledgers merge by set-union of `event_id` with
+  no double-counting. Every mutation also appends a `task_activity` canonical
+  event to `<repo>/.canon/memory/events.ndjson` (best-effort) so tasks are
+  discoverable via the existing memory/synthesis plane.
+- **Auto-surfacing:** a `beforeSubmitPrompt` hook (`task-preflight.sh`) lists
+  your open tasks at the start of each turn. Silence it with
+  `CANON_TASKS_PREFLIGHT=0`.
+- **Cross-machine sync:** `canon task sync` performs an S3 set-union of the
+  company ledger when `CANON_TASKS_BUCKET` (and optional `CANON_TASKS_PREFIX`,
+  default `canon/tasks`) is set; otherwise it is a clean no-op.
+- **Tenant boundaries:** tasks are scoped by `company_id` + `repository_id`.
+  Cross-repo tasks are authorized only within the **same** company via
+  `--scope company` / `--scope multi-repo`.
+
+```bash
+canon task create "Wire up the auth callback" --assignee usr_jane --priority high
+canon task create "Migrate logging across services" --scope multi-repo --repos api,worker,web
+canon task list --mine
+canon task status tsk_2026... in_progress
+canon task close  tsk_2026... --comment "shipped in #482"
+```
+
+Rollout to other machines/repos/users is automatic — see
+[`docs/runbooks/TASKS-ROLLOUT.md`](docs/runbooks/TASKS-ROLLOUT.md).
 
 ## Version drift
 

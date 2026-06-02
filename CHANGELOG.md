@@ -13,6 +13,38 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.6.0] - 2026-06-02
+
+### Added
+
+- **Tasks (`canon task`):** assignable, tenant-scoped work items so teammates
+  can write tasks for each other. New event-sourced core
+  (`src/canon_systems/tasks.py`) and CLI (`src/canon_systems/tasks_cli.py`) with
+  subcommands `create`, `list`, `show`, `update`, `assign`, `comment`,
+  `status`, `close`, `reopen`, `sync`. Three scopes — `repo` (git-tracked
+  ledger at `<repo>/.canon/tasks/ledger.ndjson`), `company`, and `multi-repo`
+  (machine-global ledger at `$CANON_TASKS_HOME` or
+  `~/.canon/tasks/<company_id>/ledger.ndjson`). Local-first and fail-open;
+  ledgers merge by idempotent set-union of `event_id`. Each mutation also
+  appends a best-effort `task_activity` canonical event to
+  `.canon/memory/events.ndjson`. Optional cross-machine S3 sync via
+  `canon task sync` (`CANON_TASKS_BUCKET` / `CANON_TASKS_PREFIX`). Tests:
+  `tests/test_tasks.py`, `tests/test_cli_tasks.py`.
+- **Open-task surfacing hook:** `task-preflight.sh` (`beforeSubmitPrompt`)
+  lists the current user's open tasks at the start of each turn; silence with
+  `CANON_TASKS_PREFLIGHT=0`.
+- **Agent rule `canon-tasks.mdc`:** teaches the agent chain when/how to use
+  `canon task`; installed into repos and the user scope by `enable_repo` /
+  `install_user_scope`.
+- **Rollout runbook** `docs/runbooks/TASKS-ROLLOUT.md` documenting the
+  automatic self-update + auto-rewire delivery path for every machine/repo/user.
+
+### Changed
+
+- `enable_repo()` / `install_user_scope()` now install the task surfacing hook
+  and `canon-tasks.mdc` rule, and `hooks.json` registers `task-preflight.sh`.
+  Existing auto-rewire makes the feature plug-and-play once 3.6.0 is installed.
+
 ## [3.5.7] - 2026-05-05
 
 ### Fixed
