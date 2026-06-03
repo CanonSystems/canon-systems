@@ -30,7 +30,7 @@ from .flow_audit import run as run_flow_audit
 from .memory_health import run as run_memory_health
 from .context_preload import run as run_preflight
 from .install_wizard import detect_repo_root, run as run_setup
-from .repo_enable import enable_repo, install_user_scope
+from .repo_enable import TEMPLATE_BUNDLE_ID, enable_repo, install_user_scope, pinned_template_bundle
 from . import vault_sync
 from .qa_validate import run as run_qa_validate
 from .secrets_submit import run as run_secrets_submit
@@ -64,14 +64,22 @@ def _maybe_auto_rewire(root: Path, command: str) -> None:
     if _truthy_env("CANON_SYSTEMS_DISABLE_AUTO_REWIRE"):
         return
     pinned = _pinned_version(root)
+    bundle = pinned_template_bundle(root)
+    needs_bundle = bool(pinned) and bundle != TEMPLATE_BUNDLE_ID
+    needs_version = bool(pinned) and _version_tuple(__version__) > _version_tuple(pinned)
     if not pinned:
         return
-    if _version_tuple(__version__) <= _version_tuple(pinned):
+    if not needs_version and not needs_bundle:
         return
     try:
         enable_repo(root)
+        reason = []
+        if needs_version:
+            reason.append(f"{pinned} -> {__version__}")
+        if needs_bundle:
+            reason.append(f"templates {bundle or '(none)'} -> {TEMPLATE_BUNDLE_ID}")
         print(
-            f"canon-systems: auto-refreshed repo wiring ({pinned} -> {__version__}) in {root}",
+            f"canon-systems: auto-refreshed repo wiring ({', '.join(reason)}) in {root}",
             file=sys.stderr,
         )
     except Exception as exc:
@@ -123,13 +131,15 @@ def _should_run_global_rewire() -> bool:
         return True
     if not isinstance(parsed, dict):
         return True
-    return str(parsed.get("version", "")).strip() != __version__
+    ver = str(parsed.get("version", "")).strip()
+    bundle = str(parsed.get("template_bundle", "")).strip()
+    return ver != __version__ or bundle != TEMPLATE_BUNDLE_ID
 
 
 def _mark_global_rewire_done() -> None:
     path = _global_rewire_state_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"version": __version__}
+    payload = {"version": __version__, "template_bundle": TEMPLATE_BUNDLE_ID}
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 

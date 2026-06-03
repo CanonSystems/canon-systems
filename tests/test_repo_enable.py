@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from canon_systems import __version__
-from canon_systems.repo_enable import enable_repo
+from canon_systems.repo_enable import TEMPLATE_BUNDLE_ID, enable_repo
 
 
 def test_enable_repo_writes_hooks_rule_agents_and_version(tmp_path: Path) -> None:
@@ -23,10 +23,12 @@ def test_enable_repo_writes_hooks_rule_agents_and_version(tmp_path: Path) -> Non
     assert any(item.get("command") == "bash .cursor/hooks/memory-preflight.sh" for item in before)
     assert any(item.get("command") == "bash .cursor/hooks/vault-sync-preflight.sh" for item in before)
     assert any(item.get("command") == "bash .cursor/hooks/task-preflight.sh" for item in before)
+    assert any(item.get("command") == "bash .cursor/hooks/task-session.sh" for item in after)
     assert any(item.get("command") == "bash .cursor/hooks/memory-capture.sh" for item in after)
 
     # Tasks feature wiring: surfacing hook + agent rule installed.
     assert (repo / ".cursor" / "hooks" / "task-preflight.sh").exists()
+    assert (repo / ".cursor" / "hooks" / "task-session.sh").exists()
     assert (repo / ".cursor" / "rules" / "canon-tasks.mdc").exists()
 
     gi = (repo / ".gitignore").read_text(encoding="utf-8")
@@ -52,6 +54,7 @@ def test_enable_repo_writes_hooks_rule_agents_and_version(tmp_path: Path) -> Non
     assert env_path.exists()
     body = env_path.read_text(encoding="utf-8")
     assert f"CANON_SYSTEMS_VERSION={__version__}" in body
+    assert f"CANON_TEMPLATE_BUNDLE_ID={TEMPLATE_BUNDLE_ID}" in body
     # Legacy key should not be re-emitted when pinning.
     assert "CANON_MEMORY_LAYER_VERSION=" not in body
 

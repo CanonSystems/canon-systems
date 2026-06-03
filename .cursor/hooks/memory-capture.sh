@@ -47,10 +47,13 @@ clear_recovery_marker() {
   fi
 }
 
+ACTIVE_TASK_FILE="${ROOT_DIR}/.canon/tasks/active-context.json"
+
 run_capture_with_recovery() {
   if "${CANON_BIN}" --repo-root "${ROOT_DIR}" capture \
     --hook-input "${PAYLOAD_PATH}" \
     --pending-user-file "${ROOT_DIR}/.canon/memory/pending-user-turn.json" \
+    --active-task-file "${ACTIVE_TASK_FILE}" \
     --quiet >/dev/null 2>"${ERR_PATH}"; then
     clear_recovery_marker
     return 0
@@ -60,6 +63,7 @@ run_capture_with_recovery() {
     if "${CANON_BIN}" --repo-root "${ROOT_DIR}" capture \
       --hook-input "${PAYLOAD_PATH}" \
       --pending-user-file "${ROOT_DIR}/.canon/memory/pending-user-turn.json" \
+      --active-task-file "${ACTIVE_TASK_FILE}" \
       --quiet >/dev/null 2>"${ERR_PATH}"; then
       clear_recovery_marker
       return 0

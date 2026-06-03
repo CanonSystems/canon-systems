@@ -105,6 +105,7 @@ def _build_capture_body(
     decisions: list[str],
     next_actions: list[str],
     open_questions: list[str],
+    work_item_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     artifact_id, version_id = artifact_identity(prefix="art_memcap", actor_id=actor_id)
     return {
@@ -123,6 +124,7 @@ def _build_capture_body(
         "scope_ids": [company_id],
         "repo_ids": [repository_id],
         "conversation_ids": [conversation_id] if conversation_id else [],
+        "work_item_ids": list(work_item_ids or []),
     }
 
 
@@ -154,6 +156,11 @@ def run(argv: list[str] | None = None) -> int:
         "--open-questions",
         default="",
         help="Optional JSON array or newline list of distilled open questions.",
+    )
+    parser.add_argument(
+        "--active-task-file",
+        default="",
+        help="Optional .canon/tasks/active-context.json; links capture to task_ref.",
     )
     parser.add_argument("--quiet", action="store_true", help="Reduce stderr output.")
     args = parser.parse_args(argv)
@@ -199,6 +206,18 @@ def run(argv: list[str] | None = None) -> int:
     next_actions = _parse_json_list(args.next_actions)
     open_questions = _parse_json_list(args.open_questions)
 
+    work_item_ids: list[str] = []
+    active_path = (args.active_task_file or "").strip()
+    if active_path:
+        try:
+            active_raw = json.loads(Path(active_path).read_text(encoding="utf-8"))
+            if isinstance(active_raw, dict):
+                ref = str(active_raw.get("task_ref", "")).strip()
+                if ref:
+                    work_item_ids = [ref]
+        except (OSError, json.JSONDecodeError):
+            pass
+
     transcript_sections: list[str] = []
     if user_text:
         transcript_sections.append(f"## User Prompt\n\n{user_text}")
@@ -215,6 +234,10 @@ def run(argv: list[str] | None = None) -> int:
     if open_questions:
         transcript_sections.append(
             "## Open Questions\n\n" + "\n".join(f"- {item}" for item in open_questions)
+        )
+    if work_item_ids:
+        transcript_sections.append(
+            "## Linked Canon task\n\n" + "\n".join(f"- {wid}" for wid in work_item_ids)
         )
     transcript_sections.append(
         "## Metadata\n\n"
@@ -238,6 +261,7 @@ def run(argv: list[str] | None = None) -> int:
         decisions=decisions,
         next_actions=next_actions,
         open_questions=open_questions,
+        work_item_ids=work_item_ids,
     )
 
     status, response_payload = request_json(

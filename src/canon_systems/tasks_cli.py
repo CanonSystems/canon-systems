@@ -35,8 +35,9 @@ from pathlib import Path
 from typing import Any
 
 from . import tasks as core
+from . import tasks_automation as auto
 from . import tasks_remote as remote
-from .shared import load_identity_context, load_repo_context, repo_root
+from .shared import load_identity_context, load_repo_context, parse_hook_payload, repo_root
 
 EXIT_OK = 0
 EXIT_USAGE = 2
@@ -489,6 +490,164 @@ def _cmd_next(ctx: _Ctx, args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _cmd_active(ctx: _Ctx, args: argparse.Namespace) -> int:
+    """Refresh or clear the repo-local active task context (Cursor hooks)."""
+    if getattr(args, "clear", False):
+        auto.clear_active_context(ctx.root)
+        if not getattr(args, "quiet", False):
+            print("cleared active task context")
+        return EXIT_OK
+
+    if getattr(args, "set_ref", "").strip():
+        ref = args.set_ref.strip()
+        state, _ = _combined_state(ctx)
+        task = state.get(ref)
+        if task is None:
+            print(f"error: task {ref} not found", file=sys.stderr)
+            return EXIT_NOT_FOUND
+        payload = auto.build_active_payload(
+            task, actor_id=ctx.actor_id, repository_id=ctx.repository_id
+        )
+        auto.write_active_context(ctx.root, payload)
+        if args.json:
+            print(json.dumps({"active": payload}, sort_keys=True))
+        elif not getattr(args, "quiet", False):
+            print(f"active task: {ref}")
+        return EXIT_OK
+
+    state, _ = _combined_state(ctx)
+    task = auto.pick_active_task(
+        state,
+        actor_id=ctx.actor_id,
+        repository_id=ctx.repository_id,
+        any_actor=bool(getattr(args, "any", False)),
+    )
+    if task is None:
+        auto.clear_active_context(ctx.root)
+        if args.json:
+            print(json.dumps({"active": None}, sort_keys=True))
+        elif not getattr(args, "quiet", False):
+            print("no active task")
+        return EXIT_OK
+
+    ref = str(task.get("task_ref", "")).strip()
+    if ref and task.get("status") == "open" and getattr(args, "refresh", False):
+        _mutate(
+            ctx,
+            ref,
+            fields={"status": "in_progress"},
+            comment="[auto] Cursor session linked this task",
+        )
+        state, _ = _combined_state(ctx)
+        task = state.get(ref) or task
+
+    payload = auto.build_active_payload(
+        task, actor_id=ctx.actor_id, repository_id=ctx.repository_id
+    )
+    auto.write_active_context(ctx.root, payload)
+
+    open_tasks: list[dict[str, Any]] = []
+    if getattr(args, "preflight", False):
+        filters: dict[str, Any] = {
+            "include_terminal": False,
+            "repository_id": ctx.repository_id,
+            "mine_actor": ctx.actor_id,
+        }
+        open_tasks = core.filter_and_sort(state.values(), **filters)
+
+    if args.json:
+        out: dict[str, Any] = {"active": payload}
+        if getattr(args, "preflight", False):
+            out["open_tasks"] = open_tasks
+            out["preflight_message"] = auto.format_preflight_message(
+                open_tasks=open_tasks, active=payload
+            )
+        print(json.dumps(out, sort_keys=True))
+    elif getattr(args, "preflight", False):
+        msg = auto.format_preflight_message(open_tasks=open_tasks, active=payload)
+        if msg.strip():
+            print(msg)
+    elif not getattr(args, "quiet", False):
+        print(f"active task: {ref} ({payload.get('status', '')})")
+    return EXIT_OK
+
+
+def _cmd_record_session(ctx: _Ctx, args: argparse.Namespace) -> int:
+    """After a Cursor turn: align active task, auto-note progress, extract hints."""
+    payload = parse_hook_payload(getattr(args, "hook_input", "") or "")
+    user_text = str(
+        payload.get("prompt")
+        or payload.get("user_prompt")
+        or payload.get("user_message")
+        or payload.get("message")
+        or ""
+    ).strip()
+    assistant_text = str(
+        payload.get("response")
+        or payload.get("assistant_response")
+        or payload.get("agent_response")
+        or payload.get("output")
+        or ""
+    ).strip()
+    refs = auto.extract_task_refs(user_text, assistant_text)
+    state, _ = _combined_state(ctx)
+    active = auto.read_active_context(ctx.root) or {}
+
+    active_ref = str(active.get("task_ref", "")).strip()
+    targets = auto.targets_for_session_notes(
+        state=state,
+        mentioned_refs=refs,
+        active_ref=active_ref,
+    )
+    if not targets:
+        return EXIT_OK
+
+    note = auto.distill_progress_note(user_text, assistant_text)
+    turn_fp = auto.note_fingerprint(assistant_text or user_text)
+    progress_fields = auto.extract_progress_fields(user_text, assistant_text)
+
+    primary_ref = targets[0]
+    for task_ref in targets:
+        task = state.get(task_ref)
+        if not task:
+            continue
+        fields: dict[str, Any] = {}
+        if task.get("status") == "open":
+            fields["status"] = "in_progress"
+        if progress_fields.get("branch") and not (task.get("branch") or "").strip():
+            fields["branch"] = progress_fields["branch"]
+        if progress_fields.get("deployment") and not (task.get("deployment") or "").strip():
+            fields["deployment"] = progress_fields["deployment"]
+
+        if note and auto.should_record_auto_note(
+            task,
+            note,
+            turn_fingerprint=turn_fp,
+            active_context=active if task_ref == primary_ref else None,
+        ):
+            _mutate(
+                ctx,
+                task_ref,
+                fields=fields or None,
+                comment=note,
+                event_type=core.EVENT_COMMENTED,
+            )
+        elif fields:
+            _mutate(ctx, task_ref, fields=fields)
+
+    state, _ = _combined_state(ctx)
+    primary = state.get(primary_ref) or state[targets[0]]
+    ctx_payload = auto.build_active_payload(
+        primary, actor_id=ctx.actor_id, repository_id=ctx.repository_id
+    )
+    if note:
+        ctx_payload = auto.merge_active_after_note(
+            ctx_payload, note=note, turn_fingerprint=turn_fp
+        )
+    auto.write_active_context(ctx.root, ctx_payload)
+    return EXIT_OK
+
+
 def _cmd_sync(ctx: _Ctx, args: argparse.Namespace) -> int:
     """Push local events to the server (if configured), then best-effort S3 push/pull.
 
@@ -652,6 +811,32 @@ def _build_parser() -> argparse.ArgumentParser:
     nx.add_argument("--assignee", default="", help="Pick the next task for a specific actor_id.")
     nx.add_argument("--json", action="store_true")
 
+    ac = sub.add_parser(
+        "active",
+        help="Refresh repo-local active task context for Cursor hooks (fail-open).",
+    )
+    ac.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Pick highest-priority open/in-progress task and persist active-context.json.",
+    )
+    ac.add_argument("--clear", action="store_true", help="Remove active-context.json.")
+    ac.add_argument("--set", dest="set_ref", default="", help="Pin a specific task_ref.")
+    ac.add_argument("--any", action="store_true", help="When refreshing, not just mine.")
+    ac.add_argument(
+        "--preflight",
+        action="store_true",
+        help="Emit the combined system message used by task-preflight.sh.",
+    )
+    ac.add_argument("--quiet", action="store_true")
+    ac.add_argument("--json", action="store_true")
+
+    rs = sub.add_parser(
+        "record-session",
+        help="Align active task with task_ref mentions in a hook transcript (fail-open).",
+    )
+    rs.add_argument("--hook-input", default="", help="Path to afterAgentResponse JSON.")
+
     sh = sub.add_parser("show", help="Show one task in detail.")
     sh.add_argument("task_ref")
     sh.add_argument("--json", action="store_true")
@@ -710,6 +895,8 @@ _HANDLERS = {
     "create": _cmd_create,
     "list": _cmd_list,
     "next": _cmd_next,
+    "active": _cmd_active,
+    "record-session": _cmd_record_session,
     "show": _cmd_show,
     "update": _cmd_update,
     "comment": _cmd_comment,

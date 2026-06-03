@@ -21,6 +21,10 @@ from .shared import load_env_file
 _PKG_TEMPLATES = "canon_systems.templates"
 _VERSION_KEY = "CANON_SYSTEMS_VERSION"
 _LEGACY_VERSION_KEY = "CANON_MEMORY_LAYER_VERSION"
+# Bump when hook/rule templates change so auto-rewire refreshes wired repos
+# even if the package version was already pinned (e.g. 3.7.0 -> 3.7.0).
+_TEMPLATE_BUNDLE_KEY = "CANON_TEMPLATE_BUNDLE_ID"
+TEMPLATE_BUNDLE_ID = "20260602-task-auto-v2"
 
 
 def _copy_template(resource_path: str, dest: Path, *, executable: bool = False) -> None:
@@ -117,6 +121,7 @@ def _pin_version(repo_root: Path) -> None:
     existing = load_env_file(env_path) if env_path.exists() else {}
     existing.pop(_LEGACY_VERSION_KEY, None)
     existing[_VERSION_KEY] = __version__
+    existing[_TEMPLATE_BUNDLE_KEY] = TEMPLATE_BUNDLE_ID
     body = "\n".join(f"{k}={v}" for k, v in sorted(existing.items())) + "\n"
     env_path.write_text(body, encoding="utf-8")
 
@@ -143,6 +148,7 @@ def enable_repo(  # noqa: PLR0912
     _copy_template("hooks/memory-capture.sh", hooks_dir / "memory-capture.sh", executable=True)
     _copy_template("hooks/vault-sync-preflight.sh", hooks_dir / "vault-sync-preflight.sh", executable=True)
     _copy_template("hooks/task-preflight.sh", hooks_dir / "task-preflight.sh", executable=True)
+    _copy_template("hooks/task-session.sh", hooks_dir / "task-session.sh", executable=True)
 
     # Merge hooks.json (preserve any pre-existing hooks; dedupe by command).
     _merge_hooks_json(repo_root)
@@ -237,4 +243,18 @@ PRE_HOOK = ""
 POST_HOOK = ""
 
 
-__all__ = ["enable_repo", "install_user_scope", "PRE_HOOK", "POST_HOOK"]
+def pinned_template_bundle(repo_root: Path) -> str:
+    env_path = repo_root / ".canon" / "memory-layer.local.env"
+    if not env_path.exists():
+        return ""
+    return (load_env_file(env_path).get(_TEMPLATE_BUNDLE_KEY) or "").strip()
+
+
+__all__ = [
+    "enable_repo",
+    "install_user_scope",
+    "PRE_HOOK",
+    "POST_HOOK",
+    "TEMPLATE_BUNDLE_ID",
+    "pinned_template_bundle",
+]

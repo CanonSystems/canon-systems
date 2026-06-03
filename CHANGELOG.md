@@ -13,6 +13,42 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.7.2] - 2026-06-02
+
+### Added
+
+- **Automatic progress notes:** `task-session.sh` / `canon task record-session` distill
+  each assistant turn into a deduped `[auto]` comment on the active task (and on every
+  other `tsk_*` mentioned in the turn for batch/plan work). Branch/PR/deploy hints are
+  applied when detected. Opt out with `CANON_TASKS_AUTO_NOTE=0`; tune via
+  `CANON_TASKS_AUTO_NOTE_MIN_CHARS` / `CANON_TASKS_AUTO_NOTE_MAX_CHARS`.
+
+### Changed
+
+- Template bundle `20260602-task-auto-v2` (auto-rewire refreshes repos on next `canon`
+  invocation).
+
+## [3.7.1] - 2026-06-02
+
+### Added
+
+- **Automatic task ↔ session wiring:** `task-preflight.sh` refreshes
+  `.canon/tasks/active-context.json`, promotes the active open task to
+  `in_progress`, and surfaces work inline; `task-session.sh` aligns active task
+  with `tsk_*` mentions after each turn; `canon capture` links memory artifacts
+  via `work_item_ids` when an active task is set.
+- **`canon task active`** and **`canon task record-session`** for hook-driven
+  automation (fail-open).
+- **`CANON_TEMPLATE_BUNDLE_ID`** pin + auto-rewire when templates change even if
+  the package version pin is already current (refreshes hooks/rules on any `canon`
+  invocation).
+
+### Changed
+
+- **`canon-tasks.mdc`** template documents server plane, agent loop, and automatic
+  hooks; `enable_repo()` installs `task-session.sh` and merges it into
+  `hooks.json` before `memory-capture.sh`.
+
 ## [3.7.0] - 2026-06-02
 
 ### Added
