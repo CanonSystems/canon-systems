@@ -20,6 +20,10 @@
     ],
     "afterAgentResponse": [
       {
+        "command": "bash .cursor/hooks/task-session.sh",
+        "timeout": 20
+      },
+      {
         "command": "bash .cursor/hooks/memory-capture.sh",
         "timeout": 20
       }

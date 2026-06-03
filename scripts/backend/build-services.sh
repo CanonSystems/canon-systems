@@ -17,7 +17,8 @@ pip install -e backend/knowledge-policy
 pip install -e backend/knowledge-client
 pip install -e backend/memory-adapter
 
-for svc in knowledge-api knowledge-worker memory-adapter state-api axon-service synthesis synthesis-web; do
+# state-api must install before knowledge-api (knowledge-api mounts state routers).
+for svc in state-api knowledge-api knowledge-worker memory-adapter axon-service synthesis synthesis-web; do
   pip install -e "backend/${svc}"
   case "${svc}" in
     knowledge-api) pkg=app ;;

@@ -303,13 +303,14 @@ pipx install 'git+ssh://git@github.com/CanonSystems/canon-systems.git#egg=canon-
 | `canon release publish-on-pass --release-status-file <path> [--release-id <id>]` | Called by the release-orchestrator when `RELEASE_STATUS` hits all-PASS; invokes `canon synth publish` exactly once with bounded exponential-backoff retries (`CANON_PUBLISH_RETRIES`, default 3), is idempotent per `(plan_id, release_id)`, and optionally POSTs to `CANON_PUBLISH_NOTIFIER_URL` so vault-sync clients refresh within 30 s. Emits `synth_publish` (+ optional `vault_sync_notified`) canonical events. |
 | `canon task create "<title>" [--scope repo\|company\|multi-repo] [--repos r1,r2] [--assignee <actor>] [--priority high] [--label X] [--due <when>] [--body ...] [--json]` | Create an assignable task. `repo` scope is git-tracked with the repo; `company`/`multi-repo` live in the machine-global ledger. |
 | `canon task list [--mine] [--status open] [--scope company] [--assignee <actor>] [--label X] [--all] [--all-repos] [--json]` | List tasks relevant to the current repo (repo + company + multi-repo touching it). Hides done/cancelled unless `--all`/`--status`. |
+| `canon task next [--any] [--all-repos] [--assignee <actor>] [--json]` | Show the single highest-priority open task to work on (mine-first). The agent "what's next?" entrypoint. |
 | `canon task show <task_ref> [--json]` | Show one task with comments + status history. |
-| `canon task update <task_ref> [--status ...] [--assignee ...] [--priority ...] [--title ...] [--body ...] [--label ...] [--due ...]` | Update fields on a task. |
+| `canon task update <task_ref> [--status ...] [--assignee ...] [--priority ...] [--title ...] [--body ...] [--label ...] [--due ...] [--branch ...] [--deployment ...] [--note "progress"]` | Update fields on a task; `--branch`/`--deployment`/`--note` attribute where work is happening. |
 | `canon task assign <task_ref> <actor>... [--replace]` | Add (or replace) assignees. |
 | `canon task comment <task_ref> "<text>"` | Append a comment. |
 | `canon task status <task_ref> <open\|in_progress\|blocked\|done\|cancelled>` | Set status. |
 | `canon task close <task_ref> [--cancel] [--comment ...]` / `canon task reopen <task_ref>` | Complete/cancel or reopen a task. |
-| `canon task sync [--pull-only]` | Best-effort S3 set-union sync of company/multi-repo tasks (requires `CANON_TASKS_BUCKET`; no-op otherwise). |
+| `canon task sync [--pull-only]` | Push local events to the server task plane + pull back (when `CANON_TASKS_API_URL`/`CANON_STATE_API_URL` set); otherwise best-effort S3 set-union (`CANON_TASKS_BUCKET`). |
 | `canon secrets` | Launch interactive secrets wizard (guided prompts + validation + write). |
 | `canon secrets template` | Print canonical JSON template for repo-scoped runtime secrets. |
 | `canon secrets submit --payload-file ...` | Validate and write a structured secret payload to AWS Secrets Manager. |
@@ -321,10 +322,20 @@ Preflight (`canon preflight`) and hybrid ask (`canon ask`) classify each MemPala
 ## Tasks (assignable work items)
 
 `canon task` lets teammates write work for each other to complete, scoped per
-repo, per company, or across several repos. It is **local-first** and
-**fail-open**: it always works against on-disk NDJSON ledgers, and any remote
-sync is best-effort and never blocks a local action.
+repo, per company, or across several repos.
 
+- **Server-authoritative (recommended):** set `CANON_TASKS_API_URL` (or reuse
+  the shared `CANON_STATE_API_URL`) and tasks live in `state-api`, so every
+  machine sees the same tasks instantly, independent of any repo's git state.
+  Reads fold the server's event stream; writes push there first. The local
+  NDJSON ledger becomes an offline cache + memory mirror. It is **fail-open**:
+  if the server is unreachable the action is recorded locally and reconciles on
+  the next reachable read/write (`canon task sync` forces reconciliation).
+- **Agent loop:** `canon task next --json` returns the single highest-priority
+  open task to work on; the agent uses repo + `canon-memory` context to do it,
+  records progress with `canon task update <ref> --status in_progress --branch
+  <b> --deployment <target> --note "<what happened>"`, closes it, and calls
+  `canon task next` again.
 - **Scopes:**
   - `repo` (default) — stored at `<repo>/.canon/tasks/ledger.ndjson`, git-tracked
     so repo tasks travel with the repo to everyone who pulls.
@@ -356,7 +367,8 @@ canon task close  tsk_2026... --comment "shipped in #482"
 ```
 
 Rollout to other machines/repos/users is automatic — see
-[`docs/runbooks/TASKS-ROLLOUT.md`](docs/runbooks/TASKS-ROLLOUT.md).
+[`docs/runbooks/TASKS-ROLLOUT.md`](docs/runbooks/TASKS-ROLLOUT.md). **Server sync** (DynamoDB +
+`STATE_TASKS_TABLE_NAME` on state-api): [`docs/runbooks/TASKS-SERVER-DEPLOY.md`](docs/runbooks/TASKS-SERVER-DEPLOY.md).
 
 ## Version drift
 

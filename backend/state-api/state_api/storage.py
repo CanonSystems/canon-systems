@@ -74,6 +74,71 @@ class RunLedgerStore:
         return list(resp.get("Items", []))
 
 
+class TasksStore:
+    """DynamoDB table for assignable-task event rows (server-authoritative task plane).
+
+    Distinct from checkpoint/lease and run-ledger items: task event rows live on
+    ``pk = "{company_id}#tasks"`` with ``sk = "{task_ref}#evt#{event_id}"``. Rows
+    are append-only and idempotent by ``event_id``; the client folds them into
+    materialized tasks. This store never reads or writes ``lease_*`` attributes.
+    """
+
+    def __init__(self, table_name: str, region: str) -> None:
+        self._table = boto3.resource("dynamodb", region_name=region).Table(table_name)
+
+    @property
+    def table_name(self) -> str:
+        return self._table.name
+
+    def get_item(self, pk: str, sk: str) -> dict[str, Any] | None:
+        resp = self._table.get_item(Key={"pk": pk, "sk": sk})
+        return resp.get("Item")
+
+    def put_event_if_absent(self, item: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        """Insert one task event row. Returns ``("created", item)`` or raises ClientError.
+
+        On duplicate ``event_id`` (ConditionalCheckFailedException) the caller
+        should treat the write as idempotent after confirming equivalence.
+        """
+        self._table.put_item(
+            Item=item,
+            ConditionExpression="attribute_not_exists(pk) AND attribute_not_exists(sk)",
+        )
+        return ("created", item)
+
+    def query_company_events(self, pk: str, *, limit: int) -> list[dict[str, Any]]:
+        """Return up to ``limit`` event rows for a company partition (all tasks)."""
+        items: list[dict[str, Any]] = []
+        kwargs: dict[str, Any] = {
+            "KeyConditionExpression": "pk = :pk",
+            "ExpressionAttributeValues": {":pk": pk},
+            "Limit": limit,
+        }
+        while True:
+            resp = self._table.query(**kwargs)
+            items.extend(resp.get("Items", []))
+            last = resp.get("LastEvaluatedKey")
+            if not last or len(items) >= limit:
+                break
+            kwargs["ExclusiveStartKey"] = last
+        return items[:limit]
+
+    def query_task_events(self, pk: str, sk_prefix: str, *, limit: int) -> list[dict[str, Any]]:
+        """Return event rows for one task (sort-key prefix ``{task_ref}#evt#``)."""
+        resp = self._table.query(
+            KeyConditionExpression="pk = :pk AND begins_with(sk, :pre)",
+            ExpressionAttributeValues={":pk": pk, ":pre": sk_prefix},
+            Limit=limit,
+        )
+        return list(resp.get("Items", []))
+
+
+def task_event_from_item(item: dict[str, Any]) -> dict[str, Any]:
+    """Strip DynamoDB keys and normalize numerics for JSON/fold."""
+    raw = {k: v for k, v in item.items() if k not in ("pk", "sk")}
+    return _dynamo_to_plain(raw)  # type: ignore[return-value]
+
+
 class StateStore:
     """Thin wrapper around DynamoDB Table operations for checkpoints and leases."""
 

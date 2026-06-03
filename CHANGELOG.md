@@ -13,6 +13,79 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+## [3.7.2] - 2026-06-02
+
+### Added
+
+- **Automatic progress notes:** `task-session.sh` / `canon task record-session` distill
+  each assistant turn into a deduped `[auto]` comment on the active task (and on every
+  other `tsk_*` mentioned in the turn for batch/plan work). Branch/PR/deploy hints are
+  applied when detected. Opt out with `CANON_TASKS_AUTO_NOTE=0`; tune via
+  `CANON_TASKS_AUTO_NOTE_MIN_CHARS` / `CANON_TASKS_AUTO_NOTE_MAX_CHARS`.
+
+### Changed
+
+- Template bundle `20260602-task-auto-v2` (auto-rewire refreshes repos on next `canon`
+  invocation).
+
+## [3.7.1] - 2026-06-02
+
+### Added
+
+- **Automatic task ↔ session wiring:** `task-preflight.sh` refreshes
+  `.canon/tasks/active-context.json`, promotes the active open task to
+  `in_progress`, and surfaces work inline; `task-session.sh` aligns active task
+  with `tsk_*` mentions after each turn; `canon capture` links memory artifacts
+  via `work_item_ids` when an active task is set.
+- **`canon task active`** and **`canon task record-session`** for hook-driven
+  automation (fail-open).
+- **`CANON_TEMPLATE_BUNDLE_ID`** pin + auto-rewire when templates change even if
+  the package version pin is already current (refreshes hooks/rules on any `canon`
+  invocation).
+
+### Changed
+
+- **`canon-tasks.mdc`** template documents server plane, agent loop, and automatic
+  hooks; `enable_repo()` installs `task-session.sh` and merges it into
+  `hooks.json` before `memory-capture.sh`.
+
+## [3.7.0] - 2026-06-02
+
+### Added
+
+- **Server-authoritative tasks (state-api task plane):** `canon task` now stores
+  task events in `state-api` when `CANON_TASKS_API_URL` (or the shared
+  `CANON_STATE_API_URL`) is set, so any machine sees the same tasks instantly,
+  independent of repo git state. New REST surface `POST /state/tasks/events`
+  (idempotent by `event_id`) and `GET /state/tasks` (folds to materialized
+  tasks client-side), backed by a dedicated DynamoDB table
+  (`STATE_TASKS_TABLE_NAME`). Shared key/validation helpers in
+  `canon_backend_shared/tasks.py`; server store/router in
+  `state_api/storage.py` + `state_api/tasks.py`. Tests:
+  `backend/state-api/tests/test_tasks.py`.
+- **`canon task next`:** returns the single highest-priority open task to work
+  on (mine-first; `--any` for any repo task, `--json` for agents). The agent's
+  "what's next" entrypoint — read server truth, work it, update status, repeat.
+- **Progress attribution:** `canon task update` gains `--branch`, `--deployment`,
+  and `--note` so a task carries where work is happening (active branch, deploy
+  target) and a progress comment in one call; branch/deployment changes are
+  tracked in task history.
+- **Remote backfill:** `canon task sync` now pushes local-only events to the
+  server (and pulls the server stream back into the local cache) when a server
+  is configured — migrating pre-existing local ledgers (e.g. imported FMO
+  tasks) onto the server plane.
+
+### Changed
+
+- `canon task` reads (`list`, `show`, `next`, mutations) fold the server event
+  stream over local ledgers when a server is configured; writes push to the
+  server first, then cache locally and mirror a `task_activity` canonical event.
+  Fully **fail-open**: if the server is unreachable, the action is recorded
+  locally and reconciles on the next reachable read/write.
+- Client transport lives in `src/canon_systems/tasks_remote.py`
+  (`CANON_TASKS_API_URL` / `CANON_STATE_API_URL`, optional
+  `CANON_STATE_API_TOKEN`, `CANON_TASKS_TIMEOUT_MS`).
+
 ## [3.6.0] - 2026-06-02
 
 ### Added

@@ -250,12 +250,26 @@ See rule §§9-10 for authoritative wording.
 - Repo/user wiring auto-refreshes when installed version is newer than pinned.
 - Global auto-rewire updates previously wired repos under configured roots.
 
-### 7.1) Tasks (`canon task`, v3.6.0)
+### 7.1) Tasks (`canon task`, v3.6.0; server plane v3.7.0)
 
-`canon task` is a local-first, tenant-scoped tracker for assignable work items
-("write tasks for each other"). It is event-sourced (append-only NDJSON
-ledgers; deterministic fold; set-union merge by `event_id`) and fail-open.
+`canon task` is a tenant-scoped tracker for assignable work items ("write tasks
+for each other"). It is event-sourced (append-only events; deterministic fold;
+set-union merge by `event_id`) and fail-open.
 
+- **Server-authoritative plane (v3.7.0):** when `CANON_TASKS_API_URL` (or the
+  shared `CANON_STATE_API_URL`) is set, task events are stored in `state-api`
+  (`POST /state/tasks/events`, idempotent by `event_id`; `GET /state/tasks`
+  returns the raw stream which the client folds), backed by a dedicated
+  DynamoDB table (`STATE_TASKS_TABLE_NAME`). This makes tasks instantly
+  consistent across machines regardless of repo git state. The on-disk NDJSON
+  ledger becomes an offline cache + memory mirror; reads fold server-over-local
+  and writes push to the server first. Shared keys/validation live in
+  `canon_backend_shared/tasks.py`; client transport in
+  `canon_systems/tasks_remote.py`.
+- **Agent loop:** `canon task next [--json]` returns the single highest-priority
+  open task (mine-first); `canon task update <ref> --branch/--deployment/--note`
+  attributes operational context; `canon task assign` reassigns. This is the
+  "what's next → do it → update → next" cycle for agents.
 - **Scopes:** `repo` (git-tracked ledger `<repo>/.canon/tasks/ledger.ndjson`),
   `company`, `multi_repo` (machine-global ledger under `$CANON_TASKS_HOME` or
   `~/.canon/tasks/<company_id>/`). Cross-repo tasks are authorized only within
@@ -263,14 +277,25 @@ ledgers; deterministic fold; set-union merge by `event_id`) and fail-open.
 - **Memory plane:** each mutation appends a best-effort `task_activity`
   canonical event to `.canon/memory/events.ndjson` so tasks are discoverable
   via the existing memory/synthesis surfaces.
-- **Surfacing:** `beforeSubmitPrompt` hook `task-preflight.sh` lists the user's
-  open tasks each turn (opt out with `CANON_TASKS_PREFLIGHT=0`).
-- **Cross-machine sync:** `canon task sync` does an idempotent S3 set-union of
-  the company ledger when `CANON_TASKS_BUCKET` is set; otherwise a clean no-op.
-- **Propagation:** delivered by the same self-update + auto-rewire path above —
-  `enable_repo()` / `install_user_scope()` install the hook + `canon-tasks.mdc`
-  rule, so a version bump is the only release action. See
-  `docs/runbooks/TASKS-ROLLOUT.md`.
+- **Automatic session wiring (3.7.1+):** `task-preflight.sh` refreshes
+  `.canon/tasks/active-context.json`, promotes the active open task to
+  `in_progress`, and surfaces open tasks; `task-session.sh` (after each assistant
+  turn, before capture) aligns active task with `tsk_*` mentions, appends deduped
+  `[auto]` progress notes (including every `tsk_*` cited in a batch/plan turn), and
+  applies branch/PR/deploy hints when detected; `memory-capture.sh` sets artifact
+  `work_item_ids` to the active `task_ref`. Opt out: `CANON_TASKS_PREFLIGHT=0`,
+  `CANON_TASKS_SESSION_HOOK=0`, `CANON_TASKS_AUTO_NOTE=0`.
+- **Surfacing:** same `task-preflight.sh` path (replaces list-only behavior from
+  3.6.0).
+- **Cross-machine sync:** `canon task sync` pushes local-only events to the
+  server task plane and pulls the server stream back into the local cache when
+  a server is configured (migrating pre-server local ledgers); otherwise it
+  does an idempotent S3 set-union of the company ledger when `CANON_TASKS_BUCKET`
+  is set, or a clean no-op.
+- **Propagation:** delivered by self-update + auto-rewire — `enable_repo()` /
+  `install_user_scope()` install hooks + `canon-tasks.mdc`. Auto-rewire also
+  runs when `CANON_TEMPLATE_BUNDLE_ID` in the repo env lags the package (template
+  fixes without forcing a semver bump). See `docs/runbooks/TASKS-ROLLOUT.md`.
 
 ## 8) Living update checklist (required per iteration)
 

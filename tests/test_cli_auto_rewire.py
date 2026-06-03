@@ -22,13 +22,36 @@ def test_auto_rewire_runs_when_installed_newer(monkeypatch, tmp_path: Path) -> N
 
 
 def test_auto_rewire_skips_when_equal_or_older(monkeypatch, tmp_path: Path) -> None:
+    from canon_systems.repo_enable import TEMPLATE_BUNDLE_ID
+
     _write_pin(tmp_path, "3.0.4")
+    env = tmp_path / ".canon" / "memory-layer.local.env"
+    env.write_text(
+        env.read_text(encoding="utf-8") + f"CANON_TEMPLATE_BUNDLE_ID={TEMPLATE_BUNDLE_ID}\n",
+        encoding="utf-8",
+    )
     monkeypatch.setattr(cli, "__version__", "3.0.4")
     calls: list[Path] = []
     monkeypatch.setattr(cli, "enable_repo", lambda root: calls.append(root))
 
     cli._maybe_auto_rewire(tmp_path, "ask")
     assert calls == []
+
+
+def test_auto_rewire_runs_when_template_bundle_stale(monkeypatch, tmp_path: Path) -> None:
+    _write_pin(tmp_path, "3.7.1")
+    env = tmp_path / ".canon" / "memory-layer.local.env"
+    env.write_text(
+        env.read_text(encoding="utf-8") + "CANON_TEMPLATE_BUNDLE_ID=old-bundle\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cli, "__version__", "3.7.1")
+    calls: list[Path] = []
+    monkeypatch.setattr(cli, "enable_repo", lambda root: calls.append(root))
+    monkeypatch.delenv("CANON_SYSTEMS_DISABLE_AUTO_REWIRE", raising=False)
+
+    cli._maybe_auto_rewire(tmp_path, "task")
+    assert calls == [tmp_path]
 
 
 def test_auto_rewire_honors_disable_env(monkeypatch, tmp_path: Path) -> None:

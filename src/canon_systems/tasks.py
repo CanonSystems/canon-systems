@@ -38,7 +38,17 @@ EVENT_TYPES: tuple[str, ...] = (EVENT_CREATED, EVENT_UPDATED, EVENT_COMMENTED)
 
 # Fields a `task_updated` event may set, with their normalizers.
 _LIST_FIELDS: tuple[str, ...] = ("assignees", "repositories", "labels")
-_SCALAR_FIELDS: tuple[str, ...] = ("title", "body", "status", "priority", "due")
+# branch/deployment let agents attribute *where* the work is happening so a task
+# carries its own operational context (active branch, deploy target) server-side.
+_SCALAR_FIELDS: tuple[str, ...] = (
+    "title",
+    "body",
+    "status",
+    "priority",
+    "due",
+    "branch",
+    "deployment",
+)
 
 _PRIORITY_RANK: dict[str, int] = {"urgent": 0, "high": 1, "normal": 2, "low": 3}
 
@@ -185,6 +195,8 @@ def _new_task(event: Mapping[str, Any]) -> dict[str, Any]:
         "status": "open",
         "priority": "normal",
         "due": "",
+        "branch": "",
+        "deployment": "",
         "created_at": str(event.get("timestamp", "")),
         "updated_at": str(event.get("timestamp", "")),
         "comments": [],
@@ -205,6 +217,13 @@ def _apply_fields(task: dict[str, Any], fields: Mapping[str, Any], event: Mappin
             task["status"] = value
         elif key in _LIST_FIELDS:
             task[key] = list(value)
+        elif key in ("branch", "deployment"):
+            old = task.get(key, "")
+            if old != value:
+                task["history"].append(
+                    {"ts": ts, "actor": actor, "change": f"{key}: {old or '-'} -> {value or '-'}"}
+                )
+            task[key] = value
         elif key in _SCALAR_FIELDS:
             task[key] = value
 
@@ -377,6 +396,10 @@ def render_task_detail(task: Mapping[str, Any]) -> str:
         lines.append(f"  labels:    {', '.join(task.get('labels', []))}")
     if task.get("due"):
         lines.append(f"  due:       {task.get('due')}")
+    if task.get("branch"):
+        lines.append(f"  branch:    {task.get('branch')}")
+    if task.get("deployment"):
+        lines.append(f"  deploy:    {task.get('deployment')}")
     lines.append(f"  created:   {task.get('created_at', '')}")
     lines.append(f"  updated:   {task.get('updated_at', '')}")
     if task.get("body"):

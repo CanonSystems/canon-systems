@@ -15,6 +15,7 @@ COPY backend/shared /app/backend/shared
 COPY backend/knowledge-schema /app/backend/knowledge-schema
 COPY backend/knowledge-policy /app/backend/knowledge-policy
 COPY backend/memory-adapter /app/backend/memory-adapter
+COPY backend/state-api /app/backend/state-api
 COPY backend/knowledge-api /app/backend/knowledge-api
 
 RUN pip install --no-cache-dir --upgrade pip \
@@ -22,6 +23,7 @@ RUN pip install --no-cache-dir --upgrade pip \
   && pip install --no-cache-dir -e /app/backend/knowledge-schema \
   && pip install --no-cache-dir -e /app/backend/knowledge-policy \
   && pip install --no-cache-dir -e /app/backend/memory-adapter \
+  && pip install --no-cache-dir -e /app/backend/state-api \
   && pip install --no-cache-dir -e /app/backend/knowledge-api
 
 WORKDIR /app/backend/knowledge-api
